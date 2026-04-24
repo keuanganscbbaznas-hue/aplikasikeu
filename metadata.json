@@ -1,0 +1,6 @@
+{
+  "name": "Tracking Transaksi Keuangan SCB",
+  "description": "Sistem monitoring dan tracking pengajuan uang muka serta reimburse dengan 16 tahapan alur kerja BAZNAS.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

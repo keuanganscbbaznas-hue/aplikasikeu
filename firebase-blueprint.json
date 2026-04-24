@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "Submission": {
+      "title": "Submission",
+      "description": "A document submission for cash advance or reimbursement.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["uang_muka", "reimburse", "laporan_uang_muka", "pembiayaan"] },
+        "title": { "type": "string" },
+        "amount": { "type": "number" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "currentStageIndex": { "type": "number" },
+        "picName": { "type": "string" },
+        "submittedBy": { "type": "string" },
+        "submittedByName": { "type": "string" },
+        "submittedByEmail": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "evidenceUrl": { "type": "string" },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "stage": { "type": "string" },
+              "status": { "type": "string" },
+              "actor": { "type": "string" },
+              "timestamp": { "type": "string", "format": "date-time" },
+              "comment": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["type", "title", "amount", "status", "currentStageIndex", "submittedBy", "createdAt"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Application user profile.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["staff", "finance", "accountant", "management", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    }
+  },
+  "firestore": {
+    "/submissions/{submissionId}": {
+      "schema": "Submission",
+      "description": "Collection of document submissions."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and roles."
+    }
+  }
+}

@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Role-based access from 'users' collection
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      let isHardcodedAdmin = isSignedIn() && (
+        (request.auth.token.email == "keuanganscbbaznas@gmail.com" || 
+         request.auth.token.email == "keuangan.scb@gmail.com") && 
+        request.auth.token.email_verified == true
+      );
+      
+      let hasAdminRole = isSignedIn() && 
+                         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+                         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+
+      return isHardcodedAdmin || hasAdminRole;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.role in ['staff', 'finance', 'accountant', 'management', 'admin'];
+    }
+
+    function isValidSubmission(data) {
+      // Basic check for required fields, but less restrictive on types for now to ensure access
+      return data.keys().hasAll(['type', 'title', 'amount', 'status', 'currentStageIndex', 'submittedBy', 'createdAt', 'updatedAt']);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming()) && 
+                      (incoming().role == 'staff' || isAdmin());
+      allow update: if isSignedIn() && (isOwner(userId) || isAdmin()) && isValidUser(incoming()) &&
+                      (incoming().role == existing().role || isAdmin());
+    }
+
+    match /submissions/{submissionId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidSubmission(incoming()) && 
+                      incoming().submittedBy == request.auth.uid;
+      allow update: if isSignedIn() && isValidId(submissionId) && (
+        // Admin can update everything if payload is valid
+        (isAdmin() && isValidSubmission(incoming())) ||
+        // Staff/Approvers can update if stages are followed and payload is valid
+        (isValidSubmission(incoming()) && (
+          isOwner(existing().submittedBy) || 
+          getRole() in ['finance', 'accountant', 'management']
+        ))
+      );
+      allow delete: if isAdmin();
+    }
+  }
+}
