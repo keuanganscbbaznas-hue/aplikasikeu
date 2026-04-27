@@ -2596,6 +2596,7 @@ function GoogleDriveSync({ submissions }: { submissions: Submission[] }) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [autoSync, setAutoSync] = useState(true); 
   const [lastSync, setLastSync] = useState<string | null>(null);
+  const [showInfo, setShowInfo] = useState(false);
 
   useEffect(() => {
     checkStatus();
@@ -2681,14 +2682,25 @@ function GoogleDriveSync({ submissions }: { submissions: Submission[] }) {
         </div>
         <div className="flex gap-1.5 shrink-0">
           {!isReady ? (
-            <Button 
-              size="sm" 
-              onClick={checkStatus}
-              className="h-7 px-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-black text-[8px] border-none shadow-sm"
-              title="Periksa konfigurasi Service Account di Environment Variables"
-            >
-              Cek Key
-            </Button>
+            <>
+              <Button 
+                size="icon-sm"
+                variant="ghost" 
+                onClick={() => setShowInfo(!showInfo)}
+                className="h-7 w-7 rounded-lg text-amber-500 hover:text-amber-600 hover:bg-amber-50"
+                title="Info Konfigurasi"
+              >
+                <AlertCircle size={14} />
+              </Button>
+              <Button 
+                size="sm" 
+                onClick={checkStatus}
+                className="h-7 px-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-black text-[8px] border-none shadow-sm"
+                title="Periksa konfigurasi Service Account di Environment Variables"
+              >
+                Cek Key
+              </Button>
+            </>
           ) : (
             <>
               <div className="flex flex-col items-end mr-1">
@@ -2715,7 +2727,7 @@ function GoogleDriveSync({ submissions }: { submissions: Submission[] }) {
         </div>
       </div>
       
-      {!isReady && (
+      {!isReady && showInfo && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }} 
           animate={{ opacity: 1, y: 0 }}
@@ -2724,6 +2736,9 @@ function GoogleDriveSync({ submissions }: { submissions: Submission[] }) {
           <div className="flex items-center gap-3">
              <AlertCircle className="text-amber-600" size={18} />
              <p className="text-xs font-black text-amber-900 uppercase tracking-tight">Konfigurasi Service Account</p>
+             <Button variant="ghost" size="icon-xs" className="ml-auto" onClick={() => setShowInfo(false)}>
+               <X size={14} />
+             </Button>
           </div>
           <div className="space-y-3 bg-white/50 p-4 rounded-xl border border-amber-100 text-[10px] text-amber-800 leading-relaxed md:w-[400px]">
              <p>Agar sistem bisa menyinkronkan data otomatis ke Spreadsheet di belakang layar (tanpa auth popup), Anda harus menambahkan kredensial Service Account ke Environment Variables (Settings &gt; API Keys / Environment Variables).</p>
