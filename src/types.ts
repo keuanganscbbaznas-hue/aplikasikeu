@@ -62,6 +62,22 @@ export interface HistoryEntry {
   comment?: string;
 }
 
+export interface BaznasBudget {
+  id: string;
+  month: string;
+  year: string;
+  akademik: number;
+  operasional: number;
+  asrama: number;
+  total: number;
+  description: string;
+  status: 'pending' | 'submitted' | 'approved' | 'rejected';
+  submittedBy: string;
+  submittedByName: string;
+  createdAt: any;
+  updatedAt: any;
+}
+
 export interface Submission {
   id: string;
   type: SubmissionType;

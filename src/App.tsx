@@ -41,6 +41,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CashFlowBoard } from './components/CashFlowBoard';
+import { BaznasBudgetManager } from './components/BaznasBudgetManager';
 import { 
   LayoutDashboard, 
   Plus, 
@@ -828,7 +829,7 @@ export default function App() {
   const sidebarItems = [
     { id: 'tracking', label: 'Tracking Transaksi', icon: LayoutDashboard, access: 'all' },
     { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'owner' },
-    { id: 'anggaran', label: 'Pengajuan Anggaran', icon: PieChart, access: 'owner' },
+    { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan', icon: FileText, access: 'admin' },
     { id: 'settings', label: 'Settingan', icon: Settings, access: 'superadmin' },
   ];
@@ -970,7 +971,7 @@ export default function App() {
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative ${activeTab === item.id ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-900/40' : 'hover:bg-white/5 text-slate-400 hover:text-white'}`}
                 >
                   <item.icon size={18} className={activeTab === item.id ? 'text-white' : 'text-slate-500 group-hover:text-emerald-400 transition-colors'} />
-                  <span className="text-sm font-bold tracking-tight">{item.label}</span>
+                  <span className="text-sm font-bold tracking-tight text-left">{item.label}</span>
                   {activeTab === item.id && (
                     <motion.div layoutId="nav-pill" className="absolute left-1 w-1 h-5 rounded-full bg-white/40" />
                   )}
@@ -1317,21 +1318,17 @@ export default function App() {
                 )}
 
                 {activeTab === 'anggaran' && profile?.email === OWNER_EMAIL && (
-                  <div className="space-y-4">
-                    <BudgetExplorer 
-                      submissions={submissions} 
-                      onMonthYearSelect={(m, y) => {
-                        setFilterMonth(m);
-                        setFilterYear(y);
-                        setActiveTab('tracking');
-                        toast.info(`Menampilkan transaksi untuk ${y} - Bulan ${m}`);
-                      }} 
-                    />
-                  </div>
+                  <BaznasBudgetManager profile={profile} userUid={user?.uid || ''} />
                 )}
 
                 {activeTab === 'laporan' && isAdmin && (
-                  <GoogleSheetsSection title="Laporan" url="https://docs.google.com/spreadsheets/d/1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU/htmlembed?widget=true&amp;headers=false" />
+                  <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8 text-center min-h-[400px] flex flex-col items-center justify-center">
+                    <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                      <FileText className="text-slate-300" size={32} />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-700">Laporan</h3>
+                    <p className="text-slate-500 mt-1 max-w-sm mx-auto">Tampilan laporan spreadsheet telah dinonaktifkan sesuai permintaan. Fitur laporan lanjutan sedang dalam pengembangan.</p>
+                  </div>
                 )}
 
                 {activeTab === 'settings' && isSuperAdmin && (
@@ -1991,11 +1988,9 @@ function ImportSubmissionModal({ profile, user, variant = 'default' }: { profile
       Import CSV
     </Button>
   ) : (
-    <DialogTrigger asChild>
-      <Button variant="outline" className="gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary transition-all">
-        <Upload size={18} />
-        Import CSV
-      </Button>
+    <DialogTrigger render={<Button variant="outline" className="gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary transition-all" />}>
+      <Upload size={18} />
+      Import CSV
     </DialogTrigger>
   );
 

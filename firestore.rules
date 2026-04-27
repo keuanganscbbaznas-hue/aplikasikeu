@@ -87,5 +87,12 @@ service cloud.firestore {
       );
       allow delete: if isAdmin();
     }
+
+    match /baznas_budgets/{budgetId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && incoming().submittedBy == request.auth.uid;
+      allow update: if isSignedIn() && (isOwner(existing().submittedBy) || isAdmin());
+      allow delete: if isSignedIn() && (isOwner(existing().submittedBy) || isAdmin());
+    }
   }
 }
