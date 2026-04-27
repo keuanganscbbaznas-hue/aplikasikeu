@@ -230,6 +230,7 @@ function SubmissionCard({
   isSelected,
   onToggle
 }: { 
+  key?: string | number,
   submission: Submission, 
   onApprove: (s: Submission, comment?: string) => void,
   onReject: (s: Submission, comment?: string) => void,
@@ -705,7 +706,7 @@ export default function App() {
 
     for (const id of selectedIds) {
       try {
-        await deleteDoc(doc(db, 'submissions', id));
+        await deleteDoc(doc(db, 'submissions', id as string));
         successCount++;
       } catch (error) {
         failCount++;

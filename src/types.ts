@@ -22,7 +22,7 @@ export const UM_STAGES = [
   "Berkas Laporan di Serahkan ke Keuangan",
   "Verifikasi Laporan",
   "Penyelesaian selisih",
-  "Pencatatan Transaksi dan Penomeran Dokumen",
+  "Pencatatan Transaksi dan Penomeran Dokumen Laporan",
   "Digitalisasi Dokumen",
   "Verifikasi Dokumen Bulanan",
   "Penyusunan Settlement",
