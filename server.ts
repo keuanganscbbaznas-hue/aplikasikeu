@@ -67,6 +67,26 @@ async function startServer() {
     }
   });
 
+  app.get("/api/sheets/proxy_csv", async (req, res) => {
+    try {
+      const { spreadsheetId, gid } = req.query;
+      if (!spreadsheetId) {
+        return res.status(400).send("Missing spreadsheetId");
+      }
+      const targetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${gid || '0'}`;
+      const response = await fetch(targetUrl);
+      if (!response.ok) {
+        throw new Error(`Google Sheets responded with ${response.status}`);
+      }
+      const csvStr = await response.text();
+      res.setHeader('Content-Type', 'text/csv');
+      res.send(csvStr);
+    } catch (error: any) {
+      console.error("Sheets Proxy Error:", error.message);
+      res.status(500).send("Error fetching spreadsheet");
+    }
+  });
+
   // Vite setup
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

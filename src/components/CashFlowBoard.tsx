@@ -16,12 +16,15 @@ const parseRupiah = (val: string) => {
   return Number(val.replace(/\./g, '').trim()) || 0;
 };
 
-export const CashFlowBoard = () => {
+export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
   const [selectedYear, setSelectedYear] = React.useState(new Date().getFullYear().toString());
   const [rawData, setRawData] = React.useState<any[][]>([]);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
+    setLoading(true);
+    const SHEET_URL = `/api/sheets/proxy_csv?spreadsheetId=1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU&gid=${sheetGid}`;
+    
     Papa.parse(SHEET_URL, {
       download: true,
       complete: (results) => {
@@ -33,9 +36,10 @@ export const CashFlowBoard = () => {
         setLoading(false);
       }
     });
-  }, []);
+  }, [sheetGid]);
 
   const { data, totalPengeluaran, totalPenerimaan, saldo } = React.useMemo(() => {
+
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
     const chartData = months.map(m => ({
       name: new Date(2000, m - 1).toLocaleString('id-ID', { month: 'short' }),
@@ -59,7 +63,7 @@ export const CashFlowBoard = () => {
       currentSaldo += saldoAwal;
 
       // Extract rows
-      const rows = rawData.slice(4); // Skip header mostly
+      const rows = rawData.slice(2); // Skip header and saldo awal
       rows.forEach(row => {
         if (!row || row.length < 9) return;
         
@@ -124,7 +128,7 @@ export const CashFlowBoard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Saldo Aktual</CardTitle>
@@ -152,15 +156,6 @@ export const CashFlowBoard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">Rp {yearPenerimaan.toLocaleString('id-ID')}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Budget</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Rp 0</div>
           </CardContent>
         </Card>
       </div>

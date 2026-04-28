@@ -1,0 +1,1 @@
+fetch('http://localhost:3000/api/sheets/proxy_csv?spreadsheetId=1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU&gid=1').then(r=>r.text()).then(txt => console.log(txt.split('\\n').slice(-3).join('\\n')));

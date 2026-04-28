@@ -1290,30 +1290,36 @@ export default function App() {
 
                 {activeTab === 'buku_kas' && profile?.email === OWNER_EMAIL && (
                   <div className="space-y-6">
-                    <CashFlowBoard submissions={submissions} />
-                    
-                    <div className="grid grid-cols-1 gap-8">
-                       <MonthlyAccumulationSummary submissions={submissions} />
-                    </div>
-                    
-                    <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                      <Tabs defaultValue="bank">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Rincian Per Bulan</h4>
-                          <TabsList className="bg-slate-50 p-1 shadow-inner rounded-xl border border-slate-100">
-                            <TabsTrigger value="bank" className="px-4 rounded-lg font-black text-[10px] data-[state=active]:bg-blue-600 data-[state=active]:text-white uppercase tracking-tight">KAS BANK</TabsTrigger>
-                            <TabsTrigger value="tunai" className="px-4 rounded-lg font-black text-[10px] data-[state=active]:bg-emerald-600 data-[state=active]:text-white uppercase tracking-tight">KAS TUNAI</TabsTrigger>
-                          </TabsList>
+                    <Tabs defaultValue="tunai">
+                      <div className="flex items-center justify-start mb-6">
+                        <TabsList className="bg-slate-50 p-1 shadow-inner rounded-xl border border-slate-100">
+                          <TabsTrigger value="tunai" className="px-6 rounded-lg font-black text-xs py-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white uppercase tracking-tight">KAS TUNAI</TabsTrigger>
+                          <TabsTrigger value="bank" className="px-6 rounded-lg font-black text-xs py-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white uppercase tracking-tight">KAS BANK</TabsTrigger>
+                        </TabsList>
+                      </div>
+                      
+                      <TabsContent value="tunai" className="space-y-6">
+                        <CashFlowBoard sheetGid="0" />
+                        <div className="grid grid-cols-1 gap-8">
+                           <MonthlyAccumulationSummary submissions={submissions} />
                         </div>
-                        <TabsContent value="bank">
-                          <GoogleSheetsSection title="Buku Kas Bank" url="https://docs.google.com/spreadsheets/d/1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU/htmlembed?gid=0&widget=true&headers=false" />
-                        </TabsContent>
-                        <TabsContent value="tunai">
-                          <GoogleSheetsSection title="Buku Kas Tunai" url="https://docs.google.com/spreadsheets/d/1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU/htmlembed?gid=1&widget=true&headers=false" />
-                        </TabsContent>
-                      </Tabs>
-                    </div>
+                        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                           <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Rincian Per Bulan - Kas Tunai</h4>
+                           <GoogleSheetsSection title="Buku Kas Tunai" url="https://docs.google.com/spreadsheets/d/1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU/htmlembed?gid=0&widget=true&headers=false" />
+                        </div>
+                      </TabsContent>
 
+                      <TabsContent value="bank" className="space-y-6">
+                        <CashFlowBoard sheetGid="1341242520" />
+                        <div className="grid grid-cols-1 gap-8">
+                           <MonthlyAccumulationSummary submissions={submissions} />
+                        </div>
+                        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                           <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Rincian Per Bulan - Kas Bank</h4>
+                           <GoogleSheetsSection title="Buku Kas Bank" url="https://docs.google.com/spreadsheets/d/1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU/htmlembed?gid=1341242520&widget=true&headers=false" />
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   </div>
                 )}
 
