@@ -288,7 +288,7 @@ function SubmissionCard({
       </td>
       <td className="px-6 py-4 min-w-[300px]">
         <div className="space-y-0.5">
-          <h4 className="font-black text-slate-800 text-[13px] tracking-tight truncate max-w-[400px]">
+          <h4 className="font-['Times_New_Roman'] font-black text-slate-800 text-[16px] tracking-tight truncate w-[402px] h-[21.5625px]">
             {submission.title}
           </h4>
           <div className="flex items-center gap-3">
@@ -310,10 +310,10 @@ function SubmissionCard({
           </div>
         </div>
       </td>
-      <td className="px-6 py-4">
+      <td className="px-6 py-4 font-['Times_New_Roman'] text-[13px]">
         <div className="flex items-baseline gap-1">
-          <span className="text-[10px] font-bold text-slate-400">Rp</span>
-          <span className="font-black text-[13px] text-slate-800 tracking-tight tabular-nums">
+          <span className="text-[14px] bg-[#ffffff] font-bold text-slate-400">Rp</span>
+          <span className="font-['Times_New_Roman'] font-black text-[16px] text-slate-800 tracking-tight tabular-nums">
             {submission.amount.toLocaleString('id-ID')}
           </span>
         </div>
@@ -321,7 +321,7 @@ function SubmissionCard({
       <td className="px-6 py-4">
         <div className="space-y-2 max-w-[180px] mx-auto">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[9px] font-black text-emerald-600 uppercase truncate tracking-tighter">
+            <span className="font-['Times_New_Roman'] text-[10px] bg-[#f9f9f9] text-[#0f6d1a] h-[16.2812px] w-[158.422px] flex items-center font-black uppercase truncate tracking-tighter">
               {stages[submission.currentStageIndex]}
             </span>
             <span className="text-[9px] font-bold text-slate-300 shrink-0">
