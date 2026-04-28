@@ -2,13 +2,14 @@ import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import { Wallet, ArrowDownRight, ArrowUpRight, Target } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Papa from 'papaparse';
 
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU/export?format=csv&gid=0";
 
 const monthMap: Record<string, number> = { 
-  'Jan': 1, 'Feb': 2, 'Mar': 3, 'Apr': 4, 'Mei': 5, 'Jun': 6, 
-  'Jul': 7, 'Agu': 8, 'Sep': 9, 'Okt': 10, 'Nov': 11, 'Des': 12 
+  'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'mei': 5, 'jun': 6, 
+  'jul': 7, 'agu': 8, 'aug': 8, 'sep': 9, 'okt': 10, 'oct': 10, 'nov': 11, 'des': 12, 'dec': 12
 };
 
 const parseRupiah = (val: string) => {
@@ -38,7 +39,7 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
     });
   }, [sheetGid]);
 
-  const { data, totalPengeluaran, totalPenerimaan, saldo } = React.useMemo(() => {
+  const { data, totalPengeluaran, totalPenerimaan, saldo, availableYears } = React.useMemo(() => {
 
     const months = Array.from({ length: 12 }, (_, i) => i + 1);
     const chartData = months.map(m => ({
@@ -50,6 +51,7 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
     let totalPengel = 0;
     let totalPener = 0;
     let currentSaldo = 0;
+    const yearsSet = new Set<string>();
 
     if (rawData.length > 5) {
       // Find initial saldo
@@ -70,27 +72,45 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
         const tgl = row[1];
         if (!tgl) return;
         
-        const parts = tgl.split('/');
-        if (parts.length === 3) {
-          const mText = parts[1];
+        let monthNum = 0;
+        let yearFull = selectedYear;
+
+        // Try parsing variations like 9/Jan/26, 09-01-2026, 9 Jan 2026
+        const parts = tgl.split(/[\/\- ]/);
+        if (parts.length >= 3) {
+          const mText = parts[1].toLowerCase();
           const yText = parts[2];
-          const monthNum = monthMap[mText];
-          const yearFull = "20" + yText;
-
-          const penerimaan = parseRupiah(row[7]);
-          const pengeluaran = parseRupiah(row[8]);
           
-          // Add to global totals regardless of selected year, so balance matches reality?
-          // Or should total cards just be for the selected year?
-          // The prompt screenshot shows saldo as overall running balance usually, but let's calculate for selected year to match chart, or global.
-          // Usually a dashboard like this shows absolute current bank balance, but year specific income/expense.
-          totalPener += penerimaan;
-          totalPengel += pengeluaran;
-
-          if (yearFull === selectedYear && monthNum) {
-            chartData[monthNum - 1].penerimaan += penerimaan;
-            chartData[monthNum - 1].pengeluaran += pengeluaran;
+          if (isNaN(Number(mText))) {
+            monthNum = monthMap[mText] || monthMap[mText.substring(0,3)] || 0;
+          } else {
+            monthNum = Number(mText);
           }
+
+          if (yText.length === 2) {
+            yearFull = "20" + yText;
+          } else if (yText.length === 4) {
+            yearFull = yText;
+          }
+        } else {
+          const d = new Date(tgl);
+          if (!isNaN(d.getTime())) {
+             monthNum = d.getMonth() + 1;
+             yearFull = d.getFullYear().toString();
+          }
+        }
+
+        yearsSet.add(yearFull);
+
+        const penerimaan = parseRupiah(row[7]);
+        const pengeluaran = parseRupiah(row[8]);
+        
+        totalPener += penerimaan;
+        totalPengel += pengeluaran;
+
+        if (yearFull === selectedYear && monthNum) {
+          chartData[monthNum - 1].penerimaan += penerimaan;
+          chartData[monthNum - 1].pengeluaran += pengeluaran;
         }
       });
 
@@ -110,11 +130,15 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
       }
     }
 
+    // Default current year if none available
+    if (yearsSet.size === 0) yearsSet.add(new Date().getFullYear().toString());
+
     return {
       data: chartData,
       totalPengeluaran: totalPengel,
       totalPenerimaan: totalPener,
-      saldo: currentSaldo
+      saldo: currentSaldo,
+      availableYears: Array.from(yearsSet).sort((a, b) => Number(b) - Number(a))
     };
   }, [rawData, selectedYear]);
 
@@ -161,8 +185,18 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
       </div>
 
       <Card className="h-[400px]">
-        <CardHeader>
-          <CardTitle>Arus Kas {selectedYear}</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Arus Kas</CardTitle>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-[120px] h-8 text-xs font-semibold">
+              <SelectValue placeholder="Pilih Tahun" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableYears.map(year => (
+                <SelectItem key={year} value={year}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardHeader>
         <CardContent className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
