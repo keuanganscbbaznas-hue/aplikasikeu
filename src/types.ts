@@ -66,9 +66,9 @@ export interface BaznasBudget {
   id: string;
   month: string;
   year: string;
-  akademik: number;
+  program: number;
   operasional: number;
-  asrama: number;
+  makan: number;
   total: number;
   description: string;
   status: 'pending' | 'submitted' | 'approved' | 'rejected';

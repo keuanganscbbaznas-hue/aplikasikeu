@@ -1,4 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { collection, addDoc, query, onSnapshot, orderBy, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase';
+import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +19,7 @@ const MONTHS = [
 ];
 
 interface Report {
-  id: number;
+  id: string;
   month: string;
   year: string;
   amount: number;
@@ -34,24 +37,48 @@ export const LaporanManager = () => {
   const [reportDate, setReportDate] = useState('');
   const [bastLink, setBastLink] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    const q = query(collection(db, 'laporan_baznas'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const reportsData: Report[] = [];
+      snapshot.forEach((doc) => {
+        reportsData.push({ id: doc.id, ...doc.data() } as Report);
+      });
+      setData(reportsData);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'laporan_baznas');
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!month || !year || !amount || !reportDate || !bastLink) return;
     
-    const newReport = {
-      id: Date.now(),
-      month,
-      year,
-      amount: parseInt(amount.replace(/\./g, '')),
-      date: reportDate,
-      bastLink
-    };
-    
-    setData([...data, newReport]);
-    setAmount('');
-    setReportDate('');
-    setBastLink('');
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, 'laporan_baznas'), {
+        month,
+        year,
+        amount: parseInt(amount.replace(/[^0-9.-]+/g, '')) || 0,
+        date: reportDate,
+        bastLink,
+        createdAt: serverTimestamp()
+      });
+      
+      setAmount('');
+      setReportDate('');
+      setBastLink('');
+      toast.success("Berhasil menyimpan laporan");
+    } catch (error) {
+       toast.error('Gagal menyimpan laporan');
+       handleFirestoreError(error, OperationType.CREATE, 'laporan_baznas');
+    } finally {
+       setIsSubmitting(false);
+    }
   };
 
   const handleExportCSV = () => {
@@ -79,23 +106,34 @@ export const LaporanManager = () => {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => {
+      complete: async (results) => {
         try {
+          setIsSubmitting(true);
           const imports = results.data as any[];
-          const newReports: Report[] = imports.map((row, index) => ({
-            id: Date.now() + index,
-            month: row.Bulan || '',
-            year: row.Tahun || '',
-            amount: parseFloat(row.Nominal) || 0,
-            date: row.TanggalLaporan || '',
-            bastLink: row.BuktiBAST || ''
-          })).filter(r => r.month && r.year);
+          for (const ObjectRow of imports) {
+            const m = ObjectRow.Bulan;
+            const y = ObjectRow.Tahun;
+            const a = parseFloat(ObjectRow.Nominal) || 0;
+            const d = ObjectRow.TanggalLaporan;
+            const bLink = ObjectRow.BuktiBAST;
+
+            if (!m || !y) continue;
+
+            await addDoc(collection(db, 'laporan_baznas'), {
+                month: m,
+                year: y,
+                amount: a,
+                date: d || '',
+                bastLink: bLink || '',
+                createdAt: serverTimestamp()
+            });
+          }
           
-          setData(prev => [...prev, ...newReports]);
           toast.success("Berhasil mengimpor data laporan");
         } catch (error) {
           toast.error("Gagal mengimpor data laporan");
         } finally {
+          setIsSubmitting(false);
           if (fileInputRef.current) fileInputRef.current.value = '';
         }
       },
@@ -184,8 +222,8 @@ export const LaporanManager = () => {
                   />
                 </div>
 
-                <Button type="submit" className="w-full mt-2 font-bold bg-emerald-600 hover:bg-emerald-700 rounded-xl">
-                  Simpan Laporan
+                <Button type="submit" disabled={isSubmitting} className="w-full mt-2 font-bold bg-emerald-600 hover:bg-emerald-700 rounded-xl">
+                  {isSubmitting ? 'Menyimpan...' : 'Simpan Laporan'}
                 </Button>
               </form>
             </CardContent>
@@ -252,6 +290,7 @@ export const LaporanManager = () => {
             <Button 
               variant="outline" 
               onClick={() => fileInputRef.current?.click()}
+              disabled={isSubmitting}
               className="font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl"
             >
               <Upload className="mr-2" size={16} /> Import

@@ -931,10 +931,9 @@ export default function App() {
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-white p-1.5 rounded-xl flex items-center justify-center shadow-lg transform rotate-3">
                   <img 
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Logo_BAZNAS.png/512px-Logo_BAZNAS.png" 
+                    src="/regenerated_image_1777445252050.png" 
                     alt="Logo" 
                     className="h-full w-full object-contain"
-                    referrerPolicy="no-referrer"
                   />
               </div>
               <div className="flex flex-col">

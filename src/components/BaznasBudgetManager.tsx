@@ -31,9 +31,9 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
   // Form states
   const [month, setMonth] = useState('');
   const [year, setYear] = useState(new Date().getFullYear().toString());
-  const [akademik, setAkademik] = useState('');
+  const [program, setProgram] = useState('');
   const [operasional, setOperasional] = useState('');
-  const [asrama, setAsrama] = useState('');
+  const [makan, setMakan] = useState('');
   const [description, setDescription] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,24 +55,24 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!month || !year || !akademik || !operasional || !asrama) {
+    if (!month || !year || !program || !operasional || !makan) {
       toast.error('Mohon lengkapi semua field yang wajib');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const numAkademik = parseFloat(akademik.replace(/[^0-9.-]+/g,"")) || 0;
+      const numProgram = parseFloat(program.replace(/[^0-9.-]+/g,"")) || 0;
       const numOperasional = parseFloat(operasional.replace(/[^0-9.-]+/g,"")) || 0;
-      const numAsrama = parseFloat(asrama.replace(/[^0-9.-]+/g,"")) || 0;
-      const total = numAkademik + numOperasional + numAsrama;
+      const numMakan = parseFloat(makan.replace(/[^0-9.-]+/g,"")) || 0;
+      const total = numProgram + numOperasional + numMakan;
 
       await addDoc(collection(db, 'baznas_budgets'), {
         month,
         year,
-        akademik: numAkademik,
+        program: numProgram,
         operasional: numOperasional,
-        asrama: numAsrama,
+        makan: numMakan,
         total,
         description,
         status: 'pending',
@@ -87,9 +87,9 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
       
       // Reset form
       setMonth('');
-      setAkademik('');
+      setProgram('');
       setOperasional('');
-      setAsrama('');
+      setMakan('');
       setDescription('');
     } catch (error) {
       toast.error('Gagal membuat pengajuan anggaran');
@@ -114,9 +114,9 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
     const csvData = budgets.map(b => ({
       Bulan: b.month,
       Tahun: b.year,
-      Akademik: b.akademik,
+      Program: b.program,
       Operasional: b.operasional,
-      Asrama: b.asrama,
+      Makan: b.makan,
       Total: b.total,
       Keterangan: b.description || '',
       Status: b.status,
@@ -144,19 +144,19 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
         try {
           const imports = results.data as any[];
           for (const row of imports) {
-            const numAkademik = parseFloat(row.Akademik) || 0;
+            const numProgram = parseFloat(row.Program) || 0;
             const numOperasional = parseFloat(row.Operasional) || 0;
-            const numAsrama = parseFloat(row.Asrama) || 0;
-            const total = numAkademik + numOperasional + numAsrama;
+            const numMakan = parseFloat(row.Makan) || 0;
+            const total = numProgram + numOperasional + numMakan;
             
             if (!row.Bulan || !row.Tahun) continue;
 
             await addDoc(collection(db, 'baznas_budgets'), {
               month: row.Bulan,
               year: row.Tahun,
-              akademik: numAkademik,
+              program: numProgram,
               operasional: numOperasional,
-              asrama: numAsrama,
+              makan: numMakan,
               total,
               description: row.Keterangan || '',
               status: row.Status || 'pending',
@@ -193,7 +193,7 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-black text-slate-800 tracking-tight">Pengajuan Anggaran BAZNAS</h2>
-          <p className="text-sm text-slate-500 font-medium mt-1">Input rencana anggaran akademik, operasional, dan asrama.</p>
+          <p className="text-sm text-slate-500 font-medium mt-1">Input rencana anggaran program, operasional, dan makan.</p>
         </div>
         
         <div className="flex items-center gap-2">
@@ -261,11 +261,11 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-slate-500 uppercase">Anggaran Akademik (Rp)</Label>
+                <Label className="text-xs font-bold text-slate-500 uppercase">Anggaran Program (Rp)</Label>
                 <Input 
                   type="text" 
-                  value={akademik}
-                  onChange={(e) => setAkademik(e.target.value)}
+                  value={program}
+                  onChange={(e) => setProgram(e.target.value)}
                   placeholder="Contoh: 15000000"
                   className="rounded-xl border-slate-200"
                   required
@@ -285,11 +285,11 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
               </div>
 
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-slate-500 uppercase">Anggaran Asrama (Rp)</Label>
+                <Label className="text-xs font-bold text-slate-500 uppercase">Anggaran Makan (Rp)</Label>
                 <Input 
                   type="text" 
-                  value={asrama}
-                  onChange={(e) => setAsrama(e.target.value)}
+                  value={makan}
+                  onChange={(e) => setMakan(e.target.value)}
                   placeholder="Contoh: 8000000"
                   className="rounded-xl border-slate-200"
                   required
@@ -345,16 +345,16 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
                 </CardHeader>
                 <CardContent className="pt-4 space-y-3 pb-4">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-500 font-medium">Akademik</span>
-                    <span className="font-bold text-slate-700">{formatCurrency(b.akademik)}</span>
+                    <span className="text-slate-500 font-medium">Program</span>
+                    <span className="font-bold text-slate-700">{formatCurrency(b.program)}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-slate-500 font-medium">Operasional</span>
                     <span className="font-bold text-slate-700">{formatCurrency(b.operasional)}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-500 font-medium">Asrama</span>
-                    <span className="font-bold text-slate-700">{formatCurrency(b.asrama)}</span>
+                    <span className="text-slate-500 font-medium">Makan</span>
+                    <span className="font-bold text-slate-700">{formatCurrency(b.makan)}</span>
                   </div>
                   <div className="pt-3 border-t flex items-center justify-between">
                     <span className="text-xs text-slate-400">Oleh: {b.submittedByName}</span>
