@@ -135,6 +135,25 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
     document.body.removeChild(link);
   };
 
+  const handleDownloadTemplate = () => {
+    const templateData = [{
+      Bulan: 'Januari',
+      Tahun: new Date().getFullYear().toString(),
+      Program: 15000000,
+      Operasional: 5000000,
+      Makan: 8000000,
+      Keterangan: 'Contoh pengajuan anggaran program binaan'
+    }];
+    const csvString = Papa.unparse(templateData);
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Template_Import_Anggaran_BAZNAS.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -222,6 +241,13 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
             onChange={handleImportCSV}
             className="hidden"
           />
+          <Button 
+            variant="outline" 
+            onClick={handleDownloadTemplate}
+            className="font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 rounded-xl hidden md:flex"
+          >
+            <FileText className="mr-2" size={16} /> Template
+          </Button>
           <Button 
             variant="outline" 
             onClick={() => fileInputRef.current?.click()}
