@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,27 +6,34 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { FileText, Plus, Search, ExternalLink } from 'lucide-react';
+import { FileText, Plus, Search, ExternalLink, Download, Upload } from 'lucide-react';
+import Papa from 'papaparse';
+import { toast } from 'sonner';
 
 const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
-// Dummy initial data to show chart
-const initialData = [
-  { id: 1, month: 'Januari', year: '2026', amount: 15000000, date: '2026-01-25', bastLink: 'https://example.com/bast1' },
-  { id: 2, month: 'Februari', year: '2026', amount: 18000000, date: '2026-02-24', bastLink: 'https://example.com/bast2' },
-  { id: 3, month: 'Maret', year: '2026', amount: 21000000, date: '2026-03-25', bastLink: 'https://example.com/bast3' },
-];
+interface Report {
+  id: number;
+  month: string;
+  year: string;
+  amount: number;
+  date: string;
+  bastLink: string;
+}
+
+const initialData: Report[] = [];
 
 export const LaporanManager = () => {
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState<Report[]>(initialData);
   const [month, setMonth] = useState('April');
   const [year, setYear] = useState(new Date().getFullYear().toString());
   const [amount, setAmount] = useState('');
   const [reportDate, setReportDate] = useState('');
   const [bastLink, setBastLink] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,6 +52,58 @@ export const LaporanManager = () => {
     setAmount('');
     setReportDate('');
     setBastLink('');
+  };
+
+  const handleExportCSV = () => {
+    const csvData = data.map(d => ({
+      Bulan: d.month,
+      Tahun: d.year,
+      Nominal: d.amount,
+      TanggalLaporan: d.date,
+      BuktiBAST: d.bastLink
+    }));
+    const csvString = Papa.unparse(csvData);
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Laporan_BAZNAS_${new Date().getTime()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        try {
+          const imports = results.data as any[];
+          const newReports: Report[] = imports.map((row, index) => ({
+            id: Date.now() + index,
+            month: row.Bulan || '',
+            year: row.Tahun || '',
+            amount: parseFloat(row.Nominal) || 0,
+            date: row.TanggalLaporan || '',
+            bastLink: row.BuktiBAST || ''
+          })).filter(r => r.month && r.year);
+          
+          setData(prev => [...prev, ...newReports]);
+          toast.success("Berhasil mengimpor data laporan");
+        } catch (error) {
+          toast.error("Gagal mengimpor data laporan");
+        } finally {
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      },
+      error: () => {
+        toast.error("Gagal membaca file CSV");
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    });
   };
 
   const chartData = MONTHS.map(m => {
@@ -180,8 +239,32 @@ export const LaporanManager = () => {
 
       {/* Table */}
       <Card className="rounded-3xl border-slate-100 shadow-sm">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl font-black text-slate-800">Daftar Laporan</CardTitle>
+          <div className="flex items-center gap-2">
+            <input
+              type="file"
+              accept=".csv"
+              ref={fileInputRef}
+              onChange={handleImportCSV}
+              className="hidden"
+            />
+            <Button 
+              variant="outline" 
+              onClick={() => fileInputRef.current?.click()}
+              className="font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl"
+            >
+              <Upload className="mr-2" size={16} /> Import
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleExportCSV}
+              className="font-bold border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl"
+              disabled={data.length === 0}
+            >
+              <Download className="mr-2" size={16} /> Ekspor
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-2xl border border-slate-100 overflow-hidden">
