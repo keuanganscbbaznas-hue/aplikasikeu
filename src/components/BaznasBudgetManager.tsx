@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Trash2, Calendar, FileText, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 
 export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile | null, userUid: string }) {
   const [budgets, setBudgets] = useState<BaznasBudget[]>([]);
@@ -35,6 +36,8 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
   const [operasional, setOperasional] = useState('');
   const [makan, setMakan] = useState('');
   const [description, setDescription] = useState('');
+  
+  const [chartYear, setChartYear] = useState(new Date().getFullYear().toString());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -188,6 +191,21 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
 
   const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
+  const chartData = months.map(m => {
+    const reports = budgets.filter(b => b.month === m && b.year === chartYear);
+    const program = reports.reduce((sum, b) => sum + (b.program || 0), 0);
+    const operasional = reports.reduce((sum, b) => sum + (b.operasional || 0), 0);
+    const makan = reports.reduce((sum, b) => sum + (b.makan || 0), 0);
+    return {
+      month: m.substring(0, 3),
+      fullMonth: m,
+      Program: program,
+      Operasional: operasional,
+      Makan: makan,
+      Total: program + operasional + makan
+    };
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -315,6 +333,59 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
         </Dialog>
         </div>
       </div>
+
+      <Card className="rounded-3xl border-slate-100 shadow-sm mb-6">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-xl font-black text-slate-800">
+            Bagan Pengajuan Anggaran {chartYear}
+          </CardTitle>
+          <div className="w-32">
+            <Select value={chartYear} onValueChange={setChartYear}>
+              <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
+                <SelectValue placeholder="Pilih Tahun" />
+              </SelectTrigger>
+              <SelectContent>
+                {[0, 1, 2].map(offset => {
+                  const y = (new Date().getFullYear() + offset).toString();
+                  return <SelectItem key={y} value={y}>{y}</SelectItem>
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis 
+                  dataKey="month" 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
+                  tickFormatter={(value) => `Rp ${value / 1000000}Jt`}
+                />
+                <Tooltip 
+                  cursor={{ fill: '#F8FAFC' }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px' }}
+                  formatter={(value: number, name: string) => [`Rp ${value.toLocaleString('id-ID')}`, name]}
+                  labelStyle={{ fontWeight: 'bold', color: '#0F172A', marginBottom: '8px' }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '20px' }} />
+                <Bar dataKey="Program" stackId="a" fill="#0ea5e9" radius={[0, 0, 4, 4]} barSize={32} />
+                <Bar dataKey="Operasional" stackId="a" fill="#f59e0b" barSize={32} />
+                <Bar dataKey="Makan" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} barSize={32} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-4 md:p-6 min-h-[400px]">
         {budgets.length === 0 ? (
