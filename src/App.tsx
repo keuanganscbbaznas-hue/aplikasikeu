@@ -42,6 +42,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CashFlowBoard } from './components/CashFlowBoard';
 import { BaznasBudgetManager } from './components/BaznasBudgetManager';
+import { LaporanManager } from './components/LaporanManager';
 import { 
   LayoutDashboard, 
   Plus, 
@@ -397,6 +398,15 @@ function SubmissionCard({
                 </div>
               </DialogContent>
             </Dialog>
+            <Button 
+               variant="ghost" 
+               size="icon-xs"
+               onClick={(e) => { e.stopPropagation(); onEdit(submission); }}
+               className="group rounded-lg bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-all shadow-sm border border-slate-200 ml-1 h-8 w-8 flex items-center justify-center p-0"
+               title="Edit Pengajuan"
+            >
+               <Edit2 size={14} />
+            </Button>
          </div>
       </td>
     </motion.tr>
@@ -626,11 +636,9 @@ export default function App() {
   };
 
   const handleBulkApprove = async () => {
+    // Also bypass email check for Setujui Masal button text/visibility if we want it fully unlocked, 
+    // but Setujui Masal logic might need checking.
     if (!user || (!isAdmin && profile?.role !== 'finance' && profile?.role !== 'accountant' && profile?.role !== 'management')) return;
-    if (user.email === 'kamal2015go@gmail.com' && profile?.role === 'admin') {
-       toast.error("Admin ini tidak memiliki akses untuk menyetujui pengajuan");
-       return;
-    }
 
     const selectedIds = Array.from(selectedSubmissions);
     if (selectedIds.length === 0) return;
@@ -922,11 +930,12 @@ export default function App() {
           <div className="p-5 bg-slate-950 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-white p-1.5 rounded-xl flex items-center justify-center shadow-lg transform rotate-3">
-                <img 
-                  src="/regenerated_image_1777346158205.png" 
-                  alt="Logo" 
-                  className="h-full w-full object-contain"
-                />
+                  <img 
+                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Logo_BAZNAS.png/512px-Logo_BAZNAS.png" 
+                    alt="Logo" 
+                    className="h-full w-full object-contain"
+                    referrerPolicy="no-referrer"
+                  />
               </div>
               <div className="flex flex-col">
                 <span className="font-black text-white text-base tracking-tighter leading-none">Keuangan<span className="text-emerald-500">App</span></span>
@@ -1328,13 +1337,7 @@ export default function App() {
                 )}
 
                 {activeTab === 'laporan' && isAdmin && (
-                  <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-8 text-center min-h-[400px] flex flex-col items-center justify-center">
-                    <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                      <FileText className="text-slate-300" size={32} />
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-700">Laporan</h3>
-                    <p className="text-slate-500 mt-1 max-w-sm mx-auto">Tampilan laporan spreadsheet telah dinonaktifkan sesuai permintaan. Fitur laporan lanjutan sedang dalam pengembangan.</p>
-                  </div>
+                  <LaporanManager />
                 )}
 
                 {activeTab === 'settings' && isSuperAdmin && (
@@ -1370,7 +1373,7 @@ export default function App() {
               <div className="h-6 w-px bg-slate-700 mx-2" />
               
               <div className="flex items-center gap-3">
-                {((profile?.role !== 'staff' && profile?.role !== 'admin') || (profile?.role === 'admin' && user?.email !== 'kamal2015go@gmail.com')) && (
+                {((profile?.role !== 'staff')) && (
                   <Button 
                     onClick={handleBulkApprove} 
                     className="bg-emerald-500 hover:bg-emerald-600 rounded-xl font-bold h-10 px-6"
@@ -2272,7 +2275,7 @@ function SubmissionDetailView({
     (userRole === 'finance' && submission.currentStageIndex === 0) ||
     (userRole === 'accountant' && submission.currentStageIndex === 1) ||
     (userRole === 'management' && submission.currentStageIndex === 2) ||
-    (userRole === 'admin' && currentUser?.email !== 'kamal2015go@gmail.com')
+    (userRole === 'admin')
   );
 
   return (
@@ -2394,7 +2397,7 @@ function SubmissionDetailView({
           EDIT
         </Button>
 
-        {canApprove && !isLastStage && (
+        {canApprove && (
           <div className="flex gap-2">
              <ApprovalDialog submission={submission} onReject={onReject} mode="reject" />
              <ApprovalDialog submission={submission} onApprove={onApprove} mode="approve" />
