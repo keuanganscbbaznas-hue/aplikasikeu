@@ -64,7 +64,10 @@ export const LaporanManager = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!month || !year || !amount || !reportDate || !bastLink) return;
+    if (!month || !year || !amount || !reportDate || !bastLink) {
+      toast.error("Mohon lengkapi semua field laporan (kecuali keterangan)");
+      return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -72,7 +75,7 @@ export const LaporanManager = () => {
         await updateDoc(doc(db, 'laporan_baznas', editingId), {
           month,
           year,
-          amount: parseInt(amount.toString().replace(/[^0-9.-]+/g, '')) || 0,
+          amount: parseInt(amount.toString().replace(/\./g, '')) || 0,
           date: reportDate,
           bastLink,
           keterangan,
@@ -83,7 +86,7 @@ export const LaporanManager = () => {
         await addDoc(collection(db, 'laporan_baznas'), {
           month,
           year,
-          amount: parseInt(amount.toString().replace(/[^0-9.-]+/g, '')) || 0,
+          amount: parseInt(amount.toString().replace(/\./g, '')) || 0,
           date: reportDate,
           bastLink,
           keterangan,
