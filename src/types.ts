@@ -71,7 +71,7 @@ export interface BaznasBudget {
   makan: number;
   total: number;
   description: string;
-  status: 'pending' | 'submitted' | 'approved' | 'rejected';
+  status: string;
   submittedBy: string;
   submittedByName: string;
   createdAt: any;

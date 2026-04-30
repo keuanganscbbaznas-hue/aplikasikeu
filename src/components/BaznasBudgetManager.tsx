@@ -7,6 +7,7 @@ import {
   doc, 
   addDoc,
   deleteDoc,
+  updateDoc,
   orderBy,
   serverTimestamp,
 } from 'firebase/firestore';
@@ -19,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, Calendar, FileText, Download, Upload } from 'lucide-react';
+import { Plus, Trash2, Edit2, Calendar, FileText, Download, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
@@ -28,6 +29,7 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
   const [budgets, setBudgets] = useState<BaznasBudget[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Form states
   const [month, setMonth] = useState('');
@@ -36,6 +38,7 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
   const [operasional, setOperasional] = useState('');
   const [makan, setMakan] = useState('');
   const [description, setDescription] = useState('');
+  const [status, setStatus] = useState('PENDING');
   
   const [chartYear, setChartYear] = useState(new Date().getFullYear().toString());
 
@@ -65,41 +68,73 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
 
     setIsSubmitting(true);
     try {
-      const numProgram = parseFloat(program.replace(/[^0-9.-]+/g,"")) || 0;
-      const numOperasional = parseFloat(operasional.replace(/[^0-9.-]+/g,"")) || 0;
-      const numMakan = parseFloat(makan.replace(/[^0-9.-]+/g,"")) || 0;
+      const numProgram = parseFloat(program.toString().replace(/[^0-9.-]+/g,"")) || 0;
+      const numOperasional = parseFloat(operasional.toString().replace(/[^0-9.-]+/g,"")) || 0;
+      const numMakan = parseFloat(makan.toString().replace(/[^0-9.-]+/g,"")) || 0;
       const total = numProgram + numOperasional + numMakan;
 
-      await addDoc(collection(db, 'baznas_budgets'), {
-        month,
-        year,
-        program: numProgram,
-        operasional: numOperasional,
-        makan: numMakan,
-        total,
-        description,
-        status: 'pending',
-        submittedBy: userUid,
-        submittedByName: profile?.displayName || 'User',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+      if (editingId) {
+        await updateDoc(doc(db, 'baznas_budgets', editingId), {
+          month,
+          year,
+          program: numProgram,
+          operasional: numOperasional,
+          makan: numMakan,
+          total,
+          description,
+          status,
+          updatedAt: serverTimestamp()
+        });
+        toast.success('Pengajuan anggaran BAZNAS berhasil diupdate');
+      } else {
+        await addDoc(collection(db, 'baznas_budgets'), {
+          month,
+          year,
+          program: numProgram,
+          operasional: numOperasional,
+          makan: numMakan,
+          total,
+          description,
+          status,
+          submittedBy: userUid,
+          submittedByName: profile?.displayName || 'User',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+        toast.success('Pengajuan anggaran BAZNAS berhasil dibuat');
+      }
 
-      toast.success('Pengajuan anggaran BAZNAS berhasil dibuat');
       setIsDialogOpen(false);
-      
-      // Reset form
-      setMonth('');
-      setProgram('');
-      setOperasional('');
-      setMakan('');
-      setDescription('');
+      resetForm();
     } catch (error) {
-      toast.error('Gagal membuat pengajuan anggaran');
-      handleFirestoreError(error, OperationType.CREATE, 'baznas_budgets');
+      toast.error(editingId ? 'Gagal mengupdate pengajuan' : 'Gagal membuat pengajuan anggaran');
+      handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, 'baznas_budgets');
     } finally {
       setIsSubmitting(false);
+      setEditingId(null);
     }
+  };
+
+  const resetForm = () => {
+    setMonth('');
+    setProgram('');
+    setOperasional('');
+    setMakan('');
+    setDescription('');
+    setStatus('PENDING');
+    setEditingId(null);
+  };
+
+  const handleEdit = (b: BaznasBudget) => {
+    setEditingId(b.id);
+    setMonth(b.month);
+    setYear(b.year);
+    setProgram(b.program.toString());
+    setOperasional(b.operasional.toString());
+    setMakan(b.makan.toString());
+    setDescription(b.description || '');
+    setStatus(b.status || 'PENDING');
+    setIsDialogOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -181,7 +216,7 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
               makan: numMakan,
               total,
               description: row.Keterangan || '',
-              status: row.Status || 'pending',
+              status: row.Status || 'PENDING',
               submittedBy: userUid,
               submittedByName: profile?.displayName || 'User',
               createdAt: serverTimestamp(),
@@ -265,13 +300,18 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
             <Download className="mr-2" size={16} /> Ekspor
           </Button>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) resetForm();
+          }}>
             <DialogTrigger render={<Button className="font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-600/20" />}>
               <Plus className="mr-2" size={18} /> Buat Pengajuan
             </DialogTrigger>
           <DialogContent className="sm:max-w-[500px] border-none shadow-2xl rounded-[2rem]">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-black text-slate-800">Form Pengajuan Anggaran</DialogTitle>
+              <DialogTitle className="text-2xl font-black text-slate-800">
+                {editingId ? 'Edit Pengajuan Anggaran' : 'Form Pengajuan Anggaran'}
+              </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-5 py-4">
               <div className="grid grid-cols-2 gap-4">
@@ -351,8 +391,22 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-slate-500 uppercase">Status Pengajuan</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger className="rounded-xl border-slate-200">
+                    <SelectValue placeholder="Pilih Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PENDING">PENDING</SelectItem>
+                    <SelectItem value="SUDAH DI AJUKAN">SUDAH DI AJUKAN</SelectItem>
+                    <SelectItem value="SUDAH DI TRANSFER">SUDAH DI TRANSFER</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button type="submit" disabled={isSubmitting} className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-base shadow-lg shadow-blue-600/20 mt-4">
-                {isSubmitting ? 'Menyimpan...' : 'Simpan Pengajuan'}
+                {isSubmitting ? 'Menyimpan...' : (editingId ? 'Update Pengajuan' : 'Simpan Pengajuan')}
               </Button>
             </form>
           </DialogContent>
@@ -432,6 +486,10 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
                       <Calendar size={14} />
                       {b.month} {b.year}
                     </div>
+                    {b.status === 'PENDING' && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Pending</span>}
+                    {b.status === 'SUDAH DI AJUKAN' && <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Sudah Diajukan</span>}
+                    {b.status === 'SUDAH DI TRANSFER' && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Sudah Ditransfer</span>}
+                    {/* Fallback for old lowercase statuses */}
                     {b.status === 'pending' && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Pending</span>}
                     {b.status === 'approved' && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Approved</span>}
                   </div>
@@ -455,9 +513,14 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
                   </div>
                   <div className="pt-3 border-t flex items-center justify-between">
                     <span className="text-xs text-slate-400">Oleh: {b.submittedByName}</span>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(b.id)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg shrink-0">
-                      <Trash2 size={16} />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(b)} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg shrink-0">
+                        <Edit2 size={16} />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(b.id)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg shrink-0">
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

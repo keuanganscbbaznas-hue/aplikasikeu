@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { collection, addDoc, query, onSnapshot, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { FileText, Plus, Search, ExternalLink, Download, Upload } from 'lucide-react';
+import { FileText, Plus, Search, ExternalLink, Download, Upload, Trash2, Edit2 } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 
@@ -38,6 +38,7 @@ export const LaporanManager = () => {
   const [bastLink, setBastLink] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'laporan_baznas'), orderBy('createdAt', 'desc'));
@@ -60,24 +61,62 @@ export const LaporanManager = () => {
     
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, 'laporan_baznas'), {
-        month,
-        year,
-        amount: parseInt(amount.replace(/[^0-9.-]+/g, '')) || 0,
-        date: reportDate,
-        bastLink,
-        createdAt: serverTimestamp()
-      });
+      if (editingId) {
+        await updateDoc(doc(db, 'laporan_baznas', editingId), {
+          month,
+          year,
+          amount: parseInt(amount.toString().replace(/[^0-9.-]+/g, '')) || 0,
+          date: reportDate,
+          bastLink,
+          updatedAt: serverTimestamp()
+        });
+        toast.success("Berhasil mengupdate laporan");
+      } else {
+        await addDoc(collection(db, 'laporan_baznas'), {
+          month,
+          year,
+          amount: parseInt(amount.toString().replace(/[^0-9.-]+/g, '')) || 0,
+          date: reportDate,
+          bastLink,
+          createdAt: serverTimestamp()
+        });
+        toast.success("Berhasil menyimpan laporan");
+      }
       
-      setAmount('');
-      setReportDate('');
-      setBastLink('');
-      toast.success("Berhasil menyimpan laporan");
+      resetForm();
     } catch (error) {
-       toast.error('Gagal menyimpan laporan');
-       handleFirestoreError(error, OperationType.CREATE, 'laporan_baznas');
+       toast.error(editingId ? 'Gagal mengupdate laporan' : 'Gagal menyimpan laporan');
+       handleFirestoreError(error, editingId ? OperationType.UPDATE : OperationType.CREATE, 'laporan_baznas');
     } finally {
        setIsSubmitting(false);
+       setEditingId(null);
+    }
+  };
+
+  const resetForm = () => {
+    setAmount('');
+    setReportDate('');
+    setBastLink('');
+    setEditingId(null);
+  };
+
+  const handleEdit = (report: Report) => {
+    setEditingId(report.id);
+    setMonth(report.month);
+    setYear(report.year);
+    setAmount(report.amount.toString());
+    setReportDate(report.date);
+    setBastLink(report.bastLink);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Yakin ingin menghapus laporan ini?')) return;
+    try {
+      await deleteDoc(doc(db, 'laporan_baznas', id));
+      toast.success('Laporan berhasil dihapus');
+    } catch (error) {
+      toast.error('Gagal menghapus laporan');
+      handleFirestoreError(error, OperationType.DELETE, 'laporan_baznas');
     }
   };
 
@@ -223,8 +262,13 @@ export const LaporanManager = () => {
                 </div>
 
                 <Button type="submit" disabled={isSubmitting} className="w-full mt-2 font-bold bg-emerald-600 hover:bg-emerald-700 rounded-xl">
-                  {isSubmitting ? 'Menyimpan...' : 'Simpan Laporan'}
+                  {isSubmitting ? 'Menyimpan...' : (editingId ? 'Update Laporan' : 'Simpan Laporan')}
                 </Button>
+                {editingId && (
+                  <Button type="button" variant="outline" onClick={resetForm} disabled={isSubmitting} className="w-full mt-2 font-bold rounded-xl">
+                    Batal Edit
+                  </Button>
+                )}
               </form>
             </CardContent>
           </Card>
@@ -314,6 +358,7 @@ export const LaporanManager = () => {
                   <TableHead className="font-bold text-xs text-slate-500">Tanggal Laporan</TableHead>
                   <TableHead className="font-bold text-xs text-slate-500">Nominal</TableHead>
                   <TableHead className="font-bold text-xs text-slate-500 text-center">Bukti BAST</TableHead>
+                  <TableHead className="font-bold text-xs text-slate-500 text-center">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -340,11 +385,21 @@ export const LaporanManager = () => {
                         Lihat <ExternalLink size={12} />
                       </a>
                     </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(item)} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg shrink-0">
+                          <Edit2 size={16} />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg shrink-0">
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
                 {data.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center text-slate-500 font-medium">
+                    <TableCell colSpan={5} className="h-24 text-center text-slate-500 font-medium">
                       Belum ada data laporan.
                     </TableCell>
                   </TableRow>
