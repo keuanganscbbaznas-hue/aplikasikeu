@@ -271,6 +271,8 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
     return passMonth && passYear;
   });
 
+  const totalFilteredBudget = filteredBudgets.reduce((sum, b) => sum + (b.total || 0), 0);
+
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
 
@@ -539,8 +541,9 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
         </Card>
 
         {!isExportingPDF && (
-          <div className="flex flex-col md:flex-row gap-4 mb-4">
+          <div className="flex flex-col md:flex-row gap-4 mb-4 items-end">
             <div className="w-full md:w-48">
+              <Label className="text-xs font-bold text-slate-500 mb-1 block">Filter Bulan</Label>
               <Select value={filterMonth} onValueChange={setFilterMonth}>
                 <SelectTrigger className="rounded-xl bg-white border-slate-200 shadow-sm font-medium">
                   <SelectValue placeholder="Filter Bulan" />
@@ -554,6 +557,7 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
               </Select>
             </div>
             <div className="w-full md:w-48">
+              <Label className="text-xs font-bold text-slate-500 mb-1 block">Filter Tahun</Label>
               <Select value={filterYear} onValueChange={setFilterYear}>
                 <SelectTrigger className="rounded-xl bg-white border-slate-200 shadow-sm font-medium">
                   <SelectValue placeholder="Filter Tahun" />
@@ -566,6 +570,10 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
                   })}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="w-full md:w-64 bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex flex-col justify-between">
+              <span className="text-xs font-bold text-indigo-500 uppercase">Total Pengajuan</span>
+              <span className="text-xl font-black text-indigo-900">{formatCurrency(totalFilteredBudget)}</span>
             </div>
           </div>
         )}

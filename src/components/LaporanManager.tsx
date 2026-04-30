@@ -206,6 +206,8 @@ export const LaporanManager = () => {
     return passMonth && passYear;
   });
 
+  const totalFilteredReport = filteredData.reduce((sum, r) => sum + r.amount, 0);
+
   const chartData = MONTHS.map(m => {
     const monthReports = filteredData.filter(d => d.month === m && d.year === (filterYear === 'all' ? year : filterYear));
     const total = monthReports.reduce((sum, r) => sum + r.amount, 0);
@@ -412,8 +414,9 @@ export const LaporanManager = () => {
 
       {/* Table */}
       {!isExportingPDF && (
-        <div className="flex flex-col md:flex-row gap-4 mb-4" id="laporan-filters">
+        <div className="flex flex-col md:flex-row gap-4 mb-4 items-end" id="laporan-filters">
           <div className="w-full md:w-48">
+          <Label className="text-xs font-bold text-slate-500 mb-1 block">Filter Bulan</Label>
           <Select value={filterMonth} onValueChange={setFilterMonth}>
             <SelectTrigger className="rounded-xl bg-white border-slate-200 shadow-sm font-medium">
               <SelectValue placeholder="Filter Bulan" />
@@ -427,6 +430,7 @@ export const LaporanManager = () => {
           </Select>
         </div>
         <div className="w-full md:w-48">
+          <Label className="text-xs font-bold text-slate-500 mb-1 block">Filter Tahun</Label>
           <Select value={filterYear} onValueChange={setFilterYear}>
             <SelectTrigger className="rounded-xl bg-white border-slate-200 shadow-sm font-medium">
               <SelectValue placeholder="Filter Tahun" />
@@ -439,6 +443,10 @@ export const LaporanManager = () => {
               })}
             </SelectContent>
           </Select>
+        </div>
+        <div className="w-full md:w-64 bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex flex-col justify-between">
+          <span className="text-xs font-bold text-emerald-500 uppercase">Total Laporan</span>
+          <span className="text-xl font-black text-emerald-900">Rp {totalFilteredReport.toLocaleString('id-ID')}</span>
         </div>
       </div>
       )}
