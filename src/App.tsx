@@ -310,7 +310,7 @@ function SubmissionCard({
              {submission.picName && (
                <>
                  <div className="h-1 w-1 bg-slate-200 rounded-full" />
-                 <span className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter truncate max-w-[150px]" title="PIC">
+                 <span className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter" title="PIC">
                    PIC: {submission.picName}
                  </span>
                </>
