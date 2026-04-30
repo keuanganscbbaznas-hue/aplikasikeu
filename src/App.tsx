@@ -880,7 +880,7 @@ export default function App() {
       // Month & Year Filter
       const subDate = parseFirestoreDate(sub.createdAt);
 
-      const matchesMonth = filterMonth === 'all' ? true : (subDate.getMonth() + 1).toString().padStart(2, '0') === filterMonth;
+      const matchesMonth = filterMonth === 'all' ? true : (subDate.getMonth() + 1).toString() === filterMonth;
       const matchesYear = filterYear === 'all' ? true : subDate.getFullYear().toString() === filterYear;
 
       return globalSearch && matchesPIC && matchesType && matchesMin && matchesMax && matchesStatus && matchesMonth && matchesYear;
