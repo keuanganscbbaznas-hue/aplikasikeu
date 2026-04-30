@@ -200,19 +200,20 @@ export const LaporanManager = () => {
     });
   };
 
-  const chartData = MONTHS.map(m => {
-    const report = data.find(d => d.month === m && d.year === year);
-    return {
-      month: m.substring(0, 3), // short name
-      fullMonth: m,
-      total: report ? report.amount : 0
-    };
-  });
-
   const filteredData = data.filter(d => {
     const passMonth = filterMonth === 'all' || d.month === filterMonth;
     const passYear = filterYear === 'all' || d.year === filterYear;
     return passMonth && passYear;
+  });
+
+  const chartData = MONTHS.map(m => {
+    const monthReports = filteredData.filter(d => d.month === m && d.year === (filterYear === 'all' ? year : filterYear));
+    const total = monthReports.reduce((sum, r) => sum + r.amount, 0);
+    return {
+      month: m.substring(0, 3), // short name
+      fullMonth: m,
+      total
+    };
   });
 
   const [isExportingPDF, setIsExportingPDF] = useState(false);
