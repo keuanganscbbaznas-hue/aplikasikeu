@@ -20,10 +20,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, Edit2, Calendar, FileText, Download, Upload } from 'lucide-react';
+import { Plus, Trash2, Edit2, Calendar, FileText, Download, Upload, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import Papa from 'papaparse';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
+import jsPDF from 'jspdf';
 
 export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile | null, userUid: string }) {
   const [budgets, setBudgets] = useState<BaznasBudget[]>([]);
@@ -41,6 +42,10 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
   const [status, setStatus] = useState('PENDING');
   
   const [chartYear, setChartYear] = useState(new Date().getFullYear().toString());
+
+  // Filter states
+  const [filterMonth, setFilterMonth] = useState('all');
+  const [filterYear, setFilterYear] = useState('all');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -260,6 +265,55 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
     };
   });
 
+  const filteredBudgets = budgets.filter(b => {
+    const passMonth = filterMonth === 'all' || b.month === filterMonth;
+    const passYear = filterYear === 'all' || b.year === filterYear;
+    return passMonth && passYear;
+  });
+
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const pdfContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadPDF = async () => {
+    if (!pdfContainerRef.current) return;
+    setIsExportingPDF(true);
+    toast.info('Menyiapkan file PDF...', { duration: 2000 });
+    
+    try {
+      // Small delay to allow React to render any hidden elements if needed
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(pdfContainerRef.current, {
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+      });
+      
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const pdfWidth = 210; // A4 width in mm
+      const elWidth = pdfContainerRef.current.offsetWidth;
+      const elHeight = pdfContainerRef.current.offsetHeight;
+      const pdfHeight = (elHeight * pdfWidth) / elWidth;
+      
+      // If content is longer than page, it will be single long page or scaled down
+      // Here we just add it to the first page (scaled to width)
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Laporan_Anggaran_BAZNAS_${chartYear}.pdf`);
+      toast.success('Berhasil mendownload PDF');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Gagal mendownload PDF');
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -269,45 +323,57 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
         </div>
         
         <div className="flex items-center gap-2">
-          <input
-            type="file"
-            accept=".csv"
-            ref={fileInputRef}
-            onChange={handleImportCSV}
-            className="hidden"
-          />
-          <Button 
-            variant="outline" 
-            onClick={handleDownloadTemplate}
-            className="font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 rounded-xl hidden md:flex"
-          >
-            <FileText className="mr-2" size={16} /> Template
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isSubmitting}
-            className="font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl"
-          >
-            <Upload className="mr-2" size={16} /> Import
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleExportCSV}
-            className="font-bold border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl"
-            disabled={budgets.length === 0}
-          >
-            <Download className="mr-2" size={16} /> Ekspor
-          </Button>
-
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) resetForm();
-          }}>
-            <DialogTrigger render={<Button className="font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-600/20" />}>
-              <Plus className="mr-2" size={18} /> Buat Pengajuan
-            </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px] border-none shadow-2xl rounded-[2rem]">
+          {!isExportingPDF && (
+            <>
+              <input
+                type="file"
+                accept=".csv"
+                ref={fileInputRef}
+                onChange={handleImportCSV}
+                className="hidden"
+              />
+              <Button 
+                variant="outline" 
+                onClick={handleDownloadTemplate}
+                className="font-bold border-indigo-200 text-indigo-700 hover:bg-indigo-50 rounded-xl hidden md:flex"
+              >
+                <FileText className="mr-2" size={16} /> Template
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSubmitting}
+                className="font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl hidden md:flex"
+              >
+                <Upload className="mr-2" size={16} /> Import
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleDownloadPDF}
+                className="font-bold border-rose-200 text-rose-700 hover:bg-rose-50 rounded-xl"
+                disabled={budgets.length === 0 || isExportingPDF}
+              >
+                <FileDown className="mr-2" size={16} /> {isExportingPDF ? 'Proses...' : 'PDF'}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleExportCSV}
+                className="font-bold border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl"
+                disabled={budgets.length === 0}
+              >
+                <Download className="mr-2" size={16} /> Ekspor
+              </Button>
+    
+              <Dialog open={isDialogOpen} onOpenChange={(open) => {
+                setIsDialogOpen(open);
+                if (!open) resetForm();
+              }}>
+                <DialogTrigger asChild>
+                  <Button className="font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-600/20">
+                    <Plus className="mr-2" size={18} /> Buat Pengajuan
+                  </Button>
+                </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px] border-none shadow-2xl rounded-[2rem]">
             <DialogHeader>
               <DialogTitle className="text-2xl font-black text-slate-800">
                 {editingId ? 'Edit Pengajuan Anggaran' : 'Form Pengajuan Anggaran'}
@@ -411,122 +477,162 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
             </form>
           </DialogContent>
         </Dialog>
+        </>
+        )}
         </div>
       </div>
 
-      <Card className="rounded-3xl border-slate-100 shadow-sm mb-6">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-xl font-black text-slate-800">
-            Bagan Pengajuan Anggaran {chartYear}
-          </CardTitle>
-          <div className="w-32">
-            <Select value={chartYear} onValueChange={setChartYear}>
-              <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
-                <SelectValue placeholder="Pilih Tahun" />
-              </SelectTrigger>
-              <SelectContent>
-                {[0, 1, 2].map(offset => {
-                  const y = (new Date().getFullYear() + offset).toString();
-                  return <SelectItem key={y} value={y}>{y}</SelectItem>
-                })}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis 
-                  dataKey="month" 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
-                  tickFormatter={(value) => `Rp ${value / 1000000}Jt`}
-                />
-                <Tooltip 
-                  cursor={{ fill: '#F8FAFC' }}
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px' }}
-                  formatter={(value: number, name: string) => [`Rp ${value.toLocaleString('id-ID')}`, name]}
-                  labelStyle={{ fontWeight: 'bold', color: '#0F172A', marginBottom: '8px' }}
-                />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '20px' }} />
-                <Bar dataKey="Program" stackId="a" fill="#0ea5e9" radius={[0, 0, 4, 4]} barSize={32} />
-                <Bar dataKey="Operasional" stackId="a" fill="#f59e0b" barSize={32} />
-                <Bar dataKey="Makan" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} barSize={32} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-4 md:p-6 min-h-[400px]">
-        {budgets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[300px] text-center">
-            <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-              <FileText className="text-slate-300" size={32} />
+      <div ref={pdfContainerRef} className="bg-slate-50/50 p-2 md:p-6 rounded-[2.5rem]">
+        <Card className="rounded-3xl border-slate-100 shadow-sm mb-6 bg-white">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xl font-black text-slate-800">
+              Bagan Pengajuan Anggaran {chartYear}
+            </CardTitle>
+            {!isExportingPDF && (
+              <div className="w-32">
+                <Select value={chartYear} onValueChange={setChartYear}>
+                  <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
+                    <SelectValue placeholder="Pilih Tahun" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[0, 1, 2].map(offset => {
+                      const y = (new Date().getFullYear() + offset).toString();
+                      return <SelectItem key={y} value={y}>{y}</SelectItem>
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis 
+                    dataKey="month" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
+                    dy={10}
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
+                    tickFormatter={(value) => `Rp ${value / 1000000}Jt`}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: '#F8FAFC' }}
+                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', padding: '12px' }}
+                    formatter={(value: number, name: string) => [`Rp ${value.toLocaleString('id-ID')}`, name]}
+                    labelStyle={{ fontWeight: 'bold', color: '#0F172A', marginBottom: '8px' }}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '20px' }} />
+                  <Bar dataKey="Program" stackId="a" fill="#0ea5e9" radius={[0, 0, 4, 4]} barSize={32} />
+                  <Bar dataKey="Operasional" stackId="a" fill="#f59e0b" barSize={32} />
+                  <Bar dataKey="Makan" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} barSize={32} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-            <h3 className="text-lg font-bold text-slate-700">Belum ada pengajuan</h3>
-            <p className="text-slate-500 mt-1 max-w-sm">Anda belum membuat pengajuan anggaran apapun untuk BAZNAS.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {budgets.map((b) => (
-              <Card key={b.id} className="rounded-2xl border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3 border-b border-slate-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 font-bold text-xs">
-                      <Calendar size={14} />
-                      {b.month} {b.year}
-                    </div>
-                    {b.status === 'PENDING' && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Pending</span>}
-                    {b.status === 'SUDAH DI AJUKAN' && <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Sudah Diajukan</span>}
-                    {b.status === 'SUDAH DI TRANSFER' && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Sudah Ditransfer</span>}
-                    {/* Fallback for old lowercase statuses */}
-                    {b.status === 'pending' && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Pending</span>}
-                    {b.status === 'approved' && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Approved</span>}
-                  </div>
-                  <CardTitle className="text-lg mt-3 flex items-center gap-2">
-                    {formatCurrency(b.total)}
-                  </CardTitle>
-                  {b.description && <CardDescription className="line-clamp-1">{b.description}</CardDescription>}
-                </CardHeader>
-                <CardContent className="pt-4 space-y-3 pb-4">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-500 font-medium">Program</span>
-                    <span className="font-bold text-slate-700">{formatCurrency(b.program)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-500 font-medium">Operasional</span>
-                    <span className="font-bold text-slate-700">{formatCurrency(b.operasional)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-500 font-medium">Makan</span>
-                    <span className="font-bold text-slate-700">{formatCurrency(b.makan)}</span>
-                  </div>
-                  <div className="pt-3 border-t flex items-center justify-between">
-                    <span className="text-xs text-slate-400">Oleh: {b.submittedByName}</span>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(b)} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg shrink-0">
-                        <Edit2 size={16} />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(b.id)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg shrink-0">
-                        <Trash2 size={16} />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          </CardContent>
+        </Card>
+
+        {!isExportingPDF && (
+          <div className="flex flex-col md:flex-row gap-4 mb-4">
+            <div className="w-full md:w-48">
+              <Select value={filterMonth} onValueChange={setFilterMonth}>
+                <SelectTrigger className="rounded-xl bg-white border-slate-200 shadow-sm font-medium">
+                  <SelectValue placeholder="Filter Bulan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Bulan</SelectItem>
+                  {months.map(m => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="w-full md:w-48">
+              <Select value={filterYear} onValueChange={setFilterYear}>
+                <SelectTrigger className="rounded-xl bg-white border-slate-200 shadow-sm font-medium">
+                  <SelectValue placeholder="Filter Tahun" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Tahun</SelectItem>
+                  {[0, 1, 2].map(offset => {
+                    const y = (new Date().getFullYear() + offset).toString();
+                    return <SelectItem key={y} value={y}>{y}</SelectItem>
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         )}
+
+        <div className="bg-white/80 rounded-[2rem] border border-slate-100 shadow-sm p-4 md:p-6 min-h-[400px]">
+          {filteredBudgets.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[300px] text-center">
+              <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                <FileText className="text-slate-300" size={32} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-700">Tidak ada pengajuan</h3>
+              <p className="text-slate-500 mt-1 max-w-sm">Data pengajuan anggaran tidak ditemukan untuk filter ini.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredBudgets.map((b) => (
+                <Card key={b.id} className="rounded-2xl border-slate-100 shadow-sm bg-white hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3 border-b border-slate-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 font-bold text-xs">
+                        <Calendar size={14} />
+                        {b.month} {b.year}
+                      </div>
+                      {b.status === 'PENDING' && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Pending</span>}
+                      {b.status === 'SUDAH DI AJUKAN' && <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Sudah Diajukan</span>}
+                      {b.status === 'SUDAH DI TRANSFER' && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Sudah Ditransfer</span>}
+                      {/* Fallback for old lowercase statuses */}
+                      {b.status === 'pending' && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Pending</span>}
+                      {b.status === 'approved' && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">Approved</span>}
+                    </div>
+                    <CardTitle className="text-lg mt-3 flex items-center gap-2">
+                      {formatCurrency(b.total)}
+                    </CardTitle>
+                    {b.description && <CardDescription className="line-clamp-1">{b.description}</CardDescription>}
+                  </CardHeader>
+                  <CardContent className="pt-4 space-y-3 pb-4">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-500 font-medium">Program</span>
+                      <span className="font-bold text-slate-700">{formatCurrency(b.program)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-500 font-medium">Operasional</span>
+                      <span className="font-bold text-slate-700">{formatCurrency(b.operasional)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-500 font-medium">Makan</span>
+                      <span className="font-bold text-slate-700">{formatCurrency(b.makan)}</span>
+                    </div>
+                    <div className="pt-3 border-t flex items-center justify-between">
+                      <span className="text-xs text-slate-400">Oleh: {b.submittedByName}</span>
+                      {!isExportingPDF && (
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(b)} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg shrink-0">
+                            <Edit2 size={16} />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(b.id)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg shrink-0">
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

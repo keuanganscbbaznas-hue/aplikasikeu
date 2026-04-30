@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { FileText, Plus, Search, ExternalLink, Download, Upload, Trash2, Edit2 } from 'lucide-react';
+import { FileText, Plus, Search, ExternalLink, Download, Upload, Trash2, Edit2, FileDown } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
+import jsPDF from 'jspdf';
 
 const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
@@ -39,6 +40,10 @@ export const LaporanManager = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Filter states
+  const [filterMonth, setFilterMonth] = useState('all');
+  const [filterYear, setFilterYear] = useState('all');
 
   useEffect(() => {
     const q = query(collection(db, 'laporan_baznas'), orderBy('createdAt', 'desc'));
@@ -192,13 +197,75 @@ export const LaporanManager = () => {
     };
   });
 
+  const filteredData = data.filter(d => {
+    const passMonth = filterMonth === 'all' || d.month === filterMonth;
+    const passYear = filterYear === 'all' || d.year === filterYear;
+    return passMonth && passYear;
+  });
+
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const pdfContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadPDF = async () => {
+    if (!pdfContainerRef.current) return;
+    setIsExportingPDF(true);
+    toast.info('Menyiapkan file PDF...', { duration: 2000 });
+    
+    try {
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(pdfContainerRef.current, {
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+      });
+      
+      const pdfWidth = 210; // A4 width in mm
+      // Get actual dimensions to maintain aspect ratio
+      const elWidth = pdfContainerRef.current.offsetWidth;
+      const elHeight = pdfContainerRef.current.offsetHeight;
+      const pdfHeight = (elHeight * pdfWidth) / elWidth;
+      
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Laporan_Realisasi_BAZNAS_${year}.pdf`);
+      toast.success('Berhasil mendownload PDF');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Gagal mendownload PDF');
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div ref={pdfContainerRef} className="space-y-6 bg-slate-50/50 p-2 md:p-6 rounded-[2.5rem]">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Laporan Realisasi</h2>
+          <p className="text-sm text-slate-500 font-medium mt-1">Kelola dan pantau laporan realisasi anggaran.</p>
+        </div>
+        {!isExportingPDF && (
+          <div className="flex items-center gap-2" id="laporan-header-actions">
+             <Button 
+              variant="outline" 
+              onClick={handleDownloadPDF}
+              className="font-bold border-rose-200 text-rose-700 hover:bg-rose-50 rounded-xl"
+              disabled={data.length === 0 || isExportingPDF}
+            >
+              <FileDown className="mr-2" size={16} /> {isExportingPDF ? 'Proses...' : 'PDF'}
+            </Button>
+          </div>
+        )}
+      </div>
+      
+      <div className={`grid grid-cols-1 ${isExportingPDF ? '' : 'lg:grid-cols-3'} gap-6 relative`}>
         
         {/* Input Form */}
-        <div className="lg:col-span-1">
-          <Card className="rounded-3xl border-slate-100 shadow-sm h-full">
+        {!isExportingPDF && (
+          <div className="lg:col-span-1" id="laporan-form">
+            <Card className="rounded-3xl border-slate-100 shadow-sm h-full">
             <CardHeader>
               <CardTitle className="text-xl font-black text-slate-800">Input Laporan</CardTitle>
             </CardHeader>
@@ -273,10 +340,11 @@ export const LaporanManager = () => {
             </CardContent>
           </Card>
         </div>
+        )}
 
         {/* Chart Illustration */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="rounded-3xl border-slate-100 shadow-sm">
+        <div className={isExportingPDF ? "w-full mb-6 relative z-10" : "lg:col-span-2 space-y-6"} id="laporan-chart">
+          <Card className="rounded-3xl border-slate-100 shadow-sm bg-white">
             <CardHeader>
               <CardTitle className="text-xl font-black text-slate-800 flex justify-between items-center">
                 Bagan Realisasi Laporan {year}
@@ -320,37 +388,71 @@ export const LaporanManager = () => {
       </div>
 
       {/* Table */}
-      <Card className="rounded-3xl border-slate-100 shadow-sm">
+      {!isExportingPDF && (
+        <div className="flex flex-col md:flex-row gap-4 mb-4" id="laporan-filters">
+          <div className="w-full md:w-48">
+          <Select value={filterMonth} onValueChange={setFilterMonth}>
+            <SelectTrigger className="rounded-xl bg-white border-slate-200 shadow-sm font-medium">
+              <SelectValue placeholder="Filter Bulan" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Bulan</SelectItem>
+              {MONTHS.map(m => (
+                <SelectItem key={m} value={m}>{m}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full md:w-48">
+          <Select value={filterYear} onValueChange={setFilterYear}>
+            <SelectTrigger className="rounded-xl bg-white border-slate-200 shadow-sm font-medium">
+              <SelectValue placeholder="Filter Tahun" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Tahun</SelectItem>
+              {[0, 1, 2].map(offset => {
+                const y = (new Date().getFullYear() + offset).toString();
+                return <SelectItem key={y} value={y}>{y}</SelectItem>
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      )}
+      
+      <Card className="rounded-3xl border-slate-100 shadow-sm bg-white">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl font-black text-slate-800">Daftar Laporan</CardTitle>
-          <div className="flex items-center gap-2">
-            <input
-              type="file"
-              accept=".csv"
-              ref={fileInputRef}
-              onChange={handleImportCSV}
-              className="hidden"
-            />
-            <Button 
-              variant="outline" 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isSubmitting}
-              className="font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl"
-            >
-              <Upload className="mr-2" size={16} /> Import
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleExportCSV}
-              className="font-bold border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl"
-              disabled={data.length === 0}
-            >
-              <Download className="mr-2" size={16} /> Ekspor
-            </Button>
-          </div>
+          {!isExportingPDF && (
+            <div className="flex items-center gap-2" id="laporan-table-actions">
+              <input
+                type="file"
+                accept=".csv"
+                ref={fileInputRef}
+                onChange={handleImportCSV}
+                className="hidden"
+              />
+              <Button 
+                variant="outline" 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSubmitting}
+                className="font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl"
+              >
+                <Upload className="mr-2" size={16} /> Import
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleExportCSV}
+                className="font-bold border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl"
+                disabled={filteredData.length === 0}
+              >
+                <Download className="mr-2" size={16} /> Ekspor
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
-          <div className="rounded-2xl border border-slate-100 overflow-hidden">
+          <div className="rounded-2xl border border-slate-100 overflow-hidden bg-white">
             <Table>
               <TableHeader className="bg-slate-50">
                 <TableRow>
@@ -358,11 +460,11 @@ export const LaporanManager = () => {
                   <TableHead className="font-bold text-xs text-slate-500">Tanggal Laporan</TableHead>
                   <TableHead className="font-bold text-xs text-slate-500">Nominal</TableHead>
                   <TableHead className="font-bold text-xs text-slate-500 text-center">Bukti BAST</TableHead>
-                  <TableHead className="font-bold text-xs text-slate-500 text-center">Aksi</TableHead>
+                  {!isExportingPDF && <TableHead className="font-bold text-xs text-slate-500 text-center action-cell-pdf">Aksi</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map(item => (
+                {filteredData.map(item => (
                   <TableRow key={item.id}>
                     <TableCell className="font-semibold text-sm">
                       {item.month} {item.year}
@@ -385,19 +487,21 @@ export const LaporanManager = () => {
                         Lihat <ExternalLink size={12} />
                       </a>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(item)} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg shrink-0">
-                          <Edit2 size={16} />
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg shrink-0">
-                          <Trash2 size={16} />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    {!isExportingPDF && (
+                      <TableCell className="text-center action-cell-pdf">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(item)} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg shrink-0">
+                            <Edit2 size={16} />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg shrink-0">
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
-                {data.length === 0 && (
+                {filteredData.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center text-slate-500 font-medium">
                       Belum ada data laporan.

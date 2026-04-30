@@ -190,9 +190,9 @@ function SubmissionGrid({
                     )}
                   </th>
                   <th className="px-2 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-16 text-center">Tipe</th>
-                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Judul & Keterangan</th>
-                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-40">Nominal</th>
-                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-48 text-center">Tahapan & Progress</th>
+                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-72 max-w-[280px]">Judul & Keterangan</th>
+                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-32">Nominal</th>
+                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-72 text-center">Tahapan & Progress</th>
                   <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-16">Aksi</th>
                 </tr>
               </thead>
@@ -292,9 +292,9 @@ function SubmissionCard({
           {typeInitial[submission.type as keyof typeof typeInitial] || "PB"}
         </div>
       </td>
-      <td className="px-6 py-4 min-w-[300px]">
-        <div className="space-y-0.5">
-          <h4 className="font-['Times_New_Roman'] font-black text-slate-800 text-[16px] tracking-tight truncate w-[402px] h-[21.5625px]">
+      <td className="px-6 py-4">
+        <div className="space-y-0.5 max-w-[260px]">
+          <h4 className="font-['Times_New_Roman'] font-black text-slate-800 text-[16px] tracking-tight leading-snug">
             {submission.title}
           </h4>
           <div className="flex items-center gap-3">
@@ -325,9 +325,9 @@ function SubmissionCard({
         </div>
       </td>
       <td className="px-6 py-4">
-        <div className="space-y-2 max-w-[180px] mx-auto">
+        <div className="space-y-2 max-w-[240px] mx-auto">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-['Times_New_Roman'] text-[10px] bg-[#f9f9f9] text-[#0f6d1a] h-[16.2812px] w-[158.422px] flex items-center font-black uppercase truncate tracking-tighter">
+            <span className="font-['Times_New_Roman'] px-2 py-0.5 rounded-md text-[10px] bg-emerald-50 text-emerald-700 flex items-center font-black uppercase tracking-tighter line-clamp-1">
               {stages[submission.currentStageIndex]}
             </span>
             <span className="text-[9px] font-bold text-slate-300 shrink-0">
@@ -338,81 +338,86 @@ function SubmissionCard({
         </div>
       </td>
       <td className="px-6 py-4">
-         <div className="flex items-center gap-2">
-            {isTransferred && (
-              <div className="h-6 w-6 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-sm shrink-0" title="Transfer Sukses">
-                <CheckCircle2 size={12} />
-              </div>
-            )}
-            {isPendingReport && (
-              <div className="h-6 w-6 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shadow-sm shrink-0 animate-pulse" title="Butuh Laporan">
-                <AlertCircle size={12} />
-              </div>
-            )}
-            
-            <Dialog>
-              <DialogTrigger 
-                render={
-                  <Button 
-                    variant="ghost" 
-                    size="icon-xs"
-                    className="group rounded-lg bg-slate-900 text-white hover:bg-emerald-600 hover:text-white transition-all shadow-md ml-auto"
-                  >
-                    <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                  </Button>
-                }
-              />
-              <DialogContent className="max-w-3xl md:max-w-4xl rounded-[2rem] border-none shadow-3xl p-0 overflow-hidden">
-                <div className="flex flex-col max-h-[90vh]">
-                  <div className="p-6 border-b border-slate-100 bg-white">
-                    <DialogHeader>
-                      <div className="flex items-center justify-between">
-                         <div className="flex items-center gap-4">
-                            <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-xs font-black shadow-lg ${typeStyles[submission.type] || typeStyles.pembiayaan}`}>
-                               {typeInitial[submission.type as keyof typeof typeInitial] || "PB"}
-                            </div>
-                            <div>
-                               <DialogTitle className="font-black text-xl tracking-tighter text-slate-900">{submission.title}</DialogTitle>
-                               <div className="flex items-center gap-3 mt-1">
-                                  <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest">{submission.type.replace('_', ' ')}</Badge>
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase">{format(parseFirestoreDate(submission.createdAt), 'dd MMMM yyyy HH:mm')}</span>
-                               </div>
-                            </div>
-                         </div>
-                         <div className="text-right">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Nominal</p>
-                            <p className="text-2xl font-black text-slate-900 tracking-tighter">Rp {submission.amount.toLocaleString('id-ID')}</p>
-                         </div>
-                      </div>
-                    </DialogHeader>
+         <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Dialog>
+                <DialogTrigger 
+                  render={
+                    <Button 
+                      variant="ghost" 
+                      className="group rounded-xl bg-slate-900 text-white hover:bg-emerald-600 hover:text-white transition-all shadow-md h-9 w-9 flex items-center justify-center p-0"
+                    >
+                      <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                    </Button>
+                  }
+                />
+                <DialogContent className="max-w-3xl md:max-w-4xl rounded-[2rem] border-none shadow-3xl p-0 overflow-hidden">
+                  <div className="flex flex-col max-h-[90vh]">
+                    <div className="p-6 border-b border-slate-100 bg-white">
+                      <DialogHeader>
+                        <div className="flex items-center justify-between">
+                           <div className="flex items-center gap-4">
+                              <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-xs font-black shadow-lg ${typeStyles[submission.type] || typeStyles.pembiayaan}`}>
+                                 {typeInitial[submission.type as keyof typeof typeInitial] || "PB"}
+                              </div>
+                              <div>
+                                 <DialogTitle className="font-black text-xl tracking-tighter text-slate-900">{submission.title}</DialogTitle>
+                                 <div className="flex items-center gap-3 mt-1">
+                                    <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest">{submission.type.replace('_', ' ')}</Badge>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">{format(parseFirestoreDate(submission.createdAt), 'dd MMMM yyyy HH:mm')}</span>
+                                 </div>
+                              </div>
+                           </div>
+                           <div className="text-right">
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Nominal</p>
+                              <p className="text-2xl font-black text-slate-900 tracking-tighter">Rp {submission.amount.toLocaleString('id-ID')}</p>
+                           </div>
+                        </div>
+                      </DialogHeader>
+                    </div>
+                    
+                    <ScrollArea className="flex-1 p-8 bg-slate-50/30">
+                      <SubmissionDetailView 
+                        submission={submission} 
+                        stages={stages} 
+                        isLastStage={isLastStage}
+                        onApprove={onApprove}
+                        onReject={onReject}
+                        onDelete={() => onDelete(submission.id!)}
+                        onEdit={onEdit}
+                        userRole={userRole}
+                        currentUser={currentUser}
+                      />
+                    </ScrollArea>
                   </div>
-                  
-                  <ScrollArea className="flex-1 p-8 bg-slate-50/30">
-                    <SubmissionDetailView 
-                      submission={submission} 
-                      stages={stages} 
-                      isLastStage={isLastStage}
-                      onApprove={onApprove}
-                      onReject={onReject}
-                      onDelete={() => onDelete(submission.id!)}
-                      onEdit={onEdit}
-                      userRole={userRole}
-                      currentUser={currentUser}
-                    />
-                  </ScrollArea>
-                </div>
-              </DialogContent>
-            </Dialog>
-            {currentUser && currentUser.email && TRACKING_ADMIN_EMAILS.includes(currentUser.email) && (
-              <Button 
-                variant="ghost" 
-                size="icon-xs"
-                onClick={(e) => { e.stopPropagation(); onEdit(submission); }}
-                className="group rounded-lg bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-all shadow-sm border border-slate-200 ml-1 h-8 w-8 flex items-center justify-center p-0"
-                title="Edit Pengajuan"
-              >
-                <Edit2 size={14} />
-              </Button>
+                </DialogContent>
+              </Dialog>
+              
+              {currentUser && currentUser.email && TRACKING_ADMIN_EMAILS.includes(currentUser.email) && (
+                <Button 
+                  variant="ghost" 
+                  onClick={(e) => { e.stopPropagation(); onEdit(submission); }}
+                  className="group rounded-xl bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-all shadow-sm border border-slate-200 h-9 w-9 flex items-center justify-center p-0"
+                  title="Edit Pengajuan"
+                >
+                  <Edit2 size={16} />
+                </Button>
+              )}
+            </div>
+
+            {(isTransferred || isPendingReport) && (
+              <div className="flex items-center justify-center gap-2">
+                 {isTransferred && (
+                   <div className="h-6 w-6 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shadow-sm shrink-0" title="Transfer Sukses">
+                     <CheckCircle2 size={14} />
+                   </div>
+                 )}
+                 {isPendingReport && (
+                   <div className="h-6 w-6 rounded-lg bg-red-100 text-red-600 flex items-center justify-center shadow-sm shrink-0 animate-pulse" title="Butuh Laporan">
+                     <AlertCircle size={14} />
+                   </div>
+                 )}
+              </div>
             )}
          </div>
       </td>
