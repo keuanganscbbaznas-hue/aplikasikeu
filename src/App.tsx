@@ -103,6 +103,11 @@ const ADMIN_EMAILS = [
   'tatausahascba@gmail.com',
   'kamal2015go@gmail.com'
 ];
+const TRACKING_ADMIN_EMAILS = [
+  'keuanganscbbaznas@gmail.com',
+  'keuangan.scb@gmail.com',
+  'tatausahascba@gmail.com'
+];
 
 function DebouncedInput({ 
   value, 
@@ -398,15 +403,17 @@ function SubmissionCard({
                 </div>
               </DialogContent>
             </Dialog>
-            <Button 
-               variant="ghost" 
-               size="icon-xs"
-               onClick={(e) => { e.stopPropagation(); onEdit(submission); }}
-               className="group rounded-lg bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-all shadow-sm border border-slate-200 ml-1 h-8 w-8 flex items-center justify-center p-0"
-               title="Edit Pengajuan"
-            >
-               <Edit2 size={14} />
-            </Button>
+            {currentUser && currentUser.email && TRACKING_ADMIN_EMAILS.includes(currentUser.email) && (
+              <Button 
+                variant="ghost" 
+                size="icon-xs"
+                onClick={(e) => { e.stopPropagation(); onEdit(submission); }}
+                className="group rounded-lg bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-all shadow-sm border border-slate-200 ml-1 h-8 w-8 flex items-center justify-center p-0"
+                title="Edit Pengajuan"
+              >
+                <Edit2 size={14} />
+              </Button>
+            )}
          </div>
       </td>
     </motion.tr>
@@ -566,7 +573,10 @@ export default function App() {
   };
 
   const handleApprove = async (submission: Submission, comment: string = '') => {
-    if (!user || !profile) return;
+    if (!user || !profile || !TRACKING_ADMIN_EMAILS.includes(profile.email)) {
+      toast.error("Anda tidak memiliki akses untuk menyetujui pengajuan ini");
+      return;
+    }
     const stages = getStagesByType(submission.type);
     const nextIndex = submission.currentStageIndex + 1;
     
@@ -599,7 +609,10 @@ export default function App() {
   };
 
   const handleReject = async (submission: Submission, comment: string = '') => {
-    if (!user || !profile) return;
+    if (!user || !profile || !TRACKING_ADMIN_EMAILS.includes(profile.email)) {
+      toast.error("Anda tidak memiliki akses untuk menolak pengajuan ini");
+      return;
+    }
     const stages = getStagesByType(submission.type);
     
     try {
@@ -636,9 +649,10 @@ export default function App() {
   };
 
   const handleBulkApprove = async () => {
-    // Also bypass email check for Setujui Masal button text/visibility if we want it fully unlocked, 
-    // but Setujui Masal logic might need checking.
-    if (!user || (!isAdmin && profile?.role !== 'finance' && profile?.role !== 'accountant' && profile?.role !== 'management')) return;
+    if (!user || !profile || !TRACKING_ADMIN_EMAILS.includes(profile.email)) {
+      toast.error("Anda tidak memiliki akses untuk menyetujui pengajuan");
+      return;
+    }
 
     const selectedIds = Array.from(selectedSubmissions);
     if (selectedIds.length === 0) return;
@@ -657,15 +671,9 @@ export default function App() {
          failCount++; continue;
       }
 
-      const userRole = profile?.role || 'staff';
-      const isActualAdmin = userRole === 'admin';
+      const isTrackingAdmin = TRACKING_ADMIN_EMAILS.includes(profile.email);
       
-      const canApprove = (
-        (userRole === 'finance' && submission.currentStageIndex === 0) ||
-        (userRole === 'accountant' && submission.currentStageIndex === 1) ||
-        (userRole === 'management' && submission.currentStageIndex === 2) ||
-        (isActualAdmin)
-      );
+      const canApprove = isTrackingAdmin;
 
       if (!canApprove) {
          failCount++; continue;
@@ -752,7 +760,10 @@ export default function App() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingSubmission || !profile || profile.role !== 'admin') return;
+    if (!editingSubmission || !profile || !TRACKING_ADMIN_EMAILS.includes(profile.email)) {
+      toast.error("Anda tidak memiliki akses untuk mengedit pengajuan ini");
+      return;
+    }
 
     const submissionId = editingSubmission.id;
     const stages = getStagesByType(editType);
@@ -1372,7 +1383,7 @@ export default function App() {
               <div className="h-6 w-px bg-slate-700 mx-2" />
               
               <div className="flex items-center gap-3">
-                {((profile?.role !== 'staff')) && (
+                {profile?.email && TRACKING_ADMIN_EMAILS.includes(profile.email) && (
                   <Button 
                     onClick={handleBulkApprove} 
                     className="bg-emerald-500 hover:bg-emerald-600 rounded-xl font-bold h-10 px-6"
@@ -2270,12 +2281,9 @@ function SubmissionDetailView({
   currentUser: User | null
 }) {
   const isAdmin = userRole === 'admin';
-  const canApprove = (
-    (userRole === 'finance' && submission.currentStageIndex === 0) ||
-    (userRole === 'accountant' && submission.currentStageIndex === 1) ||
-    (userRole === 'management' && submission.currentStageIndex === 2) ||
-    (userRole === 'admin')
-  );
+  const isTrackingAdmin = currentUser?.email ? TRACKING_ADMIN_EMAILS.includes(currentUser.email) : false;
+  const canApprove = isTrackingAdmin;
+  const canEdit = isTrackingAdmin;
 
   return (
     <div className="space-y-6">
@@ -2388,13 +2396,15 @@ function SubmissionDetailView({
           </Button>
         )}
         
-        <Button 
-          variant="outline" 
-          onClick={() => onEdit(submission)} 
-          className="bg-white/5 border-white/10 text-white hover:bg-white hover:text-slate-900 font-black text-[9px] px-4 h-8 rounded-lg transition-all tracking-widest"
-        >
-          EDIT
-        </Button>
+        {canEdit && (
+          <Button 
+            variant="outline" 
+            onClick={() => onEdit(submission)} 
+            className="bg-white/5 border-white/10 text-white hover:bg-white hover:text-slate-900 font-black text-[9px] px-4 h-8 rounded-lg transition-all tracking-widest"
+          >
+            EDIT
+          </Button>
+        )}
 
         {canApprove && (
           <div className="flex gap-2">
