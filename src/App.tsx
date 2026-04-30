@@ -43,6 +43,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { CashFlowBoard } from './components/CashFlowBoard';
 import { BaznasBudgetManager } from './components/BaznasBudgetManager';
 import { LaporanManager } from './components/LaporanManager';
+import { KwitansiManager } from './components/KwitansiManager';
 import { 
   LayoutDashboard, 
   Plus, 
@@ -53,6 +54,7 @@ import {
   Clock, 
   AlertCircle, 
   FileText, 
+  FileDown,
   ChevronRight,
   User as UserIcon,
   ShieldCheck,
@@ -855,6 +857,7 @@ export default function App() {
     { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'owner' },
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan', icon: FileText, access: 'admin' },
+    { id: 'kwitansi', label: 'Kwitansi Keuangan', icon: FileDown, access: 'owner' },
     { id: 'settings', label: 'Settingan', icon: Settings, access: 'superadmin' },
   ];
 
@@ -1353,6 +1356,10 @@ export default function App() {
 
                 {activeTab === 'laporan' && isAdmin && (
                   <LaporanManager />
+                )}
+
+                {activeTab === 'kwitansi' && profile?.email === OWNER_EMAIL && (
+                  <KwitansiManager />
                 )}
 
                 {activeTab === 'settings' && isSuperAdmin && (
