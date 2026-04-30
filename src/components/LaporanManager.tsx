@@ -26,6 +26,7 @@ interface Report {
   amount: number;
   date: string;
   bastLink: string;
+  keterangan: string;
 }
 
 const initialData: Report[] = [];
@@ -37,6 +38,7 @@ export const LaporanManager = () => {
   const [amount, setAmount] = useState('');
   const [reportDate, setReportDate] = useState('');
   const [bastLink, setBastLink] = useState('');
+  const [keterangan, setKeterangan] = useState(''); // Tambahkan state ini
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -73,6 +75,7 @@ export const LaporanManager = () => {
           amount: parseInt(amount.toString().replace(/[^0-9.-]+/g, '')) || 0,
           date: reportDate,
           bastLink,
+          keterangan,
           updatedAt: serverTimestamp()
         });
         toast.success("Berhasil mengupdate laporan");
@@ -83,6 +86,7 @@ export const LaporanManager = () => {
           amount: parseInt(amount.toString().replace(/[^0-9.-]+/g, '')) || 0,
           date: reportDate,
           bastLink,
+          keterangan,
           createdAt: serverTimestamp()
         });
         toast.success("Berhasil menyimpan laporan");
@@ -102,6 +106,7 @@ export const LaporanManager = () => {
     setAmount('');
     setReportDate('');
     setBastLink('');
+    setKeterangan('');
     setEditingId(null);
   };
 
@@ -112,6 +117,7 @@ export const LaporanManager = () => {
     setAmount(report.amount.toString());
     setReportDate(report.date);
     setBastLink(report.bastLink);
+    setKeterangan(report.keterangan || '');
   };
 
   const handleDelete = async (id: string) => {
@@ -131,7 +137,8 @@ export const LaporanManager = () => {
       Tahun: d.year,
       Nominal: d.amount,
       TanggalLaporan: d.date,
-      BuktiBAST: d.bastLink
+      BuktiBAST: d.bastLink,
+      Keterangan: d.keterangan
     }));
     const csvString = Papa.unparse(csvData);
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
@@ -160,6 +167,7 @@ export const LaporanManager = () => {
             const a = parseFloat(ObjectRow.Nominal) || 0;
             const d = ObjectRow.TanggalLaporan;
             const bLink = ObjectRow.BuktiBAST;
+            const k = ObjectRow.Keterangan || '';
 
             if (!m || !y) continue;
 
@@ -169,6 +177,7 @@ export const LaporanManager = () => {
                 amount: a,
                 date: d || '',
                 bastLink: bLink || '',
+                keterangan: k || '',
                 createdAt: serverTimestamp()
             });
           }
@@ -328,6 +337,16 @@ export const LaporanManager = () => {
                   />
                 </div>
 
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-500">Keterangan Laporan</Label>
+                  <Input 
+                    value={keterangan} 
+                    onChange={e => setKeterangan(e.target.value)}
+                    placeholder="Contoh: Pembelian alat kantor..."
+                    className="rounded-xl bg-slate-50 border-slate-200"
+                  />
+                </div>
+
                 <Button type="submit" disabled={isSubmitting} className="w-full mt-2 font-bold bg-emerald-600 hover:bg-emerald-700 rounded-xl">
                   {isSubmitting ? 'Menyimpan...' : (editingId ? 'Update Laporan' : 'Simpan Laporan')}
                 </Button>
@@ -457,6 +476,7 @@ export const LaporanManager = () => {
               <TableHeader className="bg-slate-50">
                 <TableRow>
                   <TableHead className="font-bold text-xs text-slate-500">Bulan / Tahun</TableHead>
+                  <TableHead className="font-bold text-xs text-slate-500">Keterangan</TableHead>
                   <TableHead className="font-bold text-xs text-slate-500">Tanggal Laporan</TableHead>
                   <TableHead className="font-bold text-xs text-slate-500">Nominal</TableHead>
                   <TableHead className="font-bold text-xs text-slate-500 text-center">Bukti BAST</TableHead>
@@ -468,6 +488,9 @@ export const LaporanManager = () => {
                   <TableRow key={item.id}>
                     <TableCell className="font-semibold text-sm">
                       {item.month} {item.year}
+                    </TableCell>
+                    <TableCell className="text-sm text-slate-600">
+                      {item.keterangan || '-'}
                     </TableCell>
                     <TableCell className="text-sm text-slate-600">
                       {new Date(item.date).toLocaleDateString('id-ID', {
