@@ -920,7 +920,7 @@ export default function App() {
                 />
               </div>
               <div>
-                <CardTitle className="text-2xl font-bold tracking-tight text-primary">Tracking Transaksi Keuangan</CardTitle>
+                <CardTitle className="text-2xl font-bold tracking-tight text-primary">APLIKASI KEUANGAN SEKOLAH CENDEKIA BAZNAS</CardTitle>
                 <CardDescription className="text-slate-600 font-medium">
                   Sekolah Cendekia BAZNAS
                 </CardDescription>
