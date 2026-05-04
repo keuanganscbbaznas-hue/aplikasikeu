@@ -449,10 +449,10 @@ export const LaporanManager = () => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Semua Tahun</SelectItem>
-              {[0, 1, 2].map(offset => {
-                const y = (new Date().getFullYear() + offset).toString();
-                return <SelectItem key={y} value={y}>{y}</SelectItem>
-              })}
+              <SelectItem value="2024">2024</SelectItem>
+              <SelectItem value="2025">2025</SelectItem>
+              <SelectItem value="2026">2026</SelectItem>
+              <SelectItem value="2027">2027</SelectItem>
             </SelectContent>
           </Select>
         </div>
