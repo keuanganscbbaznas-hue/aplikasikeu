@@ -861,7 +861,7 @@ export default function App() {
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan PertUM ke BAZNAS', icon: FileText, access: 'admin' },
     { id: 'kwitansi', label: 'Kwitansi Keuangan', icon: FileDown, access: 'owner' },
-    { id: 'settings', label: 'Settingan', icon: Settings, access: 'superadmin' },
+    { id: 'settings', label: 'Settingan', icon: Settings, access: 'owner_only' },
   ];
 
   const filteredSubmissions = useMemo(() => {
@@ -986,11 +986,13 @@ export default function App() {
           <nav className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
             <p className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4 opacity-50">Menu Utama</p>
             {sidebarItems.map((item) => {
+              const isKamal = profile?.email === 'kamal2015go@gmail.com';
               const hasAccess = 
                 item.access === 'all' || 
-                (item.access === 'admin' && isAdmin) || 
+                (item.access === 'admin' && (isAdmin || (item.id === 'laporan' && isKamal))) || 
                 (item.access === 'superadmin' && isSuperAdmin) ||
-                (item.access === 'owner' && profile?.email === OWNER_EMAIL);
+                (item.access === 'owner' && (profile?.email === OWNER_EMAIL || (item.id === 'anggaran' && isKamal))) ||
+                (item.access === 'owner_only' && profile?.email === OWNER_EMAIL);
 
               if (!hasAccess) return null;
 
