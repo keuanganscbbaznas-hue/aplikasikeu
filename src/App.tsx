@@ -581,7 +581,7 @@ export default function App() {
   };
 
   const handleApprove = async (submission: Submission, comment: string = '') => {
-    if (!user || !profile || !TRACKING_ADMIN_EMAILS.includes(profile.email)) {
+    if (!user || !profile || !(TRACKING_ADMIN_EMAILS.includes(profile.email) || profile.role === 'admin')) {
       toast.error("Anda tidak memiliki akses untuk menyetujui pengajuan ini");
       return;
     }
@@ -2307,8 +2307,8 @@ function SubmissionDetailView({
 }) {
   const isAdmin = userRole === 'admin';
   const isTrackingAdmin = currentUser?.email ? TRACKING_ADMIN_EMAILS.includes(currentUser.email) : false;
-  const canApprove = isTrackingAdmin;
-  const canEdit = isTrackingAdmin;
+  const canApprove = isTrackingAdmin || isAdmin;
+  const canEdit = isTrackingAdmin || isAdmin;
 
   return (
     <div className="space-y-6">
