@@ -43,10 +43,21 @@
         "uid": { "type": "string" },
         "email": { "type": "string" },
         "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
         "role": { "type": "string", "enum": ["staff", "finance", "accountant", "management", "admin"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "role"]
+    },
+    "AppConfig": {
+      "title": "AppConfig",
+      "description": "Application configuration settings.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "logoURL": { "type": "string" }
+      },
+      "required": ["id"]
     }
   },
   "firestore": {
@@ -57,6 +68,10 @@
     "/users/{userId}": {
       "schema": "User",
       "description": "User profiles and roles."
+    },
+    "/config/{configId}": {
+      "schema": "AppConfig",
+      "description": "Application configuration settings."
     }
   }
 }

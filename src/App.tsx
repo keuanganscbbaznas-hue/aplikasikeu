@@ -432,6 +432,7 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [logoURL, setLogoURL] = useState<string>('/regenerated_image_1777445252050.png');
   const [loading, setLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
@@ -548,6 +549,15 @@ export default function App() {
 
     return () => unsubscribe();
   }, [isAuthReady, user, isAdmin]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'config', 'app'), (doc) => {
+      if (doc.exists()) {
+        setLogoURL(doc.data().logoURL);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const handleLogin = async () => {
     try {
@@ -953,7 +963,7 @@ export default function App() {
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-white p-0.5 rounded-xl flex items-center justify-center shadow-lg">
                   <img 
-                    src="/regenerated_image_1777445252050.png" 
+                    src={logoURL} 
                     alt="Logo" 
                     className="h-full w-full object-contain"
                   />
@@ -1372,7 +1382,7 @@ export default function App() {
                     <AdminSection users={allUsers} onUpdateRole={updateUserRole} isSuperAdmin={isSuperAdmin} />
                     
                     {user?.email === 'keuanganscbbaznas@gmail.com' && (
-                      <AppConfigSection />
+                      <AppConfigSection user={user} profile={profile} />
                     )}
                   </div>
                 )}
@@ -2889,7 +2899,7 @@ const AdminSection = ({ users, onUpdateRole, isSuperAdmin }: { users: UserProfil
   </div>
 );
 
-function AppConfigSection() {
+function AppConfigSection({ user, profile }: { user: User | null, profile: UserProfile | null }) {
   return (
     <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm mt-8">
       <div className="flex items-center gap-4 mb-6">
@@ -2911,13 +2921,29 @@ function AppConfigSection() {
         </TabsList>
 
         <TabsContent value="tampilan">
-           <div className="space-y-4">
-              <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Kode Warna Hex Background</Label>
-              <div className="flex gap-4 max-w-md">
-                 <Input className="font-mono text-sm" placeholder="#ffffff" defaultValue="#f8fafc" />
-                 <Button onClick={() => toast.success("Warna background berhasil disimpan!")} className="bg-purple-600 hover:bg-purple-700">Simpan</Button>
+           <div className="space-y-6">
+              <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">URL Logo Baru</Label>
+                  <div className="flex gap-4 max-w-md">
+                     <Input className="font-mono text-sm" placeholder="https://..." id="logoUrl" />
+                     <Button onClick={() => {
+                         const logo = (document.getElementById('logoUrl') as HTMLInputElement).value;
+                         if (logo) {
+                             setDoc(doc(db, 'config', 'app'), { logoURL: logo }, { merge: true });
+                             toast.success("Logo berhasil disimpan!");
+                         }
+                     }} className="bg-purple-600 hover:bg-purple-700">Simpan Logo</Button>
+                  </div>
               </div>
-           </div>
+              <Separator />
+              <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Kode Warna Hex Background</Label>
+                  <div className="flex gap-4 max-w-md">
+                     <Input className="font-mono text-sm" placeholder="#ffffff" defaultValue="#f8fafc" />
+                     <Button onClick={() => toast.success("Warna background berhasil disimpan!")} className="bg-purple-600 hover:bg-purple-700">Simpan Warna</Button>
+                  </div>
+               </div>
+            </div>
         </TabsContent>
         
         <TabsContent value="database">
@@ -2932,11 +2958,27 @@ function AppConfigSection() {
         </TabsContent>
 
         <TabsContent value="akses">
-           <div className="space-y-4">
-               <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Transfer Kepemilikan (Owner)</Label>
-               <div className="flex gap-4 max-w-md">
-                 <Input className="text-sm" placeholder="Email owner baru" />
-                 <Button onClick={() => toast.error("Transfer gagal. Hanya owner saat ini yang dapat memverifikasi aksi ini.")} variant="destructive">Alihkan</Button>
+           <div className="space-y-8">
+               <div className="space-y-4">
+                   <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Foto Profil Anda</Label>
+                   <div className="flex gap-4 max-w-md items-center">
+                     <Input className="text-sm" placeholder="URL Foto Profil" id="photoUrl" />
+                     <Button onClick={async () => {
+                         const photo = (document.getElementById('photoUrl') as HTMLInputElement).value;
+                         if (photo && user) {
+                             await updateDoc(doc(db, 'users', user.uid), { photoURL: photo });
+                             toast.success("Foto profil berhasil diperbarui!");
+                         }
+                     }} className="bg-purple-600 hover:bg-purple-700">Simpan Foto</Button>
+                   </div>
+               </div>
+               <Separator />
+               <div className="space-y-4">
+                   <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Transfer Kepemilikan (Owner)</Label>
+                   <div className="flex gap-4 max-w-md">
+                     <Input className="text-sm" placeholder="Email owner baru" />
+                     <Button onClick={() => toast.error("Transfer gagal. Hanya owner saat ini yang dapat memverifikasi aksi ini.")} variant="destructive">Alihkan</Button>
+                   </div>
                </div>
            </div>
         </TabsContent>
