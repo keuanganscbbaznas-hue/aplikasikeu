@@ -136,18 +136,30 @@ export const LaporanManager = () => {
 
   const handleExportCSV = () => {
     const csvData = data.map(d => ({
-      Bulan: d.month,
-      Tahun: d.year,
-      Nominal: d.amount,
-      TanggalLaporan: d.date,
-      BuktiBAST: d.bastLink,
-      Keterangan: d.keterangan
+      "bulan laporan": d.month,
+      "tahun laporan": d.year,
+      "nominal laporan": d.amount,
+      "tanggal laporan": d.date,
+      "link bukti BAST": d.bastLink,
+      "Keterangan": d.keterangan
     }));
     const csvString = Papa.unparse(csvData);
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `Laporan_BAZNAS_${new Date().getTime()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = ["bulan laporan", "tahun laporan", "nominal laporan", "tanggal laporan", "link bukti BAST", "Keterangan"];
+    const csvString = Papa.unparse([headers]);
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `Template_Import_Laporan.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -165,12 +177,12 @@ export const LaporanManager = () => {
           setIsSubmitting(true);
           const imports = results.data as any[];
           for (const ObjectRow of imports) {
-            const m = ObjectRow.Bulan;
-            const y = ObjectRow.Tahun;
-            const a = parseFloat(ObjectRow.Nominal) || 0;
-            const d = ObjectRow.TanggalLaporan;
-            const bLink = ObjectRow.BuktiBAST;
-            const k = ObjectRow.Keterangan || '';
+            const m = ObjectRow["bulan laporan"];
+            const y = ObjectRow["tahun laporan"];
+            const a = parseFloat(ObjectRow["nominal laporan"]) || 0;
+            const d = ObjectRow["tanggal laporan"];
+            const bLink = ObjectRow["link bukti BAST"];
+            const k = ObjectRow["Keterangan"] || '';
 
             if (!m || !y) continue;
 
@@ -470,6 +482,13 @@ export const LaporanManager = () => {
                 className="font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl"
               >
                 <Upload className="mr-2" size={16} /> Import
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleDownloadTemplate}
+                className="font-bold border-amber-200 text-amber-700 hover:bg-amber-50 rounded-xl"
+              >
+                <FileDown className="mr-2" size={16} /> Template
               </Button>
               <Button 
                 variant="outline" 

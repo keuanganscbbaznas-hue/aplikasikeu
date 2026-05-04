@@ -856,7 +856,7 @@ export default function App() {
     { id: 'tracking', label: 'Tracking Transaksi', icon: LayoutDashboard, access: 'all' },
     { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'owner' },
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
-    { id: 'laporan', label: 'Laporan', icon: FileText, access: 'admin' },
+    { id: 'laporan', label: 'Laporan PertUM ke BAZNAS', icon: FileText, access: 'admin' },
     { id: 'kwitansi', label: 'Kwitansi Keuangan', icon: FileDown, access: 'owner' },
     { id: 'settings', label: 'Settingan', icon: Settings, access: 'superadmin' },
   ];
