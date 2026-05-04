@@ -480,6 +480,7 @@ export default function App() {
   const [editDescription, setEditDescription] = useState('');
   const [editPicName, setEditPicName] = useState('');
   const [editEvidenceUrl, setEditEvidenceUrl] = useState('');
+  const [editCreatedAt, setEditCreatedAt] = useState('');
   const [editHistory, setEditHistory] = useState<HistoryEntry[]>([]);
   const [editStageIndex, setEditStageIndex] = useState(0);
 
@@ -751,6 +752,7 @@ export default function App() {
     setEditDescription(submission.description || '');
     setEditPicName(submission.picName || '');
     setEditEvidenceUrl(submission.evidenceUrl || '');
+    setEditCreatedAt(format(parseFirestoreDate(submission.createdAt), "yyyy-MM-dd'T'HH:mm"));
     setEditHistory([...submission.history]);
     setEditStageIndex(submission.currentStageIndex);
     setIsEditDialogOpen(true);
@@ -783,6 +785,7 @@ export default function App() {
       description: editDescription,
       picName: editPicName,
       evidenceUrl: editEvidenceUrl,
+      createdAt: Timestamp.fromDate(new Date(editCreatedAt)),
       history: editHistory,
       currentStageIndex: editStageIndex,
       status: stages[editStageIndex],
@@ -1515,6 +1518,16 @@ export default function App() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-createdat">Tanggal Pengajuan</Label>
+                  <Input 
+                    id="edit-createdat" 
+                    type="datetime-local" 
+                    value={editCreatedAt}
+                    onChange={(e) => setEditCreatedAt(e.target.value)}
+                    required
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-description">Keterangan</Label>
