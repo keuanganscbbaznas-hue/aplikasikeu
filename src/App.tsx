@@ -951,7 +951,7 @@ export default function App() {
         <div className="flex flex-col h-full">
           <div className="p-5 bg-slate-950 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-white p-1.5 rounded-xl flex items-center justify-center shadow-lg transform rotate-3">
+              <div className="h-10 w-10 bg-white p-0.5 rounded-xl flex items-center justify-center shadow-lg">
                   <img 
                     src="/regenerated_image_1777445252050.png" 
                     alt="Logo" 
