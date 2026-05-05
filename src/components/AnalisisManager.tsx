@@ -106,6 +106,10 @@ export function AnalisisManager() {
                 <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Total Laporan PertUM</p>
                 <p className="text-xl font-black text-emerald-900">Rp {totalLaporan.toLocaleString('id-ID')}</p>
             </div>
+            <div className="p-4 bg-rose-50 rounded-2xl col-span-2">
+                <p className="text-xs font-bold text-rose-600 uppercase tracking-widest">Sisa Laporan</p>
+                <p className="text-xl font-black text-rose-900">Rp {(totalPencairan - totalLaporan).toLocaleString('id-ID')}</p>
+            </div>
           </div>
         </CardContent>
       </Card>
