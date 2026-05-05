@@ -1,15 +1,101 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, ComposedChart } from 'recharts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+
+const MONTHS = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+];
 
 export function AnalisisManager() {
+  const [budgets, setBudgets] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>([]);
+  const [year, setYear] = useState(new Date().getFullYear().toString());
+
+  useEffect(() => {
+    const qBudgets = query(collection(db, 'baznas_budgets'), orderBy('createdAt', 'desc'));
+    const unsubBudgets = onSnapshot(qBudgets, (snap) => {
+        const data: any[] = [];
+        snap.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+        setBudgets(data);
+    });
+
+    const qReports = query(collection(db, 'laporan_baznas'), orderBy('createdAt', 'desc'));
+    const unsubReports = onSnapshot(qReports, (snap) => {
+        const data: any[] = [];
+        snap.forEach(doc => data.push({id: doc.id, ...doc.data()}));
+        setReports(data);
+    });
+
+    return () => { unsubBudgets(); unsubReports(); };
+  }, []);
+
+  const chartData = MONTHS.map(m => {
+    const mBudgets = budgets.filter(b => b.month === m && b.year === year);
+    const mReports = reports.filter(r => r.month === m && r.year === year);
+    
+    const totalBudget = mBudgets.reduce((sum, b) => sum + (b.total || 0), 0);
+    const totalReport = mReports.reduce((sum, r) => sum + (r.amount || 0), 0);
+    
+    return {
+      month: m.substring(0, 3),
+      Anggaran: totalBudget,
+      Realisasi: totalReport
+    };
+  });
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Analisis Anggaran vs Laporan PertUM</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p>Fitur analisis akan tersedia di sini.</p>
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <Card className="rounded-3xl border-slate-100 shadow-sm">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-xl font-black text-slate-800">Analisis Anggaran vs Laporan PertUM</CardTitle>
+          <div className="w-32">
+            <Select value={year} onValueChange={setYear}>
+              <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
+                <SelectValue placeholder="Pilih Tahun" />
+              </SelectTrigger>
+              <SelectContent>
+                {[0, 1, 2].map(offset => {
+                  const y = (new Date().getFullYear() + offset).toString();
+                  return <SelectItem key={y} value={y}>{y}</SelectItem>
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[400px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 40, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                <XAxis 
+                  dataKey="month" 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
+                />
+                <YAxis 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
+                  tickFormatter={(value) => `Rp ${value / 1000000}Jt`}
+                />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value: number) => [`Rp ${value.toLocaleString('id-ID')}`, '']}
+                />
+                <Legend iconType="circle" />
+                <Bar dataKey="Anggaran" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={32} />
+                <Bar dataKey="Realisasi" fill="#10b981" radius={[4, 4, 0, 0]} barSize={32} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
