@@ -97,6 +97,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { resizeImage } from './lib/utils';
 
 const OWNER_EMAIL = 'keuanganscbbaznas@gmail.com';
 const SUPER_ADMIN_EMAILS = [OWNER_EMAIL, 'kamal2015go@gmail.com'];
@@ -989,8 +990,12 @@ export default function App() {
              <div className="bg-slate-800/50 rounded-2xl p-4 border border-white/5 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-full -mr-8 -mt-8 blur-xl group-hover:bg-emerald-500/20 transition-colors" />
                 <div className="flex items-center gap-3 relative z-10">
-                   <div className="h-10 w-10 flex items-center justify-center rounded-full bg-slate-700 ring-2 ring-slate-600/50">
-                     <UserIcon size={20} className="text-emerald-400" />
+                   <div className="h-10 w-10 flex items-center justify-center rounded-full bg-slate-700 ring-2 ring-slate-600/50 overflow-hidden">
+                      {profile?.photoURL ? (
+                        <img src={profile.photoURL} alt="Profile" className="h-full w-full object-cover" />
+                      ) : (
+                        <UserIcon size={20} className="text-emerald-400" />
+                      )}
                    </div>
                    <div className="flex flex-col min-w-0">
                      <p className="text-xs font-black text-white truncate uppercase tracking-tight">{profile?.displayName}</p>
