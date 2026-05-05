@@ -43,19 +43,19 @@ export function AnalisisManager() {
     
     return {
       month: m.substring(0, 3),
-      Anggaran: totalBudget,
-      Realisasi: totalReport
+      Pencairan: totalBudget,
+      Laporan: totalReport
     };
   });
 
-  const totalAnggaran = chartData.reduce((sum, d) => sum + d.Anggaran, 0);
-  const totalRealisasi = chartData.reduce((sum, d) => sum + d.Realisasi, 0);
+  const totalPencairan = chartData.reduce((sum, d) => sum + d.Pencairan, 0);
+  const totalLaporan = chartData.reduce((sum, d) => sum + d.Laporan, 0);
 
   return (
     <div className="space-y-6">
       <Card className="rounded-3xl border-slate-100 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-xl font-black text-slate-800">Analisis Anggaran vs Laporan PertUM</CardTitle>
+          <CardTitle className="text-xl font-black text-slate-800">Realisasi Pencairan dan Laporan PertUM</CardTitle>
           <div className="w-32">
             <Select value={year} onValueChange={setYear}>
               <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
@@ -92,20 +92,20 @@ export function AnalisisManager() {
                   formatter={(value: number) => [`Rp ${value.toLocaleString('id-ID')}`, '']}
                 />
                 <Legend iconType="circle" />
-                <Bar dataKey="Anggaran" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={32} />
-                <Bar dataKey="Realisasi" fill="#10b981" radius={[4, 4, 0, 0]} barSize={32} />
+                <Bar dataKey="Pencairan" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={32} />
+                <Bar dataKey="Laporan" fill="#10b981" radius={[4, 4, 0, 0]} barSize={32} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mt-6">
             <div className="p-4 bg-amber-50 rounded-2xl">
-                <p className="text-xs font-bold text-amber-600 uppercase tracking-widest">Total Anggaran</p>
-                <p className="text-xl font-black text-amber-900">Rp {totalAnggaran.toLocaleString('id-ID')}</p>
+                <p className="text-xs font-bold text-amber-600 uppercase tracking-widest">Total Pencairan</p>
+                <p className="text-xl font-black text-amber-900">Rp {totalPencairan.toLocaleString('id-ID')}</p>
             </div>
             <div className="p-4 bg-emerald-50 rounded-2xl">
-                <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Total Realisasi</p>
-                <p className="text-xl font-black text-emerald-900">Rp {totalRealisasi.toLocaleString('id-ID')}</p>
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Total Laporan PertUM</p>
+                <p className="text-xl font-black text-emerald-900">Rp {totalLaporan.toLocaleString('id-ID')}</p>
             </div>
           </div>
         </CardContent>
