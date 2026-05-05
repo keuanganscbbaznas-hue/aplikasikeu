@@ -44,6 +44,7 @@ import { CashFlowBoard } from './components/CashFlowBoard';
 import { BaznasBudgetManager } from './components/BaznasBudgetManager';
 import { LaporanManager } from './components/LaporanManager';
 import { KwitansiManager } from './components/KwitansiManager';
+import { AnalisisManager } from './components/AnalisisManager';
 import { 
   LayoutDashboard, 
   Plus, 
@@ -871,6 +872,7 @@ export default function App() {
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan PertUM ke BAZNAS', icon: FileText, access: 'admin' },
     { id: 'kwitansi', label: 'Kwitansi Keuangan', icon: FileDown, access: 'owner' },
+    { id: 'analisis', label: 'Analisis Anggaran vs Laporan', icon: PieChart, access: 'owner' },
     { id: 'settings', label: 'Settingan', icon: Settings, access: 'owner_only' },
   ];
 
@@ -1375,6 +1377,10 @@ export default function App() {
 
                 {activeTab === 'kwitansi' && profile?.email === OWNER_EMAIL && (
                   <KwitansiManager />
+                )}
+
+                {activeTab === 'analisis' && profile?.email === OWNER_EMAIL && (
+                  <AnalisisManager />
                 )}
 
                 {activeTab === 'settings' && isSuperAdmin && (
@@ -2925,12 +2931,20 @@ function AppConfigSection({ user, profile }: { user: User | null, profile: UserP
               <div className="space-y-2">
                   <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">URL Logo Baru</Label>
                   <div className="flex gap-4 max-w-md">
-                     <Input className="font-mono text-sm" placeholder="https://..." id="logoUrl" />
-                     <Button onClick={() => {
-                         const logo = (document.getElementById('logoUrl') as HTMLInputElement).value;
-                         if (logo) {
-                             setDoc(doc(db, 'config', 'app'), { logoURL: logo }, { merge: true });
-                             toast.success("Logo berhasil disimpan!");
+                     <Input type="file" accept="image/*" className="font-mono text-sm" id="logoUpload" />
+                     <Button onClick={async () => {
+                         const fileInput = document.getElementById('logoUpload') as HTMLInputElement;
+                         const file = fileInput.files?.[0];
+                         if (file) {
+                             const reader = new FileReader();
+                             reader.onloadend = async () => {
+                                 const base64 = reader.result as string;
+                                 await setDoc(doc(db, 'config', 'app'), { logoURL: base64 }, { merge: true });
+                                 toast.success("Logo berhasil diunggah!");
+                             };
+                             reader.readAsDataURL(file);
+                         } else {
+                             toast.error("Pilih file terlebih dahulu!");
                          }
                      }} className="bg-purple-600 hover:bg-purple-700">Simpan Logo</Button>
                   </div>
@@ -2962,12 +2976,20 @@ function AppConfigSection({ user, profile }: { user: User | null, profile: UserP
                <div className="space-y-4">
                    <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Foto Profil Anda</Label>
                    <div className="flex gap-4 max-w-md items-center">
-                     <Input className="text-sm" placeholder="URL Foto Profil" id="photoUrl" />
+                     <Input type="file" accept="image/*" className="text-sm" id="photoUpload" />
                      <Button onClick={async () => {
-                         const photo = (document.getElementById('photoUrl') as HTMLInputElement).value;
-                         if (photo && user) {
-                             await updateDoc(doc(db, 'users', user.uid), { photoURL: photo });
-                             toast.success("Foto profil berhasil diperbarui!");
+                         const fileInput = document.getElementById('photoUpload') as HTMLInputElement;
+                         const file = fileInput.files?.[0];
+                         if (file && user) {
+                             const reader = new FileReader();
+                             reader.onloadend = async () => {
+                                 const base64 = reader.result as string;
+                                 await updateDoc(doc(db, 'users', user.uid), { photoURL: base64 });
+                                 toast.success("Foto profil berhasil diperbarui!");
+                             };
+                             reader.readAsDataURL(file);
+                         } else {
+                             toast.error("Pilih file atau login terlebih dahulu!");
                          }
                      }} className="bg-purple-600 hover:bg-purple-700">Simpan Foto</Button>
                    </div>
