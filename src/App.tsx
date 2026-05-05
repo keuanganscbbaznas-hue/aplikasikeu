@@ -482,6 +482,11 @@ export default function App() {
     return profile.email === 'kamal2015go@gmail.com';
   }, [profile]);
 
+  const isKeuanganSCB = useMemo(() => {
+    if (!profile) return false;
+    return profile.email === 'keuangan.scb@gmail.com';
+  }, [profile]);
+
   const [editType, setEditType] = useState<SubmissionType>('uang_muka');
   const [editTitle, setEditTitle] = useState('');
   const [editAmount, setEditAmount] = useState('');
@@ -1010,9 +1015,9 @@ export default function App() {
             {sidebarItems.map((item) => {
               const hasAccess = 
                 item.access === 'all' || 
-                (item.access === 'admin' && (isAdmin || (['laporan'].includes(item.id) && isKamal))) || 
+                (item.access === 'admin' && (isAdmin || (['laporan'].includes(item.id) && (isKamal || isKeuanganSCB)))) || 
                 (item.access === 'superadmin' && isSuperAdmin) ||
-                (item.access === 'owner' && (profile?.email === OWNER_EMAIL || (['anggaran', 'analisis'].includes(item.id) && isKamal))) ||
+                (item.access === 'owner' && (profile?.email === OWNER_EMAIL || (['anggaran', 'analisis'].includes(item.id) && (isKamal || isKeuanganSCB)))) ||
                 (item.access === 'owner_only' && profile?.email === OWNER_EMAIL);
 
               if (!hasAccess) return null;
@@ -1376,20 +1381,20 @@ export default function App() {
                   </div>
                 )}
 
-                {activeTab === 'anggaran' && (profile?.email === OWNER_EMAIL || isKamal) && (
-                  <BaznasBudgetManager profile={profile} userUid={user?.uid || ''} />
+                {activeTab === 'anggaran' && (profile?.email === OWNER_EMAIL || isKamal || isKeuanganSCB) && (
+                  <BaznasBudgetManager profile={profile} userUid={user?.uid || ''} isReadOnly={isKeuanganSCB} />
                 )}
 
-                {activeTab === 'laporan' && (isAdmin || isKamal) && (
-                  <LaporanManager />
+                {activeTab === 'laporan' && (isAdmin || isKamal || isKeuanganSCB) && (
+                  <LaporanManager isReadOnly={isKeuanganSCB} />
                 )}
 
                 {activeTab === 'kwitansi' && profile?.email === OWNER_EMAIL && (
                   <KwitansiManager />
                 )}
 
-                {activeTab === 'analisis' && (profile?.email === OWNER_EMAIL || isKamal) && (
-                  <AnalisisManager />
+                {activeTab === 'analisis' && (profile?.email === OWNER_EMAIL || isKamal || isKeuanganSCB) && (
+                  <AnalisisManager isReadOnly={isKeuanganSCB} />
                 )}
 
                 {activeTab === 'settings' && isSuperAdmin && (

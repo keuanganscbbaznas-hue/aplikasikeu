@@ -26,7 +26,7 @@ import Papa from 'papaparse';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts';
 import jsPDF from 'jspdf';
 
-export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile | null, userUid: string }) {
+export function BaznasBudgetManager({ profile, userUid, isReadOnly = false }: { profile: UserProfile | null, userUid: string, isReadOnly?: boolean }) {
   const [budgets, setBudgets] = useState<BaznasBudget[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -621,7 +621,7 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
                     </div>
                     <div className="pt-3 border-t flex items-center justify-between">
                       <span className="text-xs text-slate-400">Oleh: {b.submittedByName}</span>
-                      {!isExportingPDF && (
+                      {!isExportingPDF && !isReadOnly && (
                         <div className="flex items-center gap-1">
                           <Button variant="ghost" size="sm" onClick={() => handleEdit(b)} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg shrink-0">
                             <Edit2 size={16} />
