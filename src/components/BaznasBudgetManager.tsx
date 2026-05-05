@@ -403,10 +403,9 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
                       <SelectValue placeholder="Pilih Tahun" />
                     </SelectTrigger>
                     <SelectContent>
-                      {[0, 1, 2].map(offset => {
-                        const y = (new Date().getFullYear() + offset).toString();
-                        return <SelectItem key={y} value={y}>{y}</SelectItem>
-                      })}
+                      {['2024', '2025', '2026'].map(y => (
+                        <SelectItem key={y} value={y}>{y}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -497,10 +496,9 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
                     <SelectValue placeholder="Pilih Tahun" />
                   </SelectTrigger>
                   <SelectContent>
-                    {[0, 1, 2].map(offset => {
-                      const y = (new Date().getFullYear() + offset).toString();
-                      return <SelectItem key={y} value={y}>{y}</SelectItem>
-                    })}
+                    {['2024', '2025', '2026'].map(y => (
+                      <SelectItem key={y} value={y}>{y}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -564,10 +562,9 @@ export function BaznasBudgetManager({ profile, userUid }: { profile: UserProfile
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Semua Tahun</SelectItem>
-                  {[0, 1, 2].map(offset => {
-                    const y = (new Date().getFullYear() + offset).toString();
-                    return <SelectItem key={y} value={y}>{y}</SelectItem>
-                  })}
+                  {['2024', '2025', '2026'].map(y => (
+                    <SelectItem key={y} value={y}>{y}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
