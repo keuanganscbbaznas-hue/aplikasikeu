@@ -476,6 +476,11 @@ export default function App() {
     return profile.role === 'admin' || ADMIN_EMAILS.includes(profile.email);
   }, [profile]);
 
+  const isKamal = useMemo(() => {
+    if (!profile) return false;
+    return profile.email === 'kamal2015go@gmail.com';
+  }, [profile]);
+
   const [editType, setEditType] = useState<SubmissionType>('uang_muka');
   const [editTitle, setEditTitle] = useState('');
   const [editAmount, setEditAmount] = useState('');
@@ -998,12 +1003,11 @@ export default function App() {
           <nav className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
             <p className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4 opacity-50">Menu Utama</p>
             {sidebarItems.map((item) => {
-              const isKamal = profile?.email === 'kamal2015go@gmail.com';
               const hasAccess = 
                 item.access === 'all' || 
-                (item.access === 'admin' && (isAdmin || (item.id === 'laporan' && isKamal))) || 
+                (item.access === 'admin' && (isAdmin || (['laporan'].includes(item.id) && isKamal))) || 
                 (item.access === 'superadmin' && isSuperAdmin) ||
-                (item.access === 'owner' && (profile?.email === OWNER_EMAIL || (item.id === 'anggaran' && isKamal))) ||
+                (item.access === 'owner' && (profile?.email === OWNER_EMAIL || (['anggaran', 'analisis'].includes(item.id) && isKamal))) ||
                 (item.access === 'owner_only' && profile?.email === OWNER_EMAIL);
 
               if (!hasAccess) return null;
@@ -1367,11 +1371,11 @@ export default function App() {
                   </div>
                 )}
 
-                {activeTab === 'anggaran' && profile?.email === OWNER_EMAIL && (
+                {activeTab === 'anggaran' && (profile?.email === OWNER_EMAIL || isKamal) && (
                   <BaznasBudgetManager profile={profile} userUid={user?.uid || ''} />
                 )}
 
-                {activeTab === 'laporan' && isAdmin && (
+                {activeTab === 'laporan' && (isAdmin || isKamal) && (
                   <LaporanManager />
                 )}
 
@@ -1379,7 +1383,7 @@ export default function App() {
                   <KwitansiManager />
                 )}
 
-                {activeTab === 'analisis' && profile?.email === OWNER_EMAIL && (
+                {activeTab === 'analisis' && (profile?.email === OWNER_EMAIL || isKamal) && (
                   <AnalisisManager />
                 )}
 
