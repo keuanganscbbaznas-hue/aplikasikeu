@@ -38,7 +38,7 @@ export function AnalisisManager() {
     const mBudgets = budgets.filter(b => b.month === m && b.year === year);
     const mReports = reports.filter(r => r.month === m && r.year === year);
     
-    const totalBudget = mBudgets.reduce((sum, b) => sum + (b.total || 0), 0);
+    const totalBudget = mBudgets.reduce((sum, b) => sum + (b.program || 0) + (b.operasional || 0), 0);
     const totalReport = mReports.reduce((sum, r) => sum + (r.amount || 0), 0);
     
     return {
@@ -47,6 +47,9 @@ export function AnalisisManager() {
       Realisasi: totalReport
     };
   });
+
+  const totalAnggaran = chartData.reduce((sum, d) => sum + d.Anggaran, 0);
+  const totalRealisasi = chartData.reduce((sum, d) => sum + d.Realisasi, 0);
 
   return (
     <div className="space-y-6">
@@ -93,6 +96,17 @@ export function AnalisisManager() {
                 <Bar dataKey="Realisasi" fill="#10b981" radius={[4, 4, 0, 0]} barSize={32} />
               </ComposedChart>
             </ResponsiveContainer>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <div className="p-4 bg-amber-50 rounded-2xl">
+                <p className="text-xs font-bold text-amber-600 uppercase tracking-widest">Total Anggaran</p>
+                <p className="text-xl font-black text-amber-900">Rp {totalAnggaran.toLocaleString('id-ID')}</p>
+            </div>
+            <div className="p-4 bg-emerald-50 rounded-2xl">
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Total Realisasi</p>
+                <p className="text-xl font-black text-emerald-900">Rp {totalRealisasi.toLocaleString('id-ID')}</p>
+            </div>
           </div>
         </CardContent>
       </Card>
