@@ -58,6 +58,19 @@
         "logoURL": { "type": "string" }
       },
       "required": ["id"]
+    },
+    "BerkasDigital": {
+      "title": "BerkasDigital",
+      "description": "Google Drive links for digital files organized by month and year.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tahun": { "type": "string" },
+        "bulan": { "type": "string" },
+        "link": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tahun", "bulan", "link", "createdAt"]
     }
   },
   "firestore": {
@@ -72,6 +85,10 @@
     "/config/{configId}": {
       "schema": "AppConfig",
       "description": "Application configuration settings."
+    },
+    "/berkas_digital/{berkasId}": {
+      "schema": "BerkasDigital",
+      "description": "Collection of digital file links."
     }
   }
 }
