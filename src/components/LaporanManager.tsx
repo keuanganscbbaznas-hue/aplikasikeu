@@ -31,7 +31,7 @@ interface Report {
 
 const initialData: Report[] = [];
 
-export const LaporanManager = () => {
+export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: string, isReadOnly?: boolean }) => {
   const [data, setData] = useState<Report[]>(initialData);
   const [month, setMonth] = useState('April');
   const [year, setYear] = useState(new Date().getFullYear().toString());
@@ -48,6 +48,8 @@ export const LaporanManager = () => {
   const [filterYear, setFilterYear] = useState('all');
 
   useEffect(() => {
+    if (!userUid) return;
+
     const q = query(collection(db, 'laporan_baznas'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const reportsData: Report[] = [];
@@ -60,7 +62,7 @@ export const LaporanManager = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [userUid]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

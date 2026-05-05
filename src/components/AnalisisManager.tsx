@@ -14,12 +14,14 @@ const MONTHS = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
-export function AnalisisManager() {
+export function AnalisisManager({ userUid, isReadOnly = false }: { userUid: string, isReadOnly?: boolean }) {
   const [budgets, setBudgets] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [year, setYear] = useState(new Date().getFullYear().toString());
 
   useEffect(() => {
+    if (!userUid) return;
+
     const qBudgets = query(collection(db, 'baznas_budgets'), orderBy('createdAt', 'desc'));
     const unsubBudgets = onSnapshot(qBudgets, (snap) => {
         const data: any[] = [];
@@ -35,7 +37,7 @@ export function AnalisisManager() {
     });
 
     return () => { unsubBudgets(); unsubReports(); };
-  }, []);
+  }, [userUid]);
 
   const chartData = MONTHS.map(m => {
     const mBudgets = budgets.filter(b => b.month === m && b.year === year);

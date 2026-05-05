@@ -45,6 +45,7 @@ import { BaznasBudgetManager } from './components/BaznasBudgetManager';
 import { LaporanManager } from './components/LaporanManager';
 import { KwitansiManager } from './components/KwitansiManager';
 import { AnalisisManager } from './components/AnalisisManager';
+import { BerkasDigitalManager } from './components/BerkasDigitalManager';
 import { 
   LayoutDashboard, 
   Plus, 
@@ -434,7 +435,7 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-  const [logoURL, setLogoURL] = useState<string>('/regenerated_image_1777445252050.png');
+  const [logoURL, setLogoURL] = useState<string>('/logo.png');
   const [loading, setLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
@@ -882,6 +883,7 @@ export default function App() {
     { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'owner' },
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan PertUM ke BAZNAS', icon: FileText, access: 'admin' },
+    { id: 'berkas', label: 'Berkas Digital', icon: FolderOpen, access: 'all' },
     { id: 'kwitansi', label: 'Kwitansi Keuangan', icon: FileDown, access: 'owner' },
     { id: 'analisis', label: 'Analisis Anggaran vs Laporan', icon: PieChart, access: 'owner' },
     { id: 'settings', label: 'Settingan', icon: Settings, access: 'owner_only' },
@@ -1390,7 +1392,11 @@ export default function App() {
                 )}
 
                 {activeTab === 'laporan' && (isAdmin || isKamal || isKeuanganSCB) && (
-                  <LaporanManager isReadOnly={isKeuanganSCB} />
+                  <LaporanManager userUid={user?.uid || ''} isReadOnly={isKeuanganSCB} />
+                )}
+
+                {activeTab === 'berkas' && (
+                  <BerkasDigitalManager />
                 )}
 
                 {activeTab === 'kwitansi' && profile?.email === OWNER_EMAIL && (
@@ -1398,7 +1404,7 @@ export default function App() {
                 )}
 
                 {activeTab === 'analisis' && (profile?.email === OWNER_EMAIL || isKamal || isKeuanganSCB) && (
-                  <AnalisisManager isReadOnly={isKeuanganSCB} />
+                  <AnalisisManager userUid={user?.uid || ''} isReadOnly={isKeuanganSCB} />
                 )}
 
                 {activeTab === 'settings' && isSuperAdmin && (
