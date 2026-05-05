@@ -4,7 +4,10 @@ import { db } from '../firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend, ComposedChart } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
@@ -51,22 +54,63 @@ export function AnalisisManager() {
   const totalPencairan = chartData.reduce((sum, d) => sum + d.Pencairan, 0);
   const totalLaporan = chartData.reduce((sum, d) => sum + d.Laporan, 0);
 
+  const downloadExcel = () => {
+    const data = [
+        ...chartData.map(d => ({
+            Bulan: d.month,
+            Pencairan: d.Pencairan,
+            Laporan: d.Laporan,
+        })),
+        {
+            Bulan: 'TOTAL',
+            Pencairan: totalPencairan,
+            Laporan: totalLaporan
+        },
+        {
+            Bulan: 'SISA ANGGARAN',
+            Pencairan: totalPencairan - totalLaporan
+        }
+    ];
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Analisis");
+    XLSX.writeFile(wb, `Analisis_${year}.xlsx`);
+  };
+
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    doc.text(`Analisis ${year}`, 10, 10);
+    autoTable(doc, {
+        head: [['Bulan', 'Pencairan', 'Laporan']],
+        body: [
+            ...chartData.map(d => [d.month, d.Pencairan, d.Laporan]),
+            ['TOTAL', totalPencairan, totalLaporan],
+            ['SISA ANGGARAN', totalPencairan - totalLaporan, '']
+        ]
+    });
+    doc.save(`Analisis_${year}.pdf`);
+  };
+
   return (
     <div className="space-y-6">
       <Card className="rounded-3xl border-slate-100 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-xl font-black text-slate-800">Realisasi Pencairan dan Laporan PertUM</CardTitle>
-          <div className="w-32">
-            <Select value={year} onValueChange={setYear}>
-              <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
-                <SelectValue placeholder="Pilih Tahun" />
-              </SelectTrigger>
-              <SelectContent>
-                {['2024', '2025', '2026'].map(y => (
-                  <SelectItem key={y} value={y}>{y}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={downloadExcel}>Excel</Button>
+            <Button variant="outline" onClick={downloadPDF}>PDF</Button>
+            <div className="w-32">
+              <Select value={year} onValueChange={setYear}>
+                <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
+                  <SelectValue placeholder="Pilih Tahun" />
+                </SelectTrigger>
+                <SelectContent>
+                  {['2024', '2025', '2026'].map(y => (
+                    <SelectItem key={y} value={y}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -97,7 +141,7 @@ export function AnalisisManager() {
             </ResponsiveContainer>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
             <div className="p-4 bg-amber-50 rounded-2xl">
                 <p className="text-xs font-bold text-amber-600 uppercase tracking-widest">Total Pencairan</p>
                 <p className="text-xl font-black text-amber-900">Rp {totalPencairan.toLocaleString('id-ID')}</p>
@@ -106,7 +150,7 @@ export function AnalisisManager() {
                 <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Total Laporan PertUM</p>
                 <p className="text-xl font-black text-emerald-900">Rp {totalLaporan.toLocaleString('id-ID')}</p>
             </div>
-            <div className="p-4 bg-rose-50 rounded-2xl col-span-2">
+            <div className="p-4 bg-rose-50 rounded-2xl md:col-span-2">
                 <p className="text-xs font-bold text-rose-600 uppercase tracking-widest">Sisa Laporan</p>
                 <p className="text-xl font-black text-rose-900">Rp {(totalPencairan - totalLaporan).toLocaleString('id-ID')}</p>
             </div>

@@ -983,7 +983,11 @@ export default function App() {
               </div>
               <div className="flex flex-col">
                 <span className="font-black text-white text-base tracking-tighter leading-none">Keuangan<span className="text-emerald-500">App</span></span>
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-1 text-center">SCB BAZNAS</span>
+                <div className="flex items-center gap-1 text-[8px] font-bold text-slate-500 uppercase tracking-wide mt-1">
+                  <span>Sekolah</span>
+                  <span>Cendekia</span>
+                  <span>BAZNAS</span>
+                </div>
               </div>
             </div>
             <Button variant="ghost" size="icon" className="lg:hidden text-slate-400 hover:text-white" onClick={() => setIsSidebarOpen(false)}>
