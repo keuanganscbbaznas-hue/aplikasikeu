@@ -265,11 +265,18 @@ export function BaznasBudgetManager({ profile, userUid, isReadOnly = false }: { 
     };
   });
 
-  const filteredBudgets = budgets.filter(b => {
-    const passMonth = filterMonth === 'all' || b.month === filterMonth;
-    const passYear = filterYear === 'all' || b.year === filterYear;
-    return passMonth && passYear;
-  });
+  const filteredBudgets = budgets
+    .filter(b => {
+      const passMonth = filterMonth === 'all' || b.month === filterMonth;
+      const passYear = filterYear === 'all' || b.year === filterYear;
+      return passMonth && passYear;
+    })
+    .sort((a, b) => {
+      if (a.year !== b.year) {
+        return parseInt(b.year) - parseInt(a.year);
+      }
+      return months.indexOf(b.month) - months.indexOf(a.month);
+    });
 
   const totalFilteredBudget = filteredBudgets.reduce((sum, b) => sum + (b.total || 0), 0);
 
