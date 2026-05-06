@@ -43,6 +43,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { CashFlowBoard } from './components/CashFlowBoard';
 import { StatusMultiSelect } from './components/StatusMultiSelect';
 import { UM_STAGES, TRANSACTION_STAGES } from './types';
+import { BaznasBudgetManager } from './components/BaznasBudgetManager';
 import { LaporanManager } from './components/LaporanManager';
 import { KwitansiManager } from './components/KwitansiManager';
 import { AnalisisManager } from './components/AnalisisManager';
@@ -452,7 +453,7 @@ export default function App() {
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedSubmissions, setSelectedSubmissions] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'settings'>('tracking');
+  const [activeTab, setActiveTab] = useState<'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'berkas' | 'kwitansi' | 'analisis' | 'settings'>('tracking');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   const toggleSelection = (id: string) => {
