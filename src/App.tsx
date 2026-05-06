@@ -883,7 +883,7 @@ export default function App() {
     { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'owner' },
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan PertUM ke BAZNAS', icon: FileText, access: 'admin' },
-    { id: 'berkas', label: 'Berkas Digital', icon: FolderOpen, access: 'all' },
+    { id: 'berkas', label: 'Berkas Digital', icon: FolderOpen, access: 'admin' },
     { id: 'kwitansi', label: 'Kwitansi Keuangan', icon: FileDown, access: 'owner' },
     { id: 'analisis', label: 'Analisis Anggaran vs Laporan', icon: PieChart, access: 'owner' },
     { id: 'settings', label: 'Settingan', icon: Settings, access: 'owner_only' },
