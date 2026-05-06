@@ -34,15 +34,15 @@ export const StatusMultiSelect = ({
         <ChevronDown size={14} className="ml-auto" />
       </Button>
       {isOpen && (
-        <div className="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-lg border border-slate-100 p-2 max-h-60 overflow-y-auto">
-          <div className="flex items-center space-x-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => onChange([])}>
-             <input type="checkbox" checked={selectedStatuses.length === 0} readOnly />
-             <span className="text-xs font-bold uppercase ml-2">SEMUA STATUS</span>
+        <div className="absolute z-50 w-full mt-1 bg-white rounded-xl shadow-xl border border-slate-100 p-1 max-h-64 overflow-y-auto">
+          <div className="flex items-center p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => onChange([])}>
+             <input type="checkbox" checked={selectedStatuses.length === 0} readOnly className="w-3 h-3 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+             <span className="text-[10px] font-black uppercase ml-2 text-slate-500">SEMUA STATUS</span>
           </div>
           {allStatuses.map(status => (
-            <div key={status} className="flex items-center space-x-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => toggleStatus(status)}>
-              <input type="checkbox" checked={selectedStatuses.includes(status)} readOnly />
-              <span className="text-xs font-bold uppercase ml-2">{status}</span>
+            <div key={status} className="flex items-center p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => toggleStatus(status)}>
+              <input type="checkbox" checked={selectedStatuses.includes(status)} readOnly className="w-3 h-3 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+              <span className="text-[10px] font-bold uppercase ml-2 text-slate-700">{status}</span>
             </div>
           ))}
         </div>
