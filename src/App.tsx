@@ -41,7 +41,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CashFlowBoard } from './components/CashFlowBoard';
-import { BaznasBudgetManager } from './components/BaznasBudgetManager';
+import { StatusMultiSelect } from './components/StatusMultiSelect';
+import { UM_STAGES, TRANSACTION_STAGES } from './types';
 import { LaporanManager } from './components/LaporanManager';
 import { KwitansiManager } from './components/KwitansiManager';
 import { AnalisisManager } from './components/AnalisisManager';
@@ -441,7 +442,7 @@ export default function App() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
   const [filterPIC, setFilterPIC] = useState('');
   const [filterMonth, setFilterMonth] = useState<string>('all');
   const [filterYear, setFilterYear] = useState<string>('all');
@@ -876,7 +877,6 @@ export default function App() {
 
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const deferredFilterPIC = useDeferredValue(filterPIC);
-  const deferredFilterStatus = useDeferredValue(filterStatus);
 
   const sidebarItems = [
     { id: 'tracking', label: 'Tracking Transaksi', icon: LayoutDashboard, access: 'all' },
@@ -903,7 +903,7 @@ export default function App() {
 
       const stages = getStagesByType(sub.type);
       const currentStatus = stages[sub.currentStageIndex] || sub.status;
-      const matchesStatus = deferredFilterStatus === 'all' ? true : currentStatus.toLowerCase().includes(deferredFilterStatus.toLowerCase());
+      const matchesStatus = filterStatuses.length === 0 ? true : filterStatuses.includes(currentStatus);
 
       // Month & Year Filter
       const subDate = parseFirestoreDate(sub.createdAt);
@@ -913,7 +913,7 @@ export default function App() {
 
       return globalSearch && matchesPIC && matchesType && matchesMin && matchesMax && matchesStatus && matchesMonth && matchesYear;
     });
-  }, [submissions, deferredSearchQuery, deferredFilterPIC, filterType, minAmount, maxAmount, deferredFilterStatus, filterMonth, filterYear]);
+  }, [submissions, deferredSearchQuery, deferredFilterPIC, filterType, minAmount, maxAmount, filterStatuses, filterMonth, filterYear]);
 
   if (loading) {
     return (
@@ -1170,23 +1170,14 @@ export default function App() {
 
                            <div className="space-y-1.5">
                              <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</Label>
-<Select value={filterStatus} onValueChange={setFilterStatus}>
-  <SelectTrigger className="h-8 bg-slate-50 border-none rounded-lg text-[11px] font-bold focus:ring-2 focus:ring-emerald-500/20 transition-all">
-                                 <div className="flex items-center gap-2">
-                                   <Clock size={14} className="text-slate-400" />
-                                   <SelectValue placeholder="Pilih Status" />
-                                 </div>
-                               </SelectTrigger>
-                               <SelectContent className="rounded-xl border-slate-100">
-                                 <SelectItem value="all" className="text-xs font-bold uppercase">SEMUA STATUS</SelectItem>
-                                 {Array.from(new Set(submissions.map(s => {
-                                   const stages = getStagesByType(s.type);
-                                   return stages[s.currentStageIndex];
-                                 }))).filter(Boolean).map(status => (
-                                   <SelectItem key={status} value={status} className="text-xs font-bold uppercase">{status}</SelectItem>
-                                 ))}
-                               </SelectContent>
-                             </Select>
+<StatusMultiSelect
+                                allStatuses={Array.from(new Set([...UM_STAGES, ...TRANSACTION_STAGES]))}
+                                selectedStatuses={filterStatuses}
+                                onChange={setFilterStatuses}
+                              />
+
+
+
                            </div>
 
                            <div className="space-y-1.5">
@@ -1259,7 +1250,7 @@ export default function App() {
                       submissions={filteredSubmissions} 
                       isFiltered={
                         searchQuery !== '' || 
-                        filterStatus !== 'all' || 
+                        filterStatuses.length > 0 || 
                         filterPIC !== '' || 
                         filterType !== 'all' || 
                         minAmount !== '' || 
@@ -1269,7 +1260,7 @@ export default function App() {
                       }
                       filters={{
                         search: searchQuery,
-                        status: filterStatus,
+                        statuses: filterStatuses,
                         pic: filterPIC,
                         type: filterType,
                         month: filterMonth,
@@ -1721,7 +1712,7 @@ function FilteredResultsSummary({
   isFiltered: boolean,
   filters: {
     search: string;
-    status: string;
+    statuses: string[];
     pic: string;
     type: string;
     month: string;
@@ -1737,7 +1728,7 @@ function FilteredResultsSummary({
   const getFilterLabel = () => {
     const parts = [];
     if (filters.search) parts.push(`"Judul" "${filters.search}"`);
-    if (filters.status !== 'all') parts.push(`"Status" "${filters.status}"`);
+    if (filters.statuses.length > 0) parts.push(`"Status" "${filters.statuses.join(', ')}"`);
     if (filters.pic) parts.push(`"PIC" "${filters.pic}"`);
     if (filters.type !== 'all') parts.push(`"Jenis" "${filters.type === 'uang_muka' ? 'Uang Muka' : filters.type === 'reimburse' ? 'Reimburse' : 'Pembiayaan'}"`);
     if (filters.month !== 'all') {
