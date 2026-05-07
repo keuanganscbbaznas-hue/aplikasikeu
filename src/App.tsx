@@ -2358,25 +2358,27 @@ function WorkflowModal({
 }) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-xl rounded-[2rem] p-6 border-none shadow-2xl bg-white max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader className="pb-4 border-b border-slate-50">
-          <DialogTitle className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
-            <div className="h-8 w-8 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-              <Activity size={18} />
+      <DialogContent className="sm:max-w-[320px] rounded-[2rem] p-4 border-none shadow-3xl bg-white max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogHeader className="pb-3 border-b border-slate-50">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600">
+              <Activity size={16} />
             </div>
-            Alur Kerja Transaksi
-          </DialogTitle>
-          <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-            Transaksi ID: {submissionId}
-          </DialogDescription>
+            <div>
+              <DialogTitle className="text-base font-black tracking-tight text-slate-900 leading-none">Alur Kerja</DialogTitle>
+              <DialogDescription className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
+                ID: {submissionId.slice(0, 8)}...
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
-        <ScrollArea className="flex-1 mt-6 pr-4">
-          <div className="py-4">
+        <ScrollArea className="flex-1 pr-2 mt-2">
+          <div className="py-2">
             <WorkflowStepper stages={stages} currentIdx={currentIdx} isLastStage={currentIdx === stages.length - 1} />
           </div>
         </ScrollArea>
-        <DialogFooter className="pt-6 border-t border-slate-50">
-          <Button onClick={onClose} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black uppercase text-[10px] tracking-widest px-8">Tutup</Button>
+        <DialogFooter className="pt-3 border-t border-slate-50 flex justify-center">
+          <Button onClick={onClose} className="h-8 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black uppercase text-[9px] tracking-widest px-8">Tutup</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
