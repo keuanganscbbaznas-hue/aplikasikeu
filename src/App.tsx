@@ -85,7 +85,10 @@ import {
   FolderOpen,
   Palette,
   Database,
-  Lock
+  Lock,
+  Activity,
+  RefreshCw,
+  Check
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { 
@@ -2340,6 +2343,46 @@ function ApprovalDialog({
   );
 }
 
+function WorkflowModal({ 
+  stages, 
+  currentIdx, 
+  isOpen, 
+  onClose,
+  submissionId
+}: { 
+  stages: readonly string[], 
+  currentIdx: number, 
+  isOpen: boolean, 
+  onClose: () => void,
+  submissionId: string
+}) {
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-xl rounded-[2rem] p-6 border-none shadow-2xl bg-white max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader className="pb-4 border-b border-slate-50">
+          <DialogTitle className="text-xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+            <div className="h-8 w-8 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
+              <Activity size={18} />
+            </div>
+            Alur Kerja Transaksi
+          </DialogTitle>
+          <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+            Transaksi ID: {submissionId}
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="flex-1 mt-6 pr-4">
+          <div className="py-4">
+            <WorkflowStepper stages={stages} currentIdx={currentIdx} isLastStage={currentIdx === stages.length - 1} />
+          </div>
+        </ScrollArea>
+        <DialogFooter className="pt-6 border-t border-slate-50">
+          <Button onClick={onClose} className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black uppercase text-[10px] tracking-widest px-8">Tutup</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function SignaturePadModal({
   title,
   onSave,
@@ -2354,58 +2397,50 @@ function SignaturePadModal({
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const signaturePadRef = React.useRef<SignaturePad | null>(null);
 
-  const resizeCanvas = () => {
-    if (!canvasRef.current || !signaturePadRef.current) return;
+  const initPad = () => {
+    if (!canvasRef.current) return;
     const canvas = canvasRef.current;
     
-    // For signature_pad, we should ideally not clear on resize if we want to keep the signature,
-    // but if we resize the canvas width/height properties, it automatically clears.
-    // So we only resize if visible and size changed significantly.
+    // Crucial: get display size
+    const rect = canvas.getBoundingClientRect();
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    const newWidth = canvas.offsetWidth * ratio;
-    const newHeight = canvas.offsetHeight * ratio;
-
-    if (canvas.width !== newWidth || canvas.height !== newHeight) {
-      canvas.width = newWidth;
-      canvas.height = newHeight;
-      canvas.getContext("2d")?.scale(ratio, ratio);
-      signaturePadRef.current.clear();
+    
+    // Set internal dimensions to match display size * pixel ratio
+    canvas.width = rect.width * ratio;
+    canvas.height = rect.height * ratio;
+    
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.resetTransform(); // Reset any previous scaling
+      context.scale(ratio, ratio);
     }
+
+    if (signaturePadRef.current) {
+      signaturePadRef.current.off();
+    }
+
+    signaturePadRef.current = new SignaturePad(canvas, {
+      backgroundColor: 'rgba(0,0,0,0)',
+      penColor: 'rgb(0, 0, 0)',
+      velocityFilterWeight: 0.7
+    });
   };
 
   React.useEffect(() => {
     if (isOpen) {
-      const initPad = () => {
-        if (!canvasRef.current) return;
-        const canvas = canvasRef.current;
-        
-        // Ensure canvas has dimensions before initializing
-        const ratio = Math.max(window.devicePixelRatio || 1, 1);
-        canvas.width = canvas.offsetWidth * ratio;
-        canvas.height = canvas.offsetHeight * ratio;
-        const ctx = canvas.getContext("2d");
-        if (ctx) ctx.scale(ratio, ratio);
-
-        if (signaturePadRef.current) {
-          signaturePadRef.current.off();
-        }
-
-        signaturePadRef.current = new SignaturePad(canvas, {
-          backgroundColor: 'rgba(0,0,0,0)',
-          penColor: 'rgb(0, 0, 0)',
-          velocityFilterWeight: 0.7
-        });
-
-        window.addEventListener('resize', resizeCanvas);
+      // Re-initialize pad when modal opens and stabilizes
+      const timeout = setTimeout(initPad, 500); 
+      
+      const handleResize = () => {
+        // Debounce resize or just re-init
+        initPad();
       };
 
-      // Modal animation might take some time, wait until it's stable
-      const timeout = setTimeout(initPad, 300);
-
+      window.addEventListener('resize', handleResize);
       return () => {
         clearTimeout(timeout);
         signaturePadRef.current?.off();
-        window.removeEventListener('resize', resizeCanvas);
+        window.removeEventListener('resize', handleResize);
       };
     }
   }, [isOpen]);
@@ -2426,23 +2461,27 @@ function SignaturePadModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md rounded-[2rem] p-6 border-none shadow-2xl overflow-hidden bg-white">
+      <DialogContent className="sm:max-w-md rounded-[2.5rem] p-6 border-none shadow-2xl bg-white">
         <DialogHeader>
           <DialogTitle className="text-xl font-black tracking-tight text-slate-900">Tanda Tangan {title}</DialogTitle>
-          <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed mt-2">
-            Silakan goreskan tanda tangan digital Anda pada area di bawah ini sebagai bentuk verifikasi manajemen.
+          <DialogDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed mt-2">
+            Silakan goreskan tanda tangan digital Anda pada area di bawah ini. Pastikan goresan terlihat jelas.
           </DialogDescription>
         </DialogHeader>
-        <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl overflow-hidden mt-6 touch-none h-48 relative w-full flex items-center justify-center">
+        <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2rem] overflow-hidden mt-6 touch-none h-56 relative w-full flex items-center justify-center">
           <canvas
             ref={canvasRef}
             className="w-full h-full cursor-crosshair touch-none"
             style={{ width: '100%', height: '100%', display: 'block' }}
           />
         </div>
-        <DialogFooter className="mt-8 flex gap-2">
-          <Button variant="ghost" onClick={clear} className="rounded-xl font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-slate-600">Bersihkan</Button>
-          <Button onClick={save} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-[10px] tracking-widest px-6 h-10 shadow-lg shadow-emerald-200">Simpan Tanda Tangan</Button>
+        <DialogFooter className="mt-8 grid grid-cols-2 gap-3">
+          <Button variant="ghost" onClick={clear} className="rounded-2xl font-black uppercase text-[10px] tracking-widest text-slate-500 hover:bg-slate-100 flex items-center gap-2">
+            <RefreshCw size={14} /> Bersihkan
+          </Button>
+          <Button onClick={save} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest px-6 h-12 shadow-xl shadow-emerald-200 flex items-center gap-2">
+            <Check size={14} /> Simpan Tanda Tangan
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -2476,6 +2515,7 @@ function SubmissionDetailView({
   const canDelete = isTrackingAdmin;
 
   const [activeSigner, setActiveSigner] = useState<'roni' | 'kamal' | null>(null);
+  const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
 
   const handleSign = async (signature: string) => {
     if (!activeSigner) return;
@@ -2596,8 +2636,19 @@ function SubmissionDetailView({
              </div>
           </div>
 
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-             <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Status Alur Kerja ({stages.length} Tahap)</h4>
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden">
+             <div className="flex items-center justify-between mb-4">
+               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Status Pengajuan</h4>
+               <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsWorkflowModalOpen(true)}
+                className="h-8 rounded-xl border-slate-200 text-[10px] font-black uppercase tracking-widest gap-2 bg-slate-50 hover:bg-slate-100"
+               >
+                 <Activity size={14} className="text-primary" />
+                 Lihat Detail Alur
+               </Button>
+             </div>
              
              {isManagementStage && (
                 <div className="mb-6 p-5 bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl shadow-xl shadow-slate-200">
@@ -2668,8 +2719,21 @@ function SubmissionDetailView({
                 </div>
               )}
 
-             <div className="space-y-4">
-                <WorkflowStepper stages={stages} currentIdx={submission.currentStageIndex} isLastStage={isLastStage} />
+             <div className="space-y-1 relative">
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge className="bg-primary/10 text-primary border-none rounded-lg text-[9px] font-black uppercase tracking-widest">
+                    Tahap {submission.currentStageIndex + 1} Dari {stages.length}
+                  </Badge>
+                  <span className="text-[10px] font-bold text-slate-500">{Math.round(((submission.currentStageIndex + 1) / stages.length) * 100)}% Selesai</span>
+                </div>
+                <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${((submission.currentStageIndex + 1) / stages.length) * 100}%` }}
+                    className="h-full bg-primary"
+                  />
+                </div>
+                <p className="text-xs font-black text-slate-800 mt-3 truncate">{stages[submission.currentStageIndex]}</p>
              </div>
           </div>
         </div>
@@ -2754,6 +2818,14 @@ function SubmissionDetailView({
         onClose={() => setActiveSigner(null)}
         title={activeSigner === 'roni' ? 'M. Roni' : 'Ahmad Kamal'}
         onSave={handleSign}
+      />
+
+      <WorkflowModal 
+        isOpen={isWorkflowModalOpen}
+        onClose={() => setIsWorkflowModalOpen(false)}
+        stages={stages}
+        currentIdx={submission.currentStageIndex}
+        submissionId={submission.id}
       />
     </div>
   );
