@@ -79,6 +79,12 @@ export interface BaznasBudget {
   updatedAt: any;
 }
 
+export interface SignatureData {
+  name: string;
+  signature: string; // Base64 data URL
+  timestamp: any;
+}
+
 export interface Submission {
   id: string;
   type: SubmissionType;
@@ -96,4 +102,8 @@ export interface Submission {
   evidenceUrl?: string;
   lpjUrl?: string;
   history: HistoryEntry[];
+  signatures?: {
+    roni?: SignatureData;
+    kamal?: SignatureData;
+  };
 }

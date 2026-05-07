@@ -48,9 +48,12 @@ import { LaporanManager } from './components/LaporanManager';
 import { KwitansiManager } from './components/KwitansiManager';
 import { AnalisisManager } from './components/AnalisisManager';
 import { BerkasDigitalManager } from './components/BerkasDigitalManager';
+import SignaturePad from 'signature_pad';
+import { jsPDF } from 'jspdf';
 import { 
   LayoutDashboard, 
   Plus, 
+  Minus,
   Search,
   Filter,
   LogOut, 
@@ -480,9 +483,14 @@ export default function App() {
     return profile.role === 'admin' || ADMIN_EMAILS.includes(profile.email);
   }, [profile]);
 
+  const isTrackingAdmin = useMemo(() => {
+    if (!profile) return false;
+    return TRACKING_ADMIN_EMAILS.includes(profile.email);
+  }, [profile]);
+
   const isKamal = useMemo(() => {
     if (!profile) return false;
-    return profile.email === 'kamal2015go@gmail.com';
+    return profile.email === 'kamal2015go@gmail.com' || profile.email === 'tatausahascba@gmail.com';
   }, [profile]);
 
   const isKeuanganSCB = useMemo(() => {
@@ -606,7 +614,7 @@ export default function App() {
   };
 
   const handleApprove = async (submission: Submission, comment: string = '') => {
-    if (!user || !profile || !(TRACKING_ADMIN_EMAILS.includes(profile.email) || profile.role === 'admin')) {
+    if (!profile || !TRACKING_ADMIN_EMAILS.includes(profile.email)) {
       toast.error("Anda tidak memiliki akses untuk menyetujui pengajuan ini");
       return;
     }
@@ -669,7 +677,10 @@ export default function App() {
   };
 
   const handleDelete = async (submissionId: string) => {
-    if (!profile || profile.role !== 'admin') return;
+    if (!profile || !TRACKING_ADMIN_EMAILS.includes(profile.email)) {
+      toast.error("Anda tidak memiliki akses untuk menghapus data");
+      return;
+    }
     
     try {
       await deleteDoc(doc(db, 'submissions', submissionId));
@@ -770,6 +781,10 @@ export default function App() {
   };
 
   const openEditDialog = (submission: Submission) => {
+    if (!profile || !TRACKING_ADMIN_EMAILS.includes(profile.email)) {
+      toast.error("Hanya admin atau owner yang dapat mengedit data");
+      return;
+    }
     setEditingSubmission(submission);
     setEditType(submission.type);
     setEditTitle(submission.title);
@@ -1619,6 +1634,7 @@ export default function App() {
 }
 
 const MonthlyAccumulationSummary = React.memo(({ submissions }: { submissions: Submission[] }) => {
+  const [showMonthly, setShowMonthly] = useState(false);
   // Group by month and type, keeping a date for sorting
   const refinedSummary: Record<string, { types: Record<SubmissionType, number>, latestDate: Date }> = {};
   const grandTotals: Record<SubmissionType, number> = { uang_muka: 0, reimburse: 0, pembiayaan: 0 };
@@ -1659,9 +1675,12 @@ const MonthlyAccumulationSummary = React.memo(({ submissions }: { submissions: S
         <div className="divide-y divide-slate-100">
           {/* Grand Totals Row */}
           <div className="px-4 py-2 flex flex-col md:flex-row md:items-center justify-between gap-2 bg-primary/5">
-            <div className="font-bold text-primary min-w-[140px] flex items-center gap-2">
-              <Plus size={12} /> Total Seluruh
-            </div>
+            <button 
+              onClick={() => setShowMonthly(!showMonthly)}
+              className="font-bold text-primary min-w-[140px] flex items-center gap-2 hover:bg-primary/10 p-1 -ml-1 rounded transition-colors cursor-pointer"
+            >
+              {showMonthly ? <Minus size={12} /> : <Plus size={12} />} Total Seluruh
+            </button>
             <div className="grid grid-cols-3 gap-2 flex-1">
               <div className="flex flex-col border-l border-blue-500 pl-2">
                 <span className="text-[9px] text-blue-600 font-medium">UM</span>
@@ -1679,7 +1698,7 @@ const MonthlyAccumulationSummary = React.memo(({ submissions }: { submissions: S
           </div>
           
           {/* Monthly Rows */}
-          {sortedMonthEntries.map(([month, data]) => (
+          {showMonthly && sortedMonthEntries.map(([month, data]) => (
             <div key={month} className="px-4 py-1.5 flex flex-col md:flex-row md:items-center justify-between gap-2">
               <div className="font-semibold text-slate-700 min-w-[140px]">{month}</div>
               <div className="grid grid-cols-3 gap-2 flex-1">
@@ -2255,12 +2274,14 @@ function ApprovalDialog({
   submission, 
   onApprove, 
   onReject, 
-  mode 
+  mode,
+  disabled = false
 }: { 
   submission: Submission, 
   onApprove?: (s: Submission, comment?: string) => void, 
   onReject?: (s: Submission, comment?: string) => void, 
-  mode: 'approve' | 'reject' 
+  mode: 'approve' | 'reject',
+  disabled?: boolean
 }) {
   const [comment, setComment] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -2278,6 +2299,7 @@ function ApprovalDialog({
         render={
           <Button 
             variant={mode === 'approve' ? 'default' : 'destructive'} 
+            disabled={disabled}
             className={`font-black text-[9px] tracking-widest px-4 h-8 rounded-lg shadow-lg transition-all ${mode === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
           >
             {mode === 'approve' ? 'SETUJUI TAHAP' : 'TOLAK'}
@@ -2318,6 +2340,115 @@ function ApprovalDialog({
   );
 }
 
+function SignaturePadModal({
+  title,
+  onSave,
+  isOpen,
+  onClose
+}: {
+  title: string;
+  onSave: (signatureBase64: string) => void;
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const signaturePadRef = React.useRef<SignaturePad | null>(null);
+
+  const resizeCanvas = () => {
+    if (!canvasRef.current || !signaturePadRef.current) return;
+    const canvas = canvasRef.current;
+    
+    // For signature_pad, we should ideally not clear on resize if we want to keep the signature,
+    // but if we resize the canvas width/height properties, it automatically clears.
+    // So we only resize if visible and size changed significantly.
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const newWidth = canvas.offsetWidth * ratio;
+    const newHeight = canvas.offsetHeight * ratio;
+
+    if (canvas.width !== newWidth || canvas.height !== newHeight) {
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      canvas.getContext("2d")?.scale(ratio, ratio);
+      signaturePadRef.current.clear();
+    }
+  };
+
+  React.useEffect(() => {
+    if (isOpen) {
+      const initPad = () => {
+        if (!canvasRef.current) return;
+        const canvas = canvasRef.current;
+        
+        // Ensure canvas has dimensions before initializing
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        const ctx = canvas.getContext("2d");
+        if (ctx) ctx.scale(ratio, ratio);
+
+        if (signaturePadRef.current) {
+          signaturePadRef.current.off();
+        }
+
+        signaturePadRef.current = new SignaturePad(canvas, {
+          backgroundColor: 'rgba(0,0,0,0)',
+          penColor: 'rgb(0, 0, 0)',
+          velocityFilterWeight: 0.7
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+      };
+
+      // Modal animation might take some time, wait until it's stable
+      const timeout = setTimeout(initPad, 300);
+
+      return () => {
+        clearTimeout(timeout);
+        signaturePadRef.current?.off();
+        window.removeEventListener('resize', resizeCanvas);
+      };
+    }
+  }, [isOpen]);
+
+  const clear = () => {
+    signaturePadRef.current?.clear();
+  };
+
+  const save = () => {
+    if (!signaturePadRef.current || signaturePadRef.current.isEmpty()) {
+      toast.error('Tanda tangan tidak boleh kosong');
+      return;
+    }
+    const signature = signaturePadRef.current.toDataURL('image/png');
+    onSave(signature);
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md rounded-[2rem] p-6 border-none shadow-2xl overflow-hidden bg-white">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-black tracking-tight text-slate-900">Tanda Tangan {title}</DialogTitle>
+          <DialogDescription className="text-xs font-bold text-slate-400 uppercase tracking-widest leading-relaxed mt-2">
+            Silakan goreskan tanda tangan digital Anda pada area di bawah ini sebagai bentuk verifikasi manajemen.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl overflow-hidden mt-6 touch-none h-48 relative w-full flex items-center justify-center">
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full cursor-crosshair touch-none"
+            style={{ width: '100%', height: '100%', display: 'block' }}
+          />
+        </div>
+        <DialogFooter className="mt-8 flex gap-2">
+          <Button variant="ghost" onClick={clear} className="rounded-xl font-black uppercase text-[10px] tracking-widest text-slate-400 hover:text-slate-600">Bersihkan</Button>
+          <Button onClick={save} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black uppercase text-[10px] tracking-widest px-6 h-10 shadow-lg shadow-emerald-200">Simpan Tanda Tangan</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function SubmissionDetailView({ 
   submission, 
   stages, 
@@ -2339,10 +2470,80 @@ function SubmissionDetailView({
   userRole: UserRole,
   currentUser: User | null
 }) {
-  const isAdmin = userRole === 'admin';
   const isTrackingAdmin = currentUser?.email ? TRACKING_ADMIN_EMAILS.includes(currentUser.email) : false;
-  const canApprove = isTrackingAdmin || isAdmin;
-  const canEdit = isTrackingAdmin || isAdmin;
+  const canApprove = isTrackingAdmin;
+  const canEdit = isTrackingAdmin;
+  const canDelete = isTrackingAdmin;
+
+  const [activeSigner, setActiveSigner] = useState<'roni' | 'kamal' | null>(null);
+
+  const handleSign = async (signature: string) => {
+    if (!activeSigner) return;
+    try {
+      const docRef = doc(db, 'submissions', submission.id);
+      const signatureData = {
+        name: activeSigner === 'roni' ? 'M. Roni' : 'Ahmad Kamal',
+        signature,
+        timestamp: Timestamp.now()
+      };
+      
+      await updateDoc(docRef, {
+        [`signatures.${activeSigner}`]: signatureData
+      });
+      toast.success(`Berhasil ditanda tangan oleh ${signatureData.name}`);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `submissions/${submission.id}`);
+    }
+  };
+
+  const currentStage = stages[submission.currentStageIndex];
+  const isManagementStage = currentStage === "Proses Tanda Tangan Oleh Manajemen";
+  const hasBothSignatures = submission.signatures?.roni && submission.signatures?.kamal;
+
+  const downloadPDF = () => {
+    const doc = new jsPDF();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text('DOKUMEN PENGAJUAN', 105, 20, { align: 'center' });
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`ID Transaksi`, 20, 40); doc.text(`: ${submission.id}`, 60, 40);
+    doc.text(`Judul Pengajuan`, 20, 50); doc.text(`: ${submission.title}`, 60, 50);
+    doc.text(`Jumlah Anggaran`, 20, 60); doc.text(`: Rp ${submission.amount.toLocaleString('id-ID')}`, 60, 60);
+    doc.text(`PIC Pengaju`, 20, 70); doc.text(`: ${submission.picName || submission.submittedByName}`, 60, 70);
+    doc.text(`Tanggal Pengajuan`, 20, 80); doc.text(`: ${format(parseFirestoreDate(submission.createdAt), 'dd MMMM yyyy')}`, 60, 80);
+    
+    doc.setFont("helvetica", "bold");
+    doc.text('Deskripsi / Rincian:', 20, 100);
+    doc.setFont("helvetica", "normal");
+    const splitDesc = doc.splitTextToSize(submission.description || '-', 170);
+    doc.text(splitDesc, 20, 105);
+    
+    const nextY = 110 + (splitDesc.length * 5);
+    
+    if (submission.signatures) {
+      doc.setFont("helvetica", "bold");
+      doc.text('TANDA TANGAN MANAJEMEN:', 20, nextY + 10);
+      
+      doc.setFont("helvetica", "normal");
+      if (submission.signatures.roni) {
+        doc.text('Diverifikasi Oleh,', 40, nextY + 25);
+        doc.addImage(submission.signatures.roni.signature, 'PNG', 40, nextY + 30, 40, 20);
+        doc.setFont("helvetica", "bold");
+        doc.text('M. Roni', 40, nextY + 55);
+      }
+      
+      if (submission.signatures.kamal) {
+        doc.text('Disetujui Oleh,', 120, nextY + 25);
+        doc.addImage(submission.signatures.kamal.signature, 'PNG', 120, nextY + 30, 40, 20);
+        doc.setFont("helvetica", "bold");
+        doc.text('Ahmad Kamal', 120, nextY + 55);
+      }
+    }
+    
+    doc.save(`Pengajuan_${submission.title.replace(/\s+/g, '_')}.pdf`);
+  };
 
   return (
     <div className="space-y-6">
@@ -2397,6 +2598,76 @@ function SubmissionDetailView({
 
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Status Alur Kerja ({stages.length} Tahap)</h4>
+             
+             {isManagementStage && (
+                <div className="mb-6 p-5 bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl shadow-xl shadow-slate-200">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-8 w-8 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                      <ShieldCheck className="text-emerald-400" size={18} />
+                    </div>
+                    <div>
+                      <h5 className="text-[11px] font-black text-white uppercase tracking-widest">Otorisasi Manajemen</h5>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter italic">2 Tanda Tangan Diperlukan</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div className="h-24 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center overflow-hidden relative group transition-all">
+                        {submission.signatures?.roni ? (
+                          <img src={submission.signatures.roni.signature} alt="Sign Roni" className="h-[80%] object-contain brightness-0 invert" />
+                        ) : (
+                          <div className="text-center">
+                            <Lock size={16} className="text-white/20 mx-auto mb-1" />
+                            <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em]">Belum TTD</span>
+                          </div>
+                        )}
+                        {canApprove && !submission.signatures?.roni && (
+                          <button 
+                            onClick={() => setActiveSigner('roni')}
+                            className="absolute inset-0 bg-emerald-600/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-black uppercase tracking-widest"
+                          >
+                            Tanda Tangani
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-center text-[10px] font-black text-white uppercase tracking-tighter">M. Roni</p>
+                    </div>
+
+                    <div className="space-y-3" key="sign-kamal">
+                      <div className="h-24 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center overflow-hidden relative group transition-all">
+                        {submission.signatures?.kamal ? (
+                          <img src={submission.signatures.kamal.signature} alt="Sign Kamal" className="h-[80%] object-contain brightness-0 invert" />
+                        ) : (
+                          <div className="text-center">
+                            <Lock size={16} className="text-white/20 mx-auto mb-1" />
+                            <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em]">Belum TTD</span>
+                          </div>
+                        )}
+                        {canApprove && !submission.signatures?.kamal && (
+                          <button 
+                            onClick={() => setActiveSigner('kamal')}
+                            className="absolute inset-0 bg-emerald-600/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-black uppercase tracking-widest"
+                          >
+                            Tanda Tangani
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-center text-[10px] font-black text-white uppercase tracking-tighter">Ahmad Kamal</p>
+                    </div>
+                  </div>
+                  
+                  {hasBothSignatures && (
+                    <Button 
+                      onClick={downloadPDF}
+                      className="w-full mt-4 bg-white/10 hover:bg-white text-white hover:text-slate-900 border-none transition-all rounded-xl h-10 font-bold text-xs flex items-center justify-center gap-2"
+                    >
+                      <Download size={14} /> Download Dokumen Pengajuan
+                    </Button>
+                  )}
+                </div>
+              )}
+
              <div className="space-y-4">
                 <WorkflowStepper stages={stages} currentIdx={submission.currentStageIndex} isLastStage={isLastStage} />
              </div>
@@ -2445,7 +2716,7 @@ function SubmissionDetailView({
       </div>
 
       <div className="flex flex-wrap items-center justify-end gap-3 p-4 bg-slate-900 rounded-[1.5rem] shadow-xl">
-        {isAdmin && (
+        {canDelete && (
           <Button 
             variant="destructive" 
             onClick={() => { if(confirm('Hapus permanen data ini?')) onDelete(); }}
@@ -2468,10 +2739,22 @@ function SubmissionDetailView({
         {canApprove && (
           <div className="flex gap-2">
              <ApprovalDialog submission={submission} onReject={onReject} mode="reject" />
-             <ApprovalDialog submission={submission} onApprove={onApprove} mode="approve" />
+             <ApprovalDialog 
+              submission={submission} 
+              onApprove={onApprove} 
+              mode="approve" 
+              disabled={isManagementStage && !hasBothSignatures}
+             />
           </div>
         )}
       </div>
+
+      <SignaturePadModal 
+        isOpen={activeSigner !== null}
+        onClose={() => setActiveSigner(null)}
+        title={activeSigner === 'roni' ? 'M. Roni' : 'Ahmad Kamal'}
+        onSave={handleSign}
+      />
     </div>
   );
 }
