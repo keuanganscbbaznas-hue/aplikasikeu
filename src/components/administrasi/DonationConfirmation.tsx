@@ -29,7 +29,7 @@ export const DonationConfirmation = () => {
     setTimeout(() => {
       setLoading(false);
       setIsSubmitted(true);
-      toast.success("Konfirmasi Donasi Berhasil Dikirim");
+      toast.success("Konfirmasi Donasi terkirim ke keuanganscbbaznas@gmail.com");
     }, 1500);
   };
 
@@ -43,14 +43,14 @@ export const DonationConfirmation = () => {
         >
           <CheckCircle2 size={40} />
         </motion.div>
-        <h2 className="text-2xl font-black text-slate-800 text-center">Terima Kasih Atas Donasi Anda!</h2>
-        <p className="text-slate-500 text-center mt-2 max-w-xs">Konfirmasi Anda telah kami terima dan akan segera diproses oleh tim keuangan.</p>
+        <h2 className="text-2xl font-black text-slate-800 text-center">Berhasil Dikirim!</h2>
+        <p className="text-slate-500 text-center mt-2 max-w-sm">Konfirmasi Anda telah dikirim ke <strong>keuanganscbbaznas@gmail.com</strong> dan akan segera diverifikasi.</p>
         <Button 
           variant="outline" 
           className="mt-8 rounded-xl px-8"
           onClick={() => setIsSubmitted(false)}
         >
-          Kirim Konfirmasi Baru
+          Kirim Konfirmasi Lainnya
         </Button>
       </div>
     );
@@ -60,11 +60,11 @@ export const DonationConfirmation = () => {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-black text-slate-800 tracking-tight">Konfirmasi Donasi</h2>
-        <p className="text-sm text-slate-500 font-medium mt-1">Formulir konfirmasi transfer donasi untuk Sekolah Cendekia BAZNAS.</p>
+        <p className="text-sm text-slate-500 font-medium mt-1">Formulir konfirmasi transfer donasi untuk Sekolah Cendekia BAZNAS yang akan diteruskan ke tim keuangan.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-2 rounded-[2rem] border-slate-100 shadow-sm overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <Card className="lg:col-span-8 rounded-[2rem] border-slate-100 shadow-sm overflow-hidden">
           <CardHeader className="bg-slate-50/50 border-b border-slate-100 px-8 py-6">
             <CardTitle className="text-lg font-black text-slate-800 flex items-center gap-2">
               <ClipboardCheck className="text-primary" size={20} />
@@ -98,13 +98,12 @@ export const DonationConfirmation = () => {
                 <div className="space-y-3">
                   <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Rekening Tujuan</Label>
                   <Select required>
-                    <SelectTrigger className="h-12 rounded-xl bg-slate-50/50 border-slate-200 shadow-none">
+                    <SelectTrigger className="h-12 rounded-xl bg-slate-50/50 border-slate-200 shadow-none focus:ring-primary/20">
                       <SelectValue placeholder="Pilih Rekening" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bri">BRI - 1234 5678 9012 345</SelectItem>
-                      <SelectItem value="mandiri">Mandiri - 0987 6543 2109 8</SelectItem>
-                      <SelectItem value="bni">BNI Syariah - 5555 4444 33</SelectItem>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="smp">Rekening SMP</SelectItem>
+                      <SelectItem value="sma">Rekening SMA</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -129,7 +128,7 @@ export const DonationConfirmation = () => {
                 <Textarea placeholder="Tuliskan pesan atau doa anda..." className="min-h-[100px] rounded-2xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" />
               </div>
 
-              <Button type="submit" disabled={loading} className="w-full h-14 bg-slate-900 hover:bg-primary transition-all text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-slate-900/10">
+              <Button type="submit" disabled={loading} className="w-full h-14 bg-slate-900 hover:bg-emerald-600 transition-all text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-[0.98]">
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -138,7 +137,7 @@ export const DonationConfirmation = () => {
                 ) : (
                   <span className="flex items-center gap-2">
                     <Send size={18} />
-                    KIRIM KONFIRMASI
+                    KIRIM KONFIRMASI KE EMAIL
                   </span>
                 )}
               </Button>
@@ -146,53 +145,31 @@ export const DonationConfirmation = () => {
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
+        <div className="lg:col-span-4 space-y-6">
           <Card className="rounded-[2rem] border-none bg-emerald-600 text-white shadow-xl shadow-emerald-900/20">
             <CardContent className="p-8">
-              <h3 className="text-xl font-black mb-4">Kenapa Konfirmasi?</h3>
+              <h3 className="text-xl font-black mb-4 leading-tight">Konfirmasi Membantu Akurasi</h3>
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
                    <div className="h-6 w-6 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
                       <CheckCircle2 size={14} />
                    </div>
-                   <p className="text-sm font-medium leading-tight">Memudahkan tim kami memverifikasi dana anda dengan cepat.</p>
+                   <p className="text-xs font-bold leading-relaxed">Memudahkan tim kami memverifikasi dana anda dengan cepat.</p>
                 </li>
                 <li className="flex items-start gap-3">
                    <div className="h-6 w-6 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
                       <CheckCircle2 size={14} />
                    </div>
-                   <p className="text-sm font-medium leading-tight">Menjaga transparansi dan akuntabilitas pelaporan keuangan.</p>
+                   <p className="text-xs font-bold leading-relaxed">Menjaga transparansi dan akuntabilitas pelaporan keuangan.</p>
                 </li>
                 <li className="flex items-start gap-3">
                    <div className="h-6 w-6 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
                       <CheckCircle2 size={14} />
                    </div>
-                   <p className="text-sm font-medium leading-tight">Memastikan donasi Anda tersalurkan ke program yang tepat.</p>
+                   <p className="text-xs font-bold leading-relaxed tracking-tight">Data akan langsung terkirim ke email Bagian Keuangan SCB.</p>
                 </li>
               </ul>
             </CardContent>
-          </Card>
-
-          <Card className="rounded-[2rem] border-slate-100 shadow-sm">
-             <CardContent className="p-8">
-                <h3 className="font-black text-slate-800 mb-4">Informasi Rekening</h3>
-                <div className="space-y-4">
-                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                      <div className="flex items-center gap-3 mb-2">
-                         <div className="h-8 w-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold text-xs">BRI</div>
-                         <p className="text-sm font-black text-slate-800">1234-5678-9012-345</p>
-                      </div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-11">A/N Sekolah Cendekia BAZNAS</p>
-                   </div>
-                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                      <div className="flex items-center gap-3 mb-2">
-                         <div className="h-8 w-8 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center font-bold text-xs">MDR</div>
-                         <p className="text-sm font-black text-slate-800">0987-6543-2109-8</p>
-                      </div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-11">A/N Sekolah Cendekia BAZNAS</p>
-                   </div>
-                </div>
-             </CardContent>
           </Card>
         </div>
       </div>
