@@ -218,6 +218,10 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
     const passMonth = filterMonth === 'all' || d.month === filterMonth;
     const passYear = filterYear === 'all' || d.year === filterYear;
     return passMonth && passYear;
+  }).sort((a, b) => {
+    const yearDiff = parseInt(b.year) - parseInt(a.year);
+    if (yearDiff !== 0) return yearDiff;
+    return MONTHS.indexOf(b.month) - MONTHS.indexOf(a.month);
   });
 
   const totalFilteredReport = filteredData.reduce((sum, r) => sum + r.amount, 0);

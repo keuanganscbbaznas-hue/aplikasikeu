@@ -53,23 +53,23 @@ export const StatusMultiSelect = ({
       </Button>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[300px] rounded-[2.2rem] p-3 border-none shadow-3xl bg-white max-h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader className="pb-2 border-b border-slate-50">
+        <DialogContent className="sm:max-w-[280px] rounded-[2.2rem] p-3 border-none shadow-3xl bg-white max-h-[75vh] overflow-hidden flex flex-col gap-0">
+          <DialogHeader className="pb-2 border-b border-slate-50 mb-2">
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600">
                 <Filter size={14} />
               </div>
-              <div className="flex flex-col">
-                <DialogTitle className="text-sm font-black tracking-tight text-slate-900 leading-none">Filter Status</DialogTitle>
+              <div className="flex flex-col text-left">
+                <DialogTitle className="text-sm font-black tracking-tight text-slate-900 leading-none">Filter Alur</DialogTitle>
                 <DialogDescription className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
-                  Pilih Tahapan Alur
+                  Tahapan Transaksi
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
 
-          <div className="mt-2 space-y-2 flex-1 overflow-hidden flex flex-col">
-            <div className="relative">
+          <div className="space-y-2 flex-1 overflow-hidden flex flex-col">
+            <div className="relative mb-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={10} />
               <Input 
                 placeholder="Cari..." 
@@ -80,13 +80,13 @@ export const StatusMultiSelect = ({
             </div>
 
             {selectedStatuses.length > 0 && (
-              <div className="flex flex-wrap gap-0.5 p-0.5 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 overflow-x-auto whitespace-nowrap hide-scrollbar">
+              <div className="flex flex-wrap gap-0.5 p-1 bg-slate-50/50 rounded-lg border border-dashed border-slate-200 max-h-12 overflow-y-auto hide-scrollbar mb-1">
                 {selectedStatuses.map(status => (
                   <Badge 
                     key={status}
                     className="bg-emerald-600 text-white border-none rounded-md px-1 py-0 text-[7px] font-black uppercase tracking-wider flex items-center gap-1 shrink-0"
                   >
-                    {status.split(' ').slice(0, 2).join(' ')}...
+                    {status.split(' ').slice(0, 1).join(' ')}...
                     <button onClick={(e) => { e.stopPropagation(); toggleStatus(status); }}>
                       <X size={6} />
                     </button>
@@ -95,7 +95,7 @@ export const StatusMultiSelect = ({
               </div>
             )}
 
-            <ScrollArea className="flex-1 pr-2 -mr-1">
+            <div className="flex-1 overflow-y-auto pr-1 -mr-1 custom-scrollbar">
               <div className="space-y-0.5 py-1 relative">
                 {/* Vertical Progress Line */}
                 <div className="absolute left-[13px] top-6 bottom-6 w-[1.5px] bg-slate-100 hidden sm:block" />
@@ -128,15 +128,15 @@ export const StatusMultiSelect = ({
                       }`}
                       onClick={() => toggleStatus(status)}
                     >
-                      <div className="flex items-center gap-2">
-                        <div className={`h-3.5 w-3.5 rounded-full border flex items-center justify-center transition-all z-10 ${
+                      <div className="flex items-center gap-2 text-left">
+                        <div className={`h-3.5 w-3.5 rounded-full border flex items-center justify-center transition-all z-10 shrink-0 ${
                           isSelected ? 'bg-emerald-600 border-emerald-600' : 'bg-white border-slate-300'
                         }`}>
                           {isSelected && <Check size={8} className="text-white stroke-[4]" />}
                         </div>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col min-w-0">
                           <span className="text-[6px] font-bold text-slate-300 uppercase leading-none mb-0.5">#{ (index + 1).toString().padStart(2, '0') }</span>
-                          <span className={`text-[8px] font-bold uppercase tracking-tight leading-none ${
+                          <span className={`text-[8px] font-bold uppercase tracking-tight leading-none truncate ${
                             isSelected ? 'text-emerald-700' : 'text-slate-700'
                           }`}>{status}</span>
                         </div>
@@ -145,14 +145,14 @@ export const StatusMultiSelect = ({
                   );
                 })}
               </div>
-            </ScrollArea>
+            </div>
           </div>
 
           <DialogFooter className="mt-2 pt-2 border-t border-slate-50 flex flex-row justify-between items-center bg-white">
             <Button 
               variant="ghost" 
               onClick={() => onChange([])}
-              className="h-6 text-[7px] font-black uppercase tracking-widest text-slate-400 p-0 hover:bg-transparent"
+              className="h-6 text-[7px] font-black uppercase tracking-widest text-slate-400 p-0 hover:bg-transparent hover:text-slate-600"
             >
               RESET
             </Button>
