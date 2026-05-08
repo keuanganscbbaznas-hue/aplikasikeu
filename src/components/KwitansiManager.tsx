@@ -72,7 +72,7 @@ export const KwitansiManager = () => {
   };
 
   return (
-    <div className="space-y-6 bg-slate-50/50 p-2 md:p-6 rounded-[2.5rem]">
+    <div className="space-y-6">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-2xl font-black text-slate-800 tracking-tight">Kwitansi Keuangan</h2>

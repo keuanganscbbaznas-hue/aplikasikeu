@@ -46,6 +46,7 @@ import { UM_STAGES, TRANSACTION_STAGES } from './types';
 import { BaznasBudgetManager } from './components/BaznasBudgetManager';
 import { LaporanManager } from './components/LaporanManager';
 import { KwitansiManager } from './components/KwitansiManager';
+import { AdministrasiManager } from './components/administrasi/AdministrasiManager';
 import { AnalisisManager } from './components/AnalisisManager';
 import { BerkasDigitalManager } from './components/BerkasDigitalManager';
 import SignaturePad from 'signature_pad';
@@ -87,6 +88,7 @@ import {
   Database,
   Lock,
   Activity,
+  Briefcase,
   RefreshCw,
   Check
 } from 'lucide-react';
@@ -459,7 +461,7 @@ export default function App() {
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedSubmissions, setSelectedSubmissions] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'berkas' | 'kwitansi' | 'analisis' | 'settings'>('tracking');
+  const [activeTab, setActiveTab] = useState<'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'berkas' | 'administrasi' | 'analisis' | 'settings'>('tracking');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   const toggleSelection = (id: string) => {
@@ -903,7 +905,7 @@ export default function App() {
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan PertUM ke BAZNAS', icon: FileText, access: 'admin' },
     { id: 'berkas', label: 'Berkas Digital', icon: FolderOpen, access: 'admin' },
-    { id: 'kwitansi', label: 'Kwitansi Keuangan', icon: FileDown, access: 'owner' },
+    { id: 'administrasi', label: 'Administrasi Keuangan', icon: Briefcase, access: 'owner' },
     { id: 'analisis', label: 'Analisis Anggaran vs Laporan', icon: PieChart, access: 'owner' },
     { id: 'settings', label: 'Settingan', icon: Settings, access: 'owner_only' },
   ];
@@ -1409,8 +1411,8 @@ export default function App() {
                   <BerkasDigitalManager />
                 )}
 
-                {activeTab === 'kwitansi' && profile?.email === OWNER_EMAIL && (
-                  <KwitansiManager />
+                {activeTab === 'administrasi' && profile?.email === OWNER_EMAIL && (
+                  <AdministrasiManager />
                 )}
 
                 {activeTab === 'analisis' && (profile?.email === OWNER_EMAIL || isKamal || isKeuanganSCB) && (

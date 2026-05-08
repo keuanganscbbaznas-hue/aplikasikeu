@@ -1,0 +1,201 @@
+import React, { useState } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  ClipboardCheck, 
+  Send, 
+  Upload, 
+  CheckCircle2, 
+  Banknote, 
+  CreditCard,
+  User
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'motion/react';
+
+export const DonationConfirmation = () => {
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setLoading(false);
+      setIsSubmitted(true);
+      toast.success("Konfirmasi Donasi Berhasil Dikirim");
+    }, 1500);
+  };
+
+  if (isSubmitted) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm px-6">
+        <motion.div 
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          className="h-20 w-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6"
+        >
+          <CheckCircle2 size={40} />
+        </motion.div>
+        <h2 className="text-2xl font-black text-slate-800 text-center">Terima Kasih Atas Donasi Anda!</h2>
+        <p className="text-slate-500 text-center mt-2 max-w-xs">Konfirmasi Anda telah kami terima dan akan segera diproses oleh tim keuangan.</p>
+        <Button 
+          variant="outline" 
+          className="mt-8 rounded-xl px-8"
+          onClick={() => setIsSubmitted(false)}
+        >
+          Kirim Konfirmasi Baru
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-black text-slate-800 tracking-tight">Konfirmasi Donasi</h2>
+        <p className="text-sm text-slate-500 font-medium mt-1">Formulir konfirmasi transfer donasi untuk Sekolah Cendekia BAZNAS.</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <Card className="lg:col-span-2 rounded-[2rem] border-slate-100 shadow-sm overflow-hidden">
+          <CardHeader className="bg-slate-50/50 border-b border-slate-100 px-8 py-6">
+            <CardTitle className="text-lg font-black text-slate-800 flex items-center gap-2">
+              <ClipboardCheck className="text-primary" size={20} />
+              Formulir Konfirmasi
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Nama Lengkap Donatur</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <Input placeholder="Contoh: Bpk. Ahmad" className="pl-10 h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" required />
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Email / No. HP</Label>
+                  <Input placeholder="Contoh: ahmad@email.com" className="h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" required />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Jumlah Donasi (Nominal)</Label>
+                  <div className="relative">
+                    <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <Input type="number" placeholder="Rp. 0" className="pl-10 h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" required />
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Rekening Tujuan</Label>
+                  <Select required>
+                    <SelectTrigger className="h-12 rounded-xl bg-slate-50/50 border-slate-200 shadow-none">
+                      <SelectValue placeholder="Pilih Rekening" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bri">BRI - 1234 5678 9012 345</SelectItem>
+                      <SelectItem value="mandiri">Mandiri - 0987 6543 2109 8</SelectItem>
+                      <SelectItem value="bni">BNI Syariah - 5555 4444 33</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Bukti Transfer</Label>
+                <div className="flex items-center justify-center w-full">
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-200 border-dashed rounded-2xl cursor-pointer bg-slate-50/50 hover:bg-white hover:border-primary/50 transition-all">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Upload className="w-8 h-8 mb-3 text-slate-400" />
+                      <p className="mb-2 text-sm text-slate-500"><span className="font-bold">Klik untuk upload</span> atau drag and drop</p>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">PNG, JPG atau PDF (MAX. 5MB)</p>
+                    </div>
+                    <input type="file" className="hidden" accept="image/*,.pdf" />
+                  </label>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Keterangan / Doa (Opsional)</Label>
+                <Textarea placeholder="Tuliskan pesan atau doa anda..." className="min-h-[100px] rounded-2xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" />
+              </div>
+
+              <Button type="submit" disabled={loading} className="w-full h-14 bg-slate-900 hover:bg-primary transition-all text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-slate-900/10">
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    MEMPROSES...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Send size={18} />
+                    KIRIM KONFIRMASI
+                  </span>
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <Card className="rounded-[2rem] border-none bg-emerald-600 text-white shadow-xl shadow-emerald-900/20">
+            <CardContent className="p-8">
+              <h3 className="text-xl font-black mb-4">Kenapa Konfirmasi?</h3>
+              <ul className="space-y-4">
+                <li className="flex items-start gap-3">
+                   <div className="h-6 w-6 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+                      <CheckCircle2 size={14} />
+                   </div>
+                   <p className="text-sm font-medium leading-tight">Memudahkan tim kami memverifikasi dana anda dengan cepat.</p>
+                </li>
+                <li className="flex items-start gap-3">
+                   <div className="h-6 w-6 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+                      <CheckCircle2 size={14} />
+                   </div>
+                   <p className="text-sm font-medium leading-tight">Menjaga transparansi dan akuntabilitas pelaporan keuangan.</p>
+                </li>
+                <li className="flex items-start gap-3">
+                   <div className="h-6 w-6 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+                      <CheckCircle2 size={14} />
+                   </div>
+                   <p className="text-sm font-medium leading-tight">Memastikan donasi Anda tersalurkan ke program yang tepat.</p>
+                </li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[2rem] border-slate-100 shadow-sm">
+             <CardContent className="p-8">
+                <h3 className="font-black text-slate-800 mb-4">Informasi Rekening</h3>
+                <div className="space-y-4">
+                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center gap-3 mb-2">
+                         <div className="h-8 w-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold text-xs">BRI</div>
+                         <p className="text-sm font-black text-slate-800">1234-5678-9012-345</p>
+                      </div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-11">A/N Sekolah Cendekia BAZNAS</p>
+                   </div>
+                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                      <div className="flex items-center gap-3 mb-2">
+                         <div className="h-8 w-8 bg-yellow-100 text-yellow-600 rounded-lg flex items-center justify-center font-bold text-xs">MDR</div>
+                         <p className="text-sm font-black text-slate-800">0987-6543-2109-8</p>
+                      </div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-11">A/N Sekolah Cendekia BAZNAS</p>
+                   </div>
+                </div>
+             </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
