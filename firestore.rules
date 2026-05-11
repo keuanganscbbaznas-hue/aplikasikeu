@@ -60,6 +60,16 @@ service cloud.firestore {
       return data.keys().hasAll(['type', 'title', 'amount', 'status', 'currentStageIndex', 'submittedBy', 'createdAt', 'updatedAt']);
     }
 
+    function isValidDonation(data) {
+      return data.keys().hasAll(['donaturName', 'contact', 'amount', 'targetAccount', 'status', 'createdAt']) &&
+             data.donaturName is string && data.donaturName.size() <= 256 &&
+             data.contact is string && data.contact.size() <= 256 &&
+             data.amount is number &&
+             data.targetAccount is string &&
+             data.status in ['pending', 'verified', 'rejected'] &&
+             data.createdAt == request.time;
+    }
+
     function isValidAppConfig(data) {
       return (!('logoURL' in data) || data.logoURL is string);
     }
@@ -114,6 +124,13 @@ service cloud.firestore {
     match /berkas_digital/{berkasId} {
       allow read: if true;
       allow write: if isSignedIn();
+    }
+
+    match /donations/{donationId} {
+      allow read: if isAdmin() || getRole() in ['finance', 'accountant', 'management'];
+      allow create: if isValidDonation(incoming());
+      allow update: if (isAdmin() || getRole() in ['finance', 'accountant', 'management']) && isValidDonation(incoming());
+      allow delete: if isAdmin();
     }
   }
 }

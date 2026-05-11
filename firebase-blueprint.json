@@ -71,6 +71,29 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["tahun", "bulan", "link", "createdAt"]
+    },
+    "Donation": {
+      "title": "Donation",
+      "description": "Donation confirmation records.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "donaturName": { "type": "string" },
+        "contact": { "type": "string" },
+        "amount": { "type": "number" },
+        "targetAccount": { "type": "string" },
+        "notes": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "donaturName",
+        "contact",
+        "amount",
+        "targetAccount",
+        "status",
+        "createdAt"
+      ]
     }
   },
   "firestore": {
@@ -89,6 +112,10 @@
     "/berkas_digital/{berkasId}": {
       "schema": "BerkasDigital",
       "description": "Collection of digital file links."
+    },
+    "/donations/{donationId}": {
+      "schema": "Donation",
+      "description": "Collection of donation confirmations."
     }
   }
 }

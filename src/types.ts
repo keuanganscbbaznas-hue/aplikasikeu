@@ -107,3 +107,15 @@ export interface Submission {
     kamal?: SignatureData;
   };
 }
+
+export interface DonationConfirmation {
+  id: string;
+  donaturName: string;
+  contact: string;
+  amount: number;
+  targetAccount: string;
+  evidenceUrl?: string;
+  notes?: string;
+  status: 'pending' | 'verified' | 'rejected';
+  createdAt: any;
+}

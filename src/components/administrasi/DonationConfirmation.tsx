@@ -12,25 +12,74 @@ import {
   CheckCircle2, 
   Banknote, 
   CreditCard,
-  User
+  User,
+  AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
+import { db } from '../../firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+
+const SHEET_ID = '1VmjYCnvWO0vrX5PinazbqR3jSIDnEoVAVfyMdvDs4VM';
 
 export const DonationConfirmation = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    donaturName: '',
+    contact: '',
+    amount: '',
+    targetAccount: '',
+    notes: ''
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // 1. Save to Firestore (Internal App Database)
+      const donationRef = await addDoc(collection(db, 'donations'), {
+        ...formData,
+        amount: Number(formData.amount),
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      });
+
+      // 2. Clear sync to Google Sheets (External Database)
+      const sheetData = [[
+        donationRef.id,
+        new Date().toLocaleString('id-ID'),
+        formData.donaturName,
+        formData.contact,
+        formData.amount,
+        formData.targetAccount,
+        formData.notes,
+        'Pending'
+      ]];
+
+      const sheetRes = await fetch('/api/sheets/append', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spreadsheetId: SHEET_ID,
+          range: 'Sheet1!A1', // Adjust sheet name if necessary
+          data: sheetData
+        })
+      });
+
+      if (!sheetRes.ok) {
+        console.warn("Failed to sync to Google Sheets, but saved to Firestore.");
+      }
+
       setLoading(false);
       setIsSubmitted(true);
-      toast.success("Konfirmasi Donasi terkirim ke keuanganscbbaznas@gmail.com");
-    }, 1500);
+      toast.success("Konfirmasi Donasi terkirim ke database dan keuanganscbbaznas@gmail.com");
+    } catch (error: any) {
+      console.error("Submission Error:", error);
+      toast.error("Gagal mengirim konfirmasi: " + error.message);
+      setLoading(false);
+    }
   };
 
   if (isSubmitted) {
@@ -78,12 +127,24 @@ export const DonationConfirmation = () => {
                   <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Nama Lengkap Donatur</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <Input placeholder="Contoh: Bpk. Ahmad" className="pl-10 h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" required />
+                    <Input 
+                      placeholder="Contoh: Bpk. Ahmad" 
+                      className="pl-10 h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" 
+                      value={formData.donaturName}
+                      onChange={(e) => setFormData({...formData, donaturName: e.target.value})}
+                      required 
+                    />
                   </div>
                 </div>
                 <div className="space-y-3">
                   <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Email / No. HP</Label>
-                  <Input placeholder="Contoh: ahmad@email.com" className="h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" required />
+                  <Input 
+                    placeholder="Contoh: ahmad@email.com" 
+                    className="h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" 
+                    value={formData.contact}
+                    onChange={(e) => setFormData({...formData, contact: e.target.value})}
+                    required 
+                  />
                 </div>
               </div>
 
@@ -92,12 +153,23 @@ export const DonationConfirmation = () => {
                   <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Jumlah Donasi (Nominal)</Label>
                   <div className="relative">
                     <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <Input type="number" placeholder="Rp. 0" className="pl-10 h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" required />
+                    <Input 
+                      type="number" 
+                      placeholder="Rp. 0" 
+                      className="pl-10 h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" 
+                      value={formData.amount}
+                      onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                      required 
+                    />
                   </div>
                 </div>
                 <div className="space-y-3">
                   <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Rekening Tujuan</Label>
-                  <Select required>
+                  <Select 
+                    required 
+                    value={formData.targetAccount}
+                    onValueChange={(val) => setFormData({...formData, targetAccount: val})}
+                  >
                     <SelectTrigger className="h-12 rounded-xl bg-slate-50/50 border-slate-200 shadow-none focus:ring-primary/20">
                       <SelectValue placeholder="Pilih Rekening" />
                     </SelectTrigger>
@@ -125,7 +197,12 @@ export const DonationConfirmation = () => {
 
               <div className="space-y-3">
                 <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Keterangan / Doa (Opsional)</Label>
-                <Textarea placeholder="Tuliskan pesan atau doa anda..." className="min-h-[100px] rounded-2xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" />
+                <Textarea 
+                  placeholder="Tuliskan pesan atau doa anda..." 
+                  className="min-h-[100px] rounded-2xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" 
+                  value={formData.notes}
+                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                />
               </div>
 
               <Button type="submit" disabled={loading} className="w-full h-14 bg-slate-900 hover:bg-emerald-600 transition-all text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-[0.98]">

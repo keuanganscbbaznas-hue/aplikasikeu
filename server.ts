@@ -38,6 +38,28 @@ async function startServer() {
     res.json({ ready: hasCreds, serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || null });
   });
 
+  app.post("/api/sheets/append", async (req, res) => {
+    try {
+      const auth = getAuthClient();
+      const sheets = google.sheets({ version: "v4", auth });
+      const { spreadsheetId, range, data } = req.body;
+
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: range || 'A1',
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: data
+        }
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Sheets Append Error:", error.message);
+      res.status(500).json({ error: error.message || "Gagal menambah data ke Google Sheets" });
+    }
+  });
+
   app.post("/api/sheets/sync", async (req, res) => {
     try {
       const auth = getAuthClient();
