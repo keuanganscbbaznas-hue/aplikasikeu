@@ -965,9 +965,9 @@ export default function App() {
                 />
               </div>
               <div>
-                <CardTitle className="text-4xl font-black tracking-tighter text-primary">MONETA <span className="text-emerald-500">SCB</span></CardTitle>
-                <CardDescription className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em] leading-tight mt-1">
-                  Monitoring and Electronic Treasury Application
+                <CardTitle className="text-5xl font-black tracking-tighter text-primary">MONETA <span className="text-emerald-500">SCB</span></CardTitle>
+                <CardDescription className="text-slate-400 font-bold text-sm uppercase tracking-[0.2em] leading-tight mt-2 max-w-sm">
+                  Monitoring and Electronic <br /> Treasury Application
                 </CardDescription>
               </div>
             </CardHeader>
@@ -1004,8 +1004,8 @@ export default function App() {
                   />
               </div>
               <div className="flex flex-col">
-                <span className="font-black text-white text-xl tracking-tighter leading-none">MONETA <span className="text-emerald-500">SCB</span></span>
-                <div className="flex flex-col text-[8px] font-bold text-white/50 uppercase tracking-[0.15em] mt-2 leading-tight">
+                <span className="font-black text-white text-2xl tracking-tighter leading-none whitespace-nowrap">MONETA <span className="text-emerald-500">SCB</span></span>
+                <div className="flex flex-col text-[8px] font-bold text-white uppercase tracking-[0.1em] mt-2 leading-tight opacity-60">
                   <span>Monitoring & Electronic</span>
                   <span>Treasury Application</span>
                 </div>
