@@ -55,10 +55,14 @@ async function startServer() {
       stream.push(buffer);
       stream.push(null);
 
-      const fileMetadata = {
+      const fileMetadata: any = {
         name: filename || 'donation_proof.png',
-        // Optional: you could specify a folder ID here if you want to organize uploads
       };
+
+      // Use target folder if provided in env
+      if (process.env.GOOGLE_DRIVE_FOLDER_ID) {
+        fileMetadata.parents = [process.env.GOOGLE_DRIVE_FOLDER_ID];
+      }
 
       const media = {
         mimeType: mimeType || 'image/png',
@@ -68,32 +72,38 @@ async function startServer() {
       const file = await drive.files.create({
         requestBody: fileMetadata,
         media: media,
-        fields: 'id, webViewLink',
+        fields: 'id, webViewLink, webContentLink',
       });
 
       const fileId = file.data.id;
 
-      // Make file readable by anyone with the link
-      await drive.permissions.create({
-        fileId: fileId!,
-        requestBody: {
-          role: 'reader',
-          type: 'anyone',
-        },
-      });
+      // Only add permissions if not in a shared drive (where permissions might be inherited or restricted)
+      try {
+        await drive.permissions.create({
+          fileId: fileId!,
+          requestBody: {
+            role: 'reader',
+            type: 'anyone',
+          },
+        });
+      } catch (permErr: any) {
+        console.warn("Permission sync warning:", permErr.message);
+      }
 
       res.json({ 
         success: true, 
         fileId: file.data.id,
-        link: file.data.webViewLink 
+        link: file.data.webContentLink || file.data.webViewLink 
       });
     } catch (error: any) {
       console.error("Drive Upload Error:", error.message);
+      
       // Return a 200 with success: false so the frontend can handle it as a non-fatal sync error
-      if (error.message.includes("storage quota")) {
+      if (error.message.toLowerCase().includes("storage quota") || error.message.toLowerCase().includes("quota exceeded")) {
         return res.status(200).json({ 
           success: false, 
-          error: "Service Account Quota Exceeded. Please share a folder with the service account email.",
+          error: "Drive Quota Error",
+          message: "Service Account tidak memiliki kuota storage. Silakan bagikan folder Google Drive ke email service account sebagai Editor.",
           serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
         });
       }

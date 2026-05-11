@@ -83,9 +83,14 @@ export const DonationConfirmation = () => {
             if (uploadData.success) {
               driveLink = uploadData.link;
               finalEvidenceUrl = driveLink; // Update Firestore link with Drive link
+            } else if (uploadData.error === "Drive Quota Error") {
+              console.warn("Drive sync skipped:", uploadData.message);
+              // Store as base64 internally but warn the user about Drive sync
+              toast.warning("Bukti tersimpan secara internal, namun gagal sinkron ke Drive karena kuota storage Service Account habis. Mohon bagikan folder Drive ke: " + uploadData.serviceAccount, {
+                duration: 10000
+              });
             } else {
-              console.warn("Drive sync skipped:", uploadData.error);
-              console.info("To enable Drive uploads, share a folder with:", uploadData.serviceAccount);
+              console.warn("Drive sync issue:", uploadData.error);
             }
           } else {
             console.warn("Gagal upload ke Drive, menggunakan link internal.");
