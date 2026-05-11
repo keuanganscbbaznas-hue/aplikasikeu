@@ -2,7 +2,8 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentTemplates } from './DocumentTemplates';
 import { DonationConfirmation } from './DonationConfirmation';
-import { FileText, ClipboardCheck, Briefcase } from 'lucide-react';
+import { DonationList } from './DonationList';
+import { FileText, ClipboardCheck, Briefcase, ListFilter } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const AdministrasiManager = () => {
@@ -34,6 +35,13 @@ export const AdministrasiManager = () => {
             <ClipboardCheck size={14} />
             Konfirmasi Donasi
           </TabsTrigger>
+          <TabsTrigger 
+            value="list" 
+            className="flex-1 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
+          >
+            <ListFilter size={14} />
+            Data Donasi
+          </TabsTrigger>
         </TabsList>
 
         <motion.div
@@ -47,6 +55,10 @@ export const AdministrasiManager = () => {
           
           <TabsContent value="donasi">
             <DonationConfirmation />
+          </TabsContent>
+
+          <TabsContent value="list">
+            <DonationList />
           </TabsContent>
         </motion.div>
       </Tabs>

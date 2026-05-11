@@ -80,8 +80,13 @@ export const DonationConfirmation = () => {
 
           if (uploadRes.ok) {
             const uploadData = await uploadRes.json();
-            driveLink = uploadData.link;
-            finalEvidenceUrl = driveLink; // Update Firestore link with Drive link
+            if (uploadData.success) {
+              driveLink = uploadData.link;
+              finalEvidenceUrl = driveLink; // Update Firestore link with Drive link
+            } else {
+              console.warn("Drive sync skipped:", uploadData.error);
+              console.info("To enable Drive uploads, share a folder with:", uploadData.serviceAccount);
+            }
           } else {
             console.warn("Gagal upload ke Drive, menggunakan link internal.");
           }

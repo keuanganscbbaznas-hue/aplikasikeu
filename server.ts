@@ -89,6 +89,14 @@ async function startServer() {
       });
     } catch (error: any) {
       console.error("Drive Upload Error:", error.message);
+      // Return a 200 with success: false so the frontend can handle it as a non-fatal sync error
+      if (error.message.includes("storage quota")) {
+        return res.status(200).json({ 
+          success: false, 
+          error: "Service Account Quota Exceeded. Please share a folder with the service account email.",
+          serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+        });
+      }
       res.status(500).json({ error: error.message || "Gagal mengunggah file ke Google Drive" });
     }
   });
