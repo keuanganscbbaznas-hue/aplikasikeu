@@ -965,9 +965,9 @@ export default function App() {
                 />
               </div>
               <div>
-                <CardTitle className="text-2xl font-bold tracking-tight text-primary">Aplikasi Keuangan</CardTitle>
-                <CardDescription className="text-slate-600 font-medium">
-                  Sekolah Cendekia BAZNAS
+                <CardTitle className="text-2xl font-black tracking-tighter text-primary">MONETA <span className="text-emerald-500">SCB</span></CardTitle>
+                <CardDescription className="text-slate-500 font-bold text-[10px] uppercase tracking-widest leading-tight">
+                  Monitoring and Electronic Treasury Application
                 </CardDescription>
               </div>
             </CardHeader>
@@ -1004,11 +1004,10 @@ export default function App() {
                   />
               </div>
               <div className="flex flex-col">
-                <span className="font-black text-white text-base tracking-tighter leading-none">Keuangan<span className="text-emerald-500">App</span></span>
-                <div className="flex items-center gap-1 text-[8px] font-bold text-slate-500 uppercase tracking-wide mt-1">
-                  <span>Sekolah</span>
-                  <span>Cendekia</span>
-                  <span>BAZNAS</span>
+                <span className="font-black text-white text-base tracking-tighter leading-none">MONETA <span className="text-emerald-500">SCB</span></span>
+                <div className="flex flex-col text-[7px] font-bold text-slate-500 uppercase tracking-widest mt-1.5 leading-none">
+                  <span>Monitoring & Electronic</span>
+                  <span>Treasury Application</span>
                 </div>
               </div>
             </div>
