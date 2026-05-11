@@ -58,15 +58,48 @@ export const DonationConfirmation = () => {
     setLoading(true);
     
     try {
+      let finalEvidenceUrl = formData.evidenceUrl;
+      let driveLink = "";
+
+      // Upload to Google Drive if evidence exists
+      if (formData.evidenceUrl) {
+        try {
+          const mimeType = formData.evidenceUrl.split(';')[0].split(':')[1];
+          const extension = mimeType.split('/')[1] || 'png';
+          const filename = `bukti_donasi_${formData.donaturName.replace(/\s+/g, '_')}_${Date.now()}.${extension}`;
+          
+          const uploadRes = await fetch('/api/drive/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filename,
+              base64Data: formData.evidenceUrl,
+              mimeType
+            })
+          });
+
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            driveLink = uploadData.link;
+            finalEvidenceUrl = driveLink; // Update Firestore link with Drive link
+          } else {
+            console.warn("Gagal upload ke Drive, menggunakan link internal.");
+          }
+        } catch (uploadErr) {
+          console.error("Drive upload error detail:", uploadErr);
+        }
+      }
+
       // 1. Save to Firestore (Internal App Database)
       const donationRef = await addDoc(collection(db, 'donations'), {
         ...formData,
+        evidenceUrl: finalEvidenceUrl,
         amount: Number(formData.amount),
         status: 'pending',
         createdAt: serverTimestamp(),
       });
 
-      // 2. Clear sync to Google Sheets (External Database)
+      // 2. Sync to Google Sheets (External Database)
       const sheetData = [[
         donationRef.id,
         new Date().toLocaleString('id-ID'),
@@ -76,7 +109,7 @@ export const DonationConfirmation = () => {
         formData.targetAccount,
         formData.notes,
         'Pending',
-        formData.evidenceUrl ? "[Bukti Terlampir]" : "Tidak Ada Bukti"
+        driveLink || (formData.evidenceUrl ? "[Internal Image]" : "Tidak Ada Bukti")
       ]];
 
       const sheetRes = await fetch('/api/sheets/append', {

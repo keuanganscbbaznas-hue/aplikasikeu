@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 import { google } from "googleapis";
+import { Readable } from "stream";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,6 +37,60 @@ async function startServer() {
   app.get("/api/system/sync/status", (req, res) => {
     const hasCreds = !!(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY);
     res.json({ ready: hasCreds, serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || null });
+  });
+
+  app.post("/api/drive/upload", async (req, res) => {
+    try {
+      const auth = getAuthClient();
+      const drive = google.drive({ version: "v3", auth });
+      const { filename, base64Data, mimeType } = req.body;
+
+      if (!base64Data) {
+        return res.status(400).json({ error: "Missing file data" });
+      }
+
+      // Convert Base64 to Buffer
+      const buffer = Buffer.from(base64Data.split(',')[1], 'base64');
+      const stream = new Readable();
+      stream.push(buffer);
+      stream.push(null);
+
+      const fileMetadata = {
+        name: filename || 'donation_proof.png',
+        // Optional: you could specify a folder ID here if you want to organize uploads
+      };
+
+      const media = {
+        mimeType: mimeType || 'image/png',
+        body: stream,
+      };
+
+      const file = await drive.files.create({
+        requestBody: fileMetadata,
+        media: media,
+        fields: 'id, webViewLink',
+      });
+
+      const fileId = file.data.id;
+
+      // Make file readable by anyone with the link
+      await drive.permissions.create({
+        fileId: fileId!,
+        requestBody: {
+          role: 'reader',
+          type: 'anyone',
+        },
+      });
+
+      res.json({ 
+        success: true, 
+        fileId: file.data.id,
+        link: file.data.webViewLink 
+      });
+    } catch (error: any) {
+      console.error("Drive Upload Error:", error.message);
+      res.status(500).json({ error: error.message || "Gagal mengunggah file ke Google Drive" });
+    }
   });
 
   app.post("/api/sheets/append", async (req, res) => {
