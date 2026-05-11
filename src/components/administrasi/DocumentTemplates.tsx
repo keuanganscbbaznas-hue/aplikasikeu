@@ -5,15 +5,44 @@ import { FileText, Download, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 const TEMPLATES = [
-  { id: '1', name: 'Formulir Pengajuan Dana UM', description: 'Template baku untuk pengajuan uang muka kegiatan.', category: 'Pengajuan' },
-  { id: '2', name: 'Laporan Pertanggungjawaban (LPJ)', description: 'Format laporan realisasi penggunaan dana.', category: 'Pelaporan' },
-  { id: '3', name: 'Surat Tugas Perjalanan Dinas', description: 'Dokumen pendukung untuk transportasi dan akomodasi.', category: 'Administrasi' },
-  { id: '4', name: 'Formulir Permintaan Kwitansi', description: 'Form internal untuk pengajuan pencetakan kwitansi.', category: 'Keuangan' },
-  { id: '5', name: 'Template Berita Acara Serah Terima', description: 'Dokumen bukti serah terima barang/jasa.', category: 'Logistik' },
+  { 
+    id: '1', 
+    name: 'Berita Acara Serah Terima (BAST)', 
+    description: 'Dokumen bukti serah terima barang atau jasa antara pihak-pihak terkait.', 
+    category: 'Logistik',
+    fileName: 'Template_BAST_SCB.doc',
+    content: "BERITA ACARA SERAH TERIMA\n\nYang bertanda tangan di bawah ini...\nPihak Pertama menyerahkan kepada Pihak Kedua..."
+  },
+  { 
+    id: '2', 
+    name: 'Surat Perintah Kerja (SPK)', 
+    description: 'Template surat perintah kerja untuk pelaksanaan pekerjaan tertentu sesuai standar SCB.', 
+    category: 'Kontrak',
+    fileName: 'Template_SPK_SCB.doc',
+    content: "SEKOLAH CENDEKIA BAZNAS\nSURAT PERINTAH KERJA\nNo: [Nomor Surat]\n\nYang bertanda tangan di bawah ini...\nMemberikan perintah kepada...\nUntuk melaksanakan pekerjaan..."
+  },
+  { 
+    id: '3', 
+    name: 'Berita Acara Kehilangan Dokumen', 
+    description: 'Dokumen pengganti bukti laporan yang hilang sebagai kelengkapan pertanggungjawaban.', 
+    category: 'Pelaporan',
+    fileName: 'Template_Berita_Acara_Kehilangan_SCB.doc',
+    content: "SEKOLAH CENDEKIA BAZNAS\nBERITA ACARA KEHILANGAN DOKUMEN\n\nYang bertanda tangan di bawah ini:\nNama: [Nama]\nLembaga: SCB\n\nPada tanggal [Tanggal] menjelaskan kronologi kehilangannya..."
+  },
 ];
 
 export const DocumentTemplates = () => {
   const [search, setSearch] = React.useState('');
+
+  const handleDownload = (template: typeof TEMPLATES[0]) => {
+    const element = document.createElement("a");
+    const file = new Blob([template.content], {type: 'text/plain'});
+    element.href = URL.createObjectURL(file);
+    element.download = template.fileName;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
 
   const filteredTemplates = TEMPLATES.filter(t => 
     t.name.toLowerCase().includes(search.toLowerCase()) || 
@@ -52,10 +81,15 @@ export const DocumentTemplates = () => {
                       {template.category}
                     </span>
                   </div>
-                  <h3 className="font-bold text-slate-800 truncate">{template.name}</h3>
+                  <h3 className="font-bold text-slate-800 truncate leading-tight">{template.name}</h3>
                   <p className="text-xs text-slate-500 mt-1 line-clamp-2">{template.description}</p>
                   
-                  <Button variant="outline" size="sm" className="w-full mt-4 rounded-xl gap-2 border-slate-200 group-hover:border-primary group-hover:bg-primary/5 transition-all">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => handleDownload(template)}
+                    className="w-full mt-4 rounded-xl gap-2 border-slate-200 group-hover:border-primary group-hover:bg-primary/5 transition-all text-[10px] font-black uppercase tracking-widest"
+                  >
                     <Download size={14} />
                     Download Template
                   </Button>

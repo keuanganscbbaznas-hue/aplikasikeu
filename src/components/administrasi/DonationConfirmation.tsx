@@ -102,8 +102,8 @@ export const DonationConfirmation = () => {
                       <SelectValue placeholder="Pilih Rekening" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
-                      <SelectItem value="smp">Rekening SMP</SelectItem>
-                      <SelectItem value="sma">Rekening SMA</SelectItem>
+                      <SelectItem value="smp">SMP: 1032913357 (SMP CENDEKIA BAZNAS)</SelectItem>
+                      <SelectItem value="sma">SMA: 1054796605 (SMA CENDEKIA BAZNAS)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -170,6 +170,22 @@ export const DonationConfirmation = () => {
                 </li>
               </ul>
             </CardContent>
+          </Card>
+
+          <Card className="rounded-[2rem] border-slate-100 shadow-sm border">
+             <CardContent className="p-6">
+                <h3 className="font-black text-slate-800 mb-4 text-sm">Nomor Rekening Donasi</h3>
+                <div className="space-y-3">
+                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">SMP CENDEKIA BAZNAS</p>
+                      <p className="text-sm font-black text-slate-800">1032913357</p>
+                   </div>
+                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-2">SMA CENDEKIA BAZNAS</p>
+                      <p className="text-sm font-black text-slate-800">1054796605</p>
+                   </div>
+                </div>
+             </CardContent>
           </Card>
         </div>
       </div>

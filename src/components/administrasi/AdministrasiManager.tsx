@@ -1,9 +1,8 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { KwitansiManager } from '../KwitansiManager';
 import { DocumentTemplates } from './DocumentTemplates';
 import { DonationConfirmation } from './DonationConfirmation';
-import { FileDown, FileText, ClipboardCheck, Briefcase } from 'lucide-react';
+import { FileText, ClipboardCheck, Briefcase } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const AdministrasiManager = () => {
@@ -15,19 +14,12 @@ export const AdministrasiManager = () => {
         </div>
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Administrasi Keuangan</h1>
-          <p className="text-sm font-medium text-slate-500">Kelola dokumen, kwitansi, dan konfirmasi donasi dalam satu tempat.</p>
+          <p className="text-sm font-medium text-slate-500">Kelola dokumen dan konfirmasi donasi dalam satu tempat.</p>
         </div>
       </div>
 
-      <Tabs defaultValue="kwitansi" className="w-full">
+      <Tabs defaultValue="templates" className="w-full">
         <TabsList className="bg-white/50 p-1.5 rounded-2xl h-auto flex flex-wrap shadow-sm border border-slate-100 mb-8">
-          <TabsTrigger 
-            value="kwitansi" 
-            className="flex-1 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
-          >
-            <FileDown size={14} />
-            Permintaan Kwitansi
-          </TabsTrigger>
           <TabsTrigger 
             value="templates" 
             className="flex-1 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
@@ -49,10 +41,6 @@ export const AdministrasiManager = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <TabsContent value="kwitansi">
-            <KwitansiManager />
-          </TabsContent>
-          
           <TabsContent value="templates">
             <DocumentTemplates />
           </TabsContent>

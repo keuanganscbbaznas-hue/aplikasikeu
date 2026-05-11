@@ -45,7 +45,6 @@ import { StatusMultiSelect } from './components/StatusMultiSelect';
 import { UM_STAGES, TRANSACTION_STAGES } from './types';
 import { BaznasBudgetManager } from './components/BaznasBudgetManager';
 import { LaporanManager } from './components/LaporanManager';
-import { KwitansiManager } from './components/KwitansiManager';
 import { AdministrasiManager } from './components/administrasi/AdministrasiManager';
 import { AnalisisManager } from './components/AnalisisManager';
 import { BerkasDigitalManager } from './components/BerkasDigitalManager';
@@ -1306,12 +1305,8 @@ export default function App() {
                           <TabsTrigger value="completed" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white uppercase tracking-tight">Settled</TabsTrigger>
                         </TabsList>
                         
-                        {profile?.email === OWNER_EMAIL && (
-                          <div className="md:max-w-xs w-full">
-                            <GoogleDriveSync submissions={submissions} />
-                          </div>
-                        )}
-                      </div>
+                          {/* Sync feature removed per user request */}
+                        </div>
 
                       <TabsContent value="all">
                         <SubmissionGrid 
@@ -3022,176 +3017,6 @@ const GoogleSheetsSection = ({ title, url, driveUrl, submissions }: { title: str
   </Card>
 );
 
-function GoogleDriveSync({ submissions }: { submissions: Submission[] }) {
-  const [isReady, setIsReady] = useState(false);
-  const [serviceAccountEmail, setServiceAccountEmail] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [autoSync, setAutoSync] = useState(true); 
-  const [lastSync, setLastSync] = useState<string | null>(null);
-  const [showInfo, setShowInfo] = useState(false);
-
-  useEffect(() => {
-    checkStatus();
-  }, []);
-
-  // Auto-sync effect
-  useEffect(() => {
-    if (autoSync && isReady && submissions.length > 0) {
-      const timer = setTimeout(() => {
-        handleSync();
-      }, 5000); 
-      return () => clearTimeout(timer);
-    }
-  }, [submissions, autoSync, isReady]);
-
-  const checkStatus = async () => {
-    try {
-      const res = await fetch('/api/system/sync/status');
-      const data = await res.json();
-      setIsReady(data.ready);
-      setServiceAccountEmail(data.serviceAccount || '');
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleSync = async () => {
-    if (isSyncing || !isReady) return;
-    setIsSyncing(true);
-    try {
-      const sheetHeaders = ['ID', 'Judul', 'Jumlah', 'Jenis', 'Status', 'PIC', 'Deskripsi', 'Tanggal Dibuat', 'Link Bukti', 'Link LPJ'];
-      const sheetRows = submissions.map(s => [
-        s.id || '',
-        s.title || '',
-        s.amount || 0,
-        s.type || '',
-        s.status || '',
-        s.picName || s.submittedByName || '',
-        s.description || '',
-        format(parseFirestoreDate(s.createdAt || new Date()), 'dd MMM yyyy HH:mm'),
-        s.evidenceUrl || '',
-        s.lpjUrl || ''
-      ]);
-      const sheetData = [sheetHeaders, ...sheetRows];
-
-      const resSheets = await fetch('/api/sheets/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          spreadsheetId: '1V4Nn0dUmFLdwzXOa3fAHKVuuEbVqAtNEKH_cGBc54tw',
-          data: sheetData
-        })
-      });
-
-      if (resSheets.ok) {
-        setLastSync(new Date().toLocaleTimeString());
-      } else {
-        const err = await resSheets.json().catch(()=>({}));
-        console.error('Sync failed', err);
-        toast.error('Sync Gagal: Periksa Environment Variables.');
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-2 relative">
-      <div className="bg-white p-2 rounded-xl shadow-md border border-slate-100 flex items-center gap-3 transition-all hover:border-blue-200">
-        <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${isReady ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-500'}`}>
-          <FolderOpen size={16} />
-        </div>
-        <div className="flex-1 min-w-[30px] pr-2">
-          <div className="flex items-center gap-2">
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none">System Auto Sync</p>
-            {isReady && <div className="h-1 w-1 rounded-full bg-emerald-500 animate-pulse" />}
-          </div>
-          <p className="text-[8px] font-medium text-slate-500 mt-0.5 truncate max-w-[120px]" title={serviceAccountEmail}>
-            {isReady ? 'Active Engine' : 'Setup Required'}
-          </p>
-        </div>
-        <div className="flex gap-1.5 shrink-0">
-          {!isReady ? (
-            <>
-              <Button 
-                size="icon-sm"
-                variant="ghost" 
-                onClick={() => setShowInfo(!showInfo)}
-                className="h-7 w-7 rounded-lg text-amber-500 hover:text-amber-600 hover:bg-amber-50"
-                title="Info Konfigurasi"
-              >
-                <AlertCircle size={14} />
-              </Button>
-              <Button 
-                size="sm" 
-                onClick={checkStatus}
-                className="h-7 px-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 font-black text-[8px] border-none shadow-sm"
-                title="Periksa konfigurasi Service Account di Environment Variables"
-              >
-                Cek Key
-              </Button>
-            </>
-          ) : (
-            <>
-              <div className="flex flex-col items-end mr-1">
-                <label className="flex items-center gap-1.5 cursor-pointer group">
-                  <span className="text-[7px] font-black text-slate-400 uppercase tracking-widest group-hover:text-emerald-500 transition-colors">Auto</span>
-                  <input 
-                    type="checkbox" 
-                    checked={autoSync} 
-                    onChange={(e) => setAutoSync(e.target.checked)}
-                    className="accent-emerald-500 w-2.5 h-2.5 cursor-pointer"
-                  />
-                </label>
-              </div>
-              <Button 
-                onClick={handleSync} 
-                disabled={isSyncing}
-                size="sm" 
-                className="h-7 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[8px] border-none shadow-md shadow-emerald-500/10"
-              >
-                {isSyncing ? 'SYNC...' : 'SYNC'}
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-      
-      {!isReady && showInfo && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }} 
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-amber-50 border border-amber-200 rounded-2xl p-5 space-y-4 shadow-lg absolute right-0 top-16 w-80 z-50"
-        >
-          <div className="flex items-center gap-3">
-             <AlertCircle className="text-amber-600" size={18} />
-             <p className="text-xs font-black text-amber-900 uppercase tracking-tight">Konfigurasi Service Account</p>
-             <Button variant="ghost" size="icon-xs" className="ml-auto" onClick={() => setShowInfo(false)}>
-               <X size={14} />
-             </Button>
-          </div>
-          <div className="space-y-3 bg-white/50 p-4 rounded-xl border border-amber-100 text-[10px] text-amber-800 leading-relaxed md:w-[400px]">
-             <p>Agar sistem bisa menyinkronkan data otomatis ke Spreadsheet di belakang layar (tanpa auth popup), Anda harus menambahkan kredensial Service Account ke Environment Variables (Settings &gt; API Keys / Environment Variables).</p>
-             <div className="bg-slate-100 p-3 rounded-xl border border-slate-200 font-mono text-[9px] space-y-1 text-slate-800 break-all leading-tight">
-               <span className="block">GOOGLE_SERVICE_ACCOUNT_EMAIL = "nama-service@project.iam.gserviceaccount.com"</span>
-               <span className="block">GOOGLE_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\nMIIE..."</span>
-             </div>
-             <p className="font-bold text-red-600">PENTING: Jangan lupa jadikan email Service Account di atas sebagai "Editor" di Google Sheet Anda supaya sistem diizinkan mengisi datanya.</p>
-          </div>
-        </motion.div>
-      )}
-
-      {lastSync && isReady && (
-        <div className="flex items-center gap-2 px-3">
-           <div className="h-1 w-1 rounded-full bg-emerald-500" />
-           <span className="text-[8px] font-bold text-emerald-500 uppercase tracking-widest">Database Terakhir Disinkronisasi: {lastSync}</span>
-        </div>
-      )}
-    </div>
-  );
-}
 
 const GitHubInfo = () => (
   <Card className="border-slate-200 shadow-sm mt-6">
