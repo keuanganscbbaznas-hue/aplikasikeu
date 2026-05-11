@@ -30,8 +30,28 @@ export const DonationConfirmation = () => {
     contact: '',
     amount: '',
     targetAccount: '',
-    notes: ''
+    notes: '',
+    evidenceUrl: ''
   });
+  const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 700 * 1024) {
+        toast.error("Ukuran file maksimal 700KB untuk upload bukti donasi.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setEvidencePreview(base64String);
+        setFormData(prev => ({ ...prev, evidenceUrl: base64String }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +75,8 @@ export const DonationConfirmation = () => {
         formData.amount,
         formData.targetAccount,
         formData.notes,
-        'Pending'
+        'Pending',
+        formData.evidenceUrl ? "[Bukti Terlampir]" : "Tidak Ada Bukti"
       ]];
 
       const sheetRes = await fetch('/api/sheets/append', {
@@ -184,13 +205,29 @@ export const DonationConfirmation = () => {
               <div className="space-y-3">
                 <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Bukti Transfer</Label>
                 <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-200 border-dashed rounded-2xl cursor-pointer bg-slate-50/50 hover:bg-white hover:border-primary/50 transition-all">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-8 h-8 mb-3 text-slate-400" />
-                      <p className="mb-2 text-sm text-slate-500"><span className="font-bold">Klik untuk upload</span> atau drag and drop</p>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">PNG, JPG atau PDF (MAX. 5MB)</p>
-                    </div>
-                    <input type="file" className="hidden" accept="image/*,.pdf" />
+                  <label className="flex flex-col items-center justify-center w-full min-h-32 border-2 border-slate-200 border-dashed rounded-2xl cursor-pointer bg-slate-50/50 hover:bg-white hover:border-primary/50 transition-all overflow-hidden relative">
+                    {evidencePreview ? (
+                      <div className="w-full h-full p-2">
+                        {evidencePreview.startsWith('data:application/pdf') ? (
+                          <div className="flex flex-col items-center p-4">
+                            <ClipboardCheck className="w-12 h-12 text-blue-500 mb-2" />
+                            <p className="text-xs font-bold text-slate-600">File PDF Terunggah</p>
+                          </div>
+                        ) : (
+                          <img src={evidencePreview} alt="Preview" className="w-full max-h-64 object-contain rounded-xl" />
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity rounded-2xl">
+                          <p className="text-white text-xs font-black uppercase tracking-widest">Ganti File</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="w-8 h-8 mb-3 text-slate-400" />
+                        <p className="mb-2 text-sm text-slate-500"><span className="font-bold">Klik untuk upload</span> atau drag and drop</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">PNG, JPG atau PDF (MAX. 5MB)</p>
+                      </div>
+                    )}
+                    <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleFileChange} />
                   </label>
                 </div>
               </div>
