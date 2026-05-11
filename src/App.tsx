@@ -1406,7 +1406,7 @@ export default function App() {
                   <BerkasDigitalManager />
                 )}
 
-                {activeTab === 'administrasi' && profile?.email === OWNER_EMAIL && (
+                {activeTab === 'administrasi' && (
                   <AdministrasiManager />
                 )}
 
