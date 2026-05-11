@@ -6,7 +6,11 @@ import { DonationList } from './DonationList';
 import { FileText, ClipboardCheck, Briefcase, ListFilter } from 'lucide-react';
 import { motion } from 'motion/react';
 
-export const AdministrasiManager = () => {
+interface AdministrasiManagerProps {
+  isAdmin?: boolean;
+}
+
+export const AdministrasiManager = ({ isAdmin = false }: AdministrasiManagerProps) => {
   return (
     <div className="space-y-6 bg-slate-50/50 p-2 md:p-6 rounded-[2.5rem]">
       <div className="flex items-center gap-4 mb-2">
@@ -35,13 +39,15 @@ export const AdministrasiManager = () => {
             <ClipboardCheck size={14} />
             Konfirmasi Donasi
           </TabsTrigger>
-          <TabsTrigger 
-            value="list" 
-            className="flex-1 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
-          >
-            <ListFilter size={14} />
-            Data Donasi
-          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger 
+              value="list" 
+              className="flex-1 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
+            >
+              <ListFilter size={14} />
+              Data Donasi
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <motion.div
@@ -57,9 +63,11 @@ export const AdministrasiManager = () => {
             <DonationConfirmation />
           </TabsContent>
 
-          <TabsContent value="list">
-            <DonationList />
-          </TabsContent>
+          {isAdmin && (
+            <TabsContent value="list">
+              <DonationList />
+            </TabsContent>
+          )}
         </motion.div>
       </Tabs>
     </div>

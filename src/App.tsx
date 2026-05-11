@@ -1407,7 +1407,7 @@ export default function App() {
                 )}
 
                 {activeTab === 'administrasi' && (
-                  <AdministrasiManager />
+                  <AdministrasiManager isAdmin={isAdmin || profile?.email === OWNER_EMAIL} />
                 )}
 
                 {activeTab === 'analisis' && (profile?.email === OWNER_EMAIL || isKamal || isKeuanganSCB) && (
