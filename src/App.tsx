@@ -900,7 +900,7 @@ export default function App() {
 
   const sidebarItems = [
     { id: 'tracking', label: 'Tracking Transaksi', icon: LayoutDashboard, access: 'all' },
-    { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'owner' },
+    { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'admin' },
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan PertUM ke BAZNAS', icon: FileText, access: 'admin' },
     { id: 'berkas', label: 'Berkas Digital', icon: FolderOpen, access: 'admin' },
@@ -1358,7 +1358,7 @@ export default function App() {
                   </div>
                 )}
 
-                {activeTab === 'buku_kas' && profile?.email === OWNER_EMAIL && (
+                {activeTab === 'buku_kas' && (isAdmin || profile?.email === OWNER_EMAIL) && (
                   <div className="space-y-6">
                     <Tabs defaultValue="tunai">
                       <div className="flex items-center justify-start mb-6">
