@@ -1373,9 +1373,6 @@ export default function App() {
                       
                       <TabsContent value="tunai" className="space-y-6">
                         <CashFlowBoard sheetGid="0" />
-                        <div className="grid grid-cols-1 gap-8">
-                           <MonthlyAccumulationSummary submissions={submissions} />
-                        </div>
                         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Rincian Per Bulan - Kas Tunai</h4>
                            <GoogleSheetsSection title="Buku Kas Tunai" url="https://docs.google.com/spreadsheets/d/1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU/htmlembed?gid=0&widget=true&headers=false" />
@@ -1384,9 +1381,6 @@ export default function App() {
 
                       <TabsContent value="bank" className="space-y-6">
                         <CashFlowBoard sheetGid="1341242520" />
-                        <div className="grid grid-cols-1 gap-8">
-                           <MonthlyAccumulationSummary submissions={submissions} />
-                        </div>
                         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Rincian Per Bulan - Kas Bank</h4>
                            <GoogleSheetsSection title="Buku Kas Bank" url="https://docs.google.com/spreadsheets/d/1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU/htmlembed?gid=1341242520&widget=true&headers=false" />
