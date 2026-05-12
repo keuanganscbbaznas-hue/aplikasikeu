@@ -200,14 +200,19 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
         </CardHeader>
         <CardContent className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
+            <BarChart data={data} margin={{ top: 10, right: 10, left: 60, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="name" />
-              <YAxis />
+              <YAxis 
+                tickFormatter={(value) => `Rp ${value / 1000000}Jt`}
+                fontSize={10}
+                fontWeight="black"
+                width={70}
+              />
               <Tooltip formatter={(value: number) => `Rp ${value.toLocaleString('id-ID')}`} />
               <Legend />
-              <Bar dataKey="penerimaan" name="Penerimaan" fill="#10b981" />
-              <Bar dataKey="pengeluaran" name="Pengeluaran" fill="#ef4444" />
+              <Bar dataKey="penerimaan" name="Penerimaan" fill="#10b981" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="pengeluaran" name="Pengeluaran" fill="#ef4444" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

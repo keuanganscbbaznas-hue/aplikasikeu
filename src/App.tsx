@@ -115,12 +115,15 @@ const ADMIN_EMAILS = [
   ...SUPER_ADMIN_EMAILS,
   'keuangan.scb@gmail.com',
   'tatausahascba@gmail.com',
-  'kamal2015go@gmail.com'
+  'kamal2015go@gmail.com',
+  'operasional.scb@gmail.com'
 ];
 const TRACKING_ADMIN_EMAILS = [
   'keuanganscbbaznas@gmail.com',
   'keuangan.scb@gmail.com',
-  'tatausahascba@gmail.com'
+  'tatausahascba@gmail.com',
+  'kamal2015go@gmail.com',
+  'operasional.scb@gmail.com'
 ];
 
 function DebouncedInput({ 
@@ -2671,7 +2674,7 @@ function SubmissionDetailView({
                             <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em]">Belum TTD</span>
                           </div>
                         )}
-                        {canApprove && !submission.signatures?.roni && (
+                        {(canApprove || currentUser?.email === 'operasional.scb@gmail.com') && !submission.signatures?.roni && (
                           <button 
                             onClick={() => setActiveSigner('roni')}
                             className="absolute inset-0 bg-emerald-600/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-black uppercase tracking-widest"
@@ -2693,7 +2696,7 @@ function SubmissionDetailView({
                             <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em]">Belum TTD</span>
                           </div>
                         )}
-                        {canApprove && !submission.signatures?.kamal && (
+                        {(canApprove || currentUser?.email === 'kamal2015go@gmail.com') && !submission.signatures?.kamal && (
                           <button 
                             onClick={() => setActiveSigner('kamal')}
                             className="absolute inset-0 bg-emerald-600/90 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[9px] font-black uppercase tracking-widest"

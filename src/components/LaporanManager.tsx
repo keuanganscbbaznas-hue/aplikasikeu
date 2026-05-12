@@ -396,7 +396,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
             <CardContent>
               <div className="h-[250px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: 40, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                     <XAxis 
                       dataKey="month" 
@@ -409,8 +409,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                       axisLine={false}
                       tickLine={false}
                       tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }}
-                      tickFormatter={(value) => `${value / 1000000} Jt`}
-                      width={40}
+                      tickFormatter={(value) => `Rp ${value / 1000000}Jt`}
+                      width={60}
                     />
                     <Tooltip 
                       cursor={{ fill: '#F1F5F9' }}

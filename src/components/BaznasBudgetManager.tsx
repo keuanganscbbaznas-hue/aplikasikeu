@@ -514,7 +514,7 @@ export function BaznasBudgetManager({ profile, userUid, isReadOnly = false }: { 
           <CardContent>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                <BarChart data={chartData} margin={{ top: 20, right: 20, left: 40, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                   <XAxis 
                     dataKey="month" 
@@ -528,6 +528,7 @@ export function BaznasBudgetManager({ profile, userUid, isReadOnly = false }: { 
                     tickLine={false}
                     tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
                     tickFormatter={(value) => `Rp ${value / 1000000}Jt`}
+                    width={60}
                   />
                   <Tooltip 
                     cursor={{ fill: '#F8FAFC' }}

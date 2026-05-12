@@ -131,6 +131,7 @@ export function AnalisisManager({ userUid, isReadOnly = false }: { userUid: stri
                   tickLine={false}
                   tick={{ fontSize: 11, fill: '#64748B', fontWeight: 600 }}
                   tickFormatter={(value) => `Rp ${value / 1000000}Jt`}
+                  width={60}
                 />
                 <Tooltip 
                   contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)' }}
