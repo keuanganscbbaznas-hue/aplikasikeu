@@ -48,7 +48,6 @@ import { LaporanManager } from './components/LaporanManager';
 import { AdministrasiManager } from './components/administrasi/AdministrasiManager';
 import { AnalisisManager } from './components/AnalisisManager';
 import { BerkasDigitalManager } from './components/BerkasDigitalManager';
-import { NeracaSaldoManager } from './components/NeracaSaldoManager';
 import SignaturePad from 'signature_pad';
 import { jsPDF } from 'jspdf';
 import { 
@@ -465,7 +464,8 @@ export default function App() {
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedSubmissions, setSelectedSubmissions] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'tracking' | 'buku_kas' | 'neraca_saldo' | 'anggaran' | 'laporan' | 'berkas' | 'administrasi' | 'analisis' | 'settings'>('tracking');
+  const [activeTab, setActiveTab] = useState<'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'berkas' | 'administrasi' | 'analisis' | 'settings'>('tracking');
+  const [bukuKasUnit, setBukuKasUnit] = useState<'smp' | 'sma'>('smp');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   const toggleSelection = (id: string) => {
@@ -977,7 +977,6 @@ export default function App() {
   const sidebarItems = [
     { id: 'tracking', label: 'Tracking Transaksi', icon: LayoutDashboard, access: 'all' },
     { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'admin' },
-    { id: 'neraca_saldo', label: 'Neraca Saldo', icon: ClipboardList, access: 'owner_only' },
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan PertUM ke BAZNAS', icon: FileText, access: 'admin' },
     { id: 'berkas', label: 'Berkas Digital', icon: FolderOpen, access: 'admin' },
@@ -1071,8 +1070,8 @@ export default function App() {
       {/* Sidebar - Desktop */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-56 bg-slate-900 text-slate-300 transition-transform duration-300 transform lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full">
-          <div className="pl-3 pr-4 py-5 bg-slate-950 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="pl-1 pr-1 py-5 bg-slate-950 flex items-center justify-between">
+            <div className="flex items-center gap-1">
               <div className="h-10 w-10 bg-white p-0.5 rounded-xl flex items-center justify-center shadow-lg">
                   <img 
                     src={logoURL} 
@@ -1191,7 +1190,7 @@ export default function App() {
                animate={{ opacity: 1, x: 0 }}
                exit={{ opacity: 0, x: -20 }}
                transition={{ duration: 0.2 }}
-               className="max-w-7xl mx-auto w-full"
+               className="max-w-7xl w-full"
              >
                 {activeTab === 'tracking' && (
                   <div className="space-y-4">
@@ -1448,6 +1447,31 @@ export default function App() {
 
                 {activeTab === 'buku_kas' && (isAdmin || profile?.email === OWNER_EMAIL) && (
                   <div className="space-y-6">
+                    <div className="flex items-center justify-between mb-2">
+                       <h3 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-3">
+                          <BookOpen size={24} className="text-emerald-600" />
+                          Buku Kas Unit {bukuKasUnit.toUpperCase()}
+                       </h3>
+                       <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className={`h-8 px-4 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all ${bukuKasUnit === 'smp' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            onClick={() => setBukuKasUnit('smp')}
+                          >
+                             SMP
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className={`h-8 px-4 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all ${bukuKasUnit === 'sma' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            onClick={() => setBukuKasUnit('sma')}
+                          >
+                             SMA
+                          </Button>
+                       </div>
+                    </div>
+
                     <Tabs defaultValue="tunai">
                       <div className="flex items-center justify-start mb-6">
                         <TabsList className="bg-slate-50 p-1 shadow-inner rounded-xl border border-slate-100">
@@ -1457,27 +1481,21 @@ export default function App() {
                       </div>
                       
                       <TabsContent value="tunai" className="space-y-6">
-                        <CashFlowBoard sheetGid="0" />
+                        <CashFlowBoard sheetGid={bukuKasUnit === 'smp' ? "0" : "812391118"} />
                         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                           <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Rincian Per Bulan - Kas Tunai</h4>
-                           <GoogleSheetsSection title="Buku Kas Tunai" url="https://docs.google.com/spreadsheets/d/1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU/htmlembed?gid=0&widget=true&headers=false" />
+                           <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Rincian Per Bulan - Kas Tunai {bukuKasUnit.toUpperCase()}</h4>
+                           <GoogleSheetsSection title={`Buku Kas Tunai ${bukuKasUnit.toUpperCase()}`} url={`https://docs.google.com/spreadsheets/d/1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU/htmlembed?gid=${bukuKasUnit === 'smp' ? "0" : "812391118"}&widget=true&headers=false`} />
                         </div>
                       </TabsContent>
 
                       <TabsContent value="bank" className="space-y-6">
-                        <CashFlowBoard sheetGid="1341242520" />
+                        <CashFlowBoard sheetGid={bukuKasUnit === 'smp' ? "1341242520" : "908301693"} />
                         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                           <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Rincian Per Bulan - Kas Bank</h4>
-                           <GoogleSheetsSection title="Buku Kas Bank" url="https://docs.google.com/spreadsheets/d/1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU/htmlembed?gid=1341242520&widget=true&headers=false" />
+                           <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Rincian Per Bulan - Kas Bank {bukuKasUnit.toUpperCase()}</h4>
+                           <GoogleSheetsSection title={`Buku Kas Bank ${bukuKasUnit.toUpperCase()}`} url={`https://docs.google.com/spreadsheets/d/1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU/htmlembed?gid=${bukuKasUnit === 'smp' ? "1341242520" : "908301693"}&widget=true&headers=false`} />
                         </div>
                       </TabsContent>
                     </Tabs>
-                  </div>
-                )}
-
-                {activeTab === 'neraca_saldo' && profile?.email === OWNER_EMAIL && (
-                  <div className="space-y-6">
-                    <NeracaSaldoManager />
                   </div>
                 )}
 
