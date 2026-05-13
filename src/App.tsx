@@ -182,7 +182,7 @@ function SubmissionGrid({
   onToggle: (id: string) => void,
   currentUser: User | null,
   onSelectAll?: (ids: string[]) => void,
-  onBukukan?: (s: Submission, unit: 'SMP' | 'SMA') => void
+  onBukukan?: (s: Submission, unit: 'Kas Tunai SMP' | 'Kas Tunai SMA' | 'Kas Bank SMP' | 'Kas Bank SMA') => void
 }) {
   const allIds = items.map(s => s.id!).filter(Boolean);
   const allSelected = allIds.length > 0 && allIds.every(id => selectedSubmissions.has(id));
@@ -269,7 +269,7 @@ function SubmissionCard({
   currentUser: User | null,
   isSelected: boolean,
   onToggle: (id: string) => void,
-  onBukukan?: (s: Submission, unit: 'SMP' | 'SMA') => void
+  onBukukan?: (s: Submission, unit: 'Kas Tunai SMP' | 'Kas Tunai SMA' | 'Kas Bank SMP' | 'Kas Bank SMA') => void
 }) {
   const stages = getStagesByType(submission.type);
   const isLastStage = submission.currentStageIndex === stages.length - 1;
@@ -689,25 +689,36 @@ export default function App() {
     }
   };
 
-  const handleBukukan = async (submission: Submission, unit: 'SMP' | 'SMA') => {
+  const handleBukukan = async (submission: Submission, sheetType: 'Kas Tunai SMP' | 'Kas Tunai SMA' | 'Kas Bank SMP' | 'Kas Bank SMA') => {
     const spreadsheetId = '1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU';
-    // Gids for Bank SMP and Bank SMA
-    const gid = unit === 'SMP' ? '1341242520' : '908301693';
     
-    const today = new Date();
-    const formattedDate = format(today, 'dd/MM/yyyy');
+    // Parse createdAt or use today
+    let subDate = new Date();
+    try {
+      if (submission.createdAt) {
+        subDate = parseFirestoreDate(submission.createdAt);
+      }
+    } catch (e) {
+      console.error("Error parsing submission date", e);
+    }
+    
+    const formattedDate = format(subDate, 'dd/MM/yyyy');
+
+    // Map submission type to abbreviation for "JJ" column
+    const typeAbbr = submission.type === 'uang_muka' ? 'UM' : 
+                     submission.type === 'reimburse' ? 'RE' : 
+                     'PB';
 
     const rowData = [
        [
-         "", // Col 0
-         formattedDate, // Col 1
-         submission.noDokumen || '', // Col 2
-         submission.title, // Col 3
-         submission.kodeBudget || '', // Col 4
-         submission.sumberRekening || unit, // Col 5
-         submission.description || '', // Col 6
-         0, // Col 7 Penerimaan
-         submission.amount, // Col 8 Pengeluaran
+         formattedDate, // Col B: TGL
+         submission.noDokumen || '', // Col C: NO. DOC
+         typeAbbr, // Col D: JJ
+         submission.kodeBudget || '', // Col E: KODE ANGGARAN
+         submission.submittedByName || '', // Col F: PIC
+         submission.title, // Col G: KETERANGAN
+         0, // Col H: DEBET (Penerimaan)
+         submission.amount, // Col I: KREDIT (Pengeluaran)
        ]
     ];
 
@@ -717,20 +728,19 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           spreadsheetId,
-          range: unit === 'SMP' ? 'Buku Kas Bank SMP!A:I' : 'Buku Kas Bank SMA!A:I',
+          range: `${sheetType}!B11:I`,
           data: rowData
         })
       }).then(async res => {
         if(!res.ok) {
           const err = await res.json();
-          // Prefer deeper message if available
           throw new Error(err.message || err.error || 'Gagal menambah ke Google Sheets');
         }
         return res.json();
       }),
       {
-        loading: `Membukukan ke Buku Kas ${unit}...`,
-        success: `Berhasil dibukukan ke Buku Kas ${unit}`,
+        loading: `Membukukan ke ${sheetType}...`,
+        success: `Berhasil dibukukan ke ${sheetType}`,
         error: (err) => `Gagal: ${err.message}`
       }
     );
@@ -2751,7 +2761,7 @@ function SubmissionDetailView({
   onReject: (s: Submission, comment?: string) => void,
   onDelete: () => void,
   onEdit: (s: Submission) => void,
-  onBukukan?: (s: Submission, unit: 'SMP' | 'SMA') => void,
+  onBukukan?: (s: Submission, unit: 'Kas Tunai SMP' | 'Kas Tunai SMA' | 'Kas Bank SMP' | 'Kas Bank SMA') => void,
   userRole: UserRole,
   currentUser: User | null
 }) {
@@ -3069,18 +3079,15 @@ function SubmissionDetailView({
             
             {isBukukanMenuOpen && (
               <div className="absolute bottom-10 right-0 w-48 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50">
-                <button 
-                  onClick={() => { onBukukan(submission, 'SMP'); setIsBukukanMenuOpen(false); }}
-                  className="w-full text-left px-4 py-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 border-b border-slate-50 uppercase tracking-tighter"
-                >
-                  Buku Kas Bank SMP
-                </button>
-                <button 
-                  onClick={() => { onBukukan(submission, 'SMA'); setIsBukukanMenuOpen(false); }}
-                  className="w-full text-left px-4 py-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 uppercase tracking-tighter"
-                >
-                  Buku Kas Bank SMA
-                </button>
+                {(['Kas Tunai SMP', 'Kas Tunai SMA', 'Kas Bank SMP', 'Kas Bank SMA'] as const).map((opt) => (
+                  <button 
+                    key={opt}
+                    onClick={() => { onBukukan(submission, opt); setIsBukukanMenuOpen(false); }}
+                    className="w-full text-left px-4 py-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 border-b border-slate-50 last:border-b-0 uppercase tracking-tighter"
+                  >
+                    {opt}
+                  </button>
+                ))}
               </div>
             )}
           </div>
