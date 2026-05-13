@@ -129,6 +129,13 @@ async function startServer() {
       res.json({ success: true });
     } catch (error: any) {
       console.error("Sheets Append Error:", error.message);
+      if (error.code === 403 || error.message.includes('permission')) {
+        return res.status(403).json({ 
+          error: "Sheets Append Error: The caller does not have permission",
+          message: `Service Account (${process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL}) tidak memiliki akses ke Spreadsheet ini. Silakan bagikan Spreadsheet tersebut ke email Service Account sebagai 'Editor'.`,
+          serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+        });
+      }
       res.status(500).json({ error: error.message || "Gagal menambah data ke Google Sheets" });
     }
   });
@@ -158,6 +165,13 @@ async function startServer() {
       res.json({ success: true });
     } catch (error: any) {
       console.error("Sheets Sync Error:", error.message);
+      if (error.code === 403 || error.message.includes('permission')) {
+        return res.status(403).json({ 
+          error: "Sheets Sync Error: The caller does not have permission",
+          message: `Service Account (${process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL}) tidak memiliki akses ke Spreadsheet ini. Silakan bagikan Spreadsheet tersebut ke email Service Account sebagai 'Editor'.`,
+          serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+        });
+      }
       res.status(500).json({ error: error.message || "Gagal menyinkronkan data ke Google Sheets" });
     }
   });

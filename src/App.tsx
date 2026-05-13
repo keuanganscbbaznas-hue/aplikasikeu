@@ -679,7 +679,7 @@ export default function App() {
 
       if (!response.ok) {
         const errData = await response.json();
-        throw new Error(errData.error || 'Gagal sinkronisasi');
+        throw new Error(errData.message || errData.error || 'Gagal sinkronisasi');
       }
 
       toast.success('Berhasil sinkronisasi ke Google Sheets', { id: toastId });
@@ -723,7 +723,8 @@ export default function App() {
       }).then(async res => {
         if(!res.ok) {
           const err = await res.json();
-          throw new Error(err.error || 'Gagal menambah ke Google Sheets');
+          // Prefer deeper message if available
+          throw new Error(err.message || err.error || 'Gagal menambah ke Google Sheets');
         }
         return res.json();
       }),
