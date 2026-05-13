@@ -1068,8 +1068,8 @@ export default function App() {
       {/* Sidebar - Desktop */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-56 bg-slate-900 text-slate-300 transition-transform duration-300 transform lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full">
-          <div className="p-5 bg-slate-950 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="pl-3 pr-4 py-5 bg-slate-950 flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <div className="h-10 w-10 bg-white p-0.5 rounded-xl flex items-center justify-center shadow-lg">
                   <img 
                     src={logoURL} 
