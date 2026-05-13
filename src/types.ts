@@ -97,6 +97,9 @@ export interface Submission {
   submittedByName: string;
   submittedByEmail: string;
   picName?: string;
+  sumberRekening?: 'SMP' | 'SMA';
+  kodeBudget?: string;
+  noDokumen?: string;
   createdAt: any;
   updatedAt: any;
   evidenceUrl?: string;

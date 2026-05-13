@@ -512,6 +512,9 @@ export default function App() {
   const [editAmount, setEditAmount] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editPicName, setEditPicName] = useState('');
+  const [editSumberRekening, setEditSumberRekening] = useState<'SMP' | 'SMA' | ''>('');
+  const [editKodeBudget, setEditKodeBudget] = useState('');
+  const [editNoDokumen, setEditNoDokumen] = useState('');
   const [editEvidenceUrl, setEditEvidenceUrl] = useState('');
   const [editCreatedAt, setEditCreatedAt] = useState('');
   const [editHistory, setEditHistory] = useState<HistoryEntry[]>([]);
@@ -871,6 +874,9 @@ export default function App() {
     setEditAmount(submission.amount.toString());
     setEditDescription(submission.description || '');
     setEditPicName(submission.picName || '');
+    setEditSumberRekening(submission.sumberRekening || '');
+    setEditKodeBudget(submission.kodeBudget || '');
+    setEditNoDokumen(submission.noDokumen || '');
     setEditEvidenceUrl(submission.evidenceUrl || '');
     setEditCreatedAt(format(parseFirestoreDate(submission.createdAt), "yyyy-MM-dd'T'HH:mm"));
     setEditHistory([...submission.history]);
@@ -904,6 +910,9 @@ export default function App() {
       amount: Number(editAmount),
       description: editDescription,
       picName: editPicName,
+      sumberRekening: editSumberRekening || null,
+      kodeBudget: editKodeBudget || null,
+      noDokumen: editNoDokumen || null,
       evidenceUrl: editEvidenceUrl,
       createdAt: Timestamp.fromDate(new Date(editCreatedAt)),
       history: editHistory,
@@ -1656,6 +1665,39 @@ export default function App() {
                   />
                 </div>
                 <div className="grid gap-2">
+                  <Label htmlFor="edit-sumber">Sumber Rekening</Label>
+                  <Select 
+                    value={editSumberRekening} 
+                    onValueChange={(v: 'SMP' | 'SMA') => setEditSumberRekening(v)}
+                  >
+                    <SelectTrigger id="edit-sumber">
+                      <SelectValue placeholder="Pilih Unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SMP">SMP</SelectItem>
+                      <SelectItem value="SMA">SMA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-kodebudget">Kode Budget</Label>
+                  <Input 
+                    id="edit-kodebudget" 
+                    value={editKodeBudget}
+                    onChange={(e) => setEditKodeBudget(e.target.value)}
+                    placeholder="Contoh: 1.1.1"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-nodokumen">No Dokumen</Label>
+                  <Input 
+                    id="edit-nodokumen" 
+                    value={editNoDokumen}
+                    onChange={(e) => setEditNoDokumen(e.target.value)}
+                    placeholder="Contoh: 001/SCB/V/2026"
+                  />
+                </div>
+                <div className="grid gap-2">
                   <Label htmlFor="edit-status">Status Alur (Admin)</Label>
                   <Select 
                     value={editStageIndex.toString()} 
@@ -2026,6 +2068,9 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
   const [newTitle, setNewTitle] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newPicName, setNewPicName] = useState('');
+  const [newSumberRekening, setNewSumberRekening] = useState<'SMP' | 'SMA' | ''>('');
+  const [newKodeBudget, setNewKodeBudget] = useState('');
+  const [newNoDokumen, setNewNoDokumen] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newEvidenceUrl, setNewEvidenceUrl] = useState('');
 
@@ -2046,6 +2091,9 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
         submittedByName: profile.displayName,
         submittedByEmail: profile.email,
         picName: newPicName,
+        sumberRekening: newSumberRekening || null,
+        kodeBudget: newKodeBudget || null,
+        noDokumen: newNoDokumen || null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         evidenceUrl: newEvidenceUrl,
@@ -2066,6 +2114,9 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
       setNewDescription('');
       setNewEvidenceUrl('');
       setNewPicName('');
+      setNewSumberRekening('');
+      setNewKodeBudget('');
+      setNewNoDokumen('');
 
       // Background process
       toast.promise(
@@ -2149,6 +2200,36 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
               />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="new-sumber">Sumber Rekening</Label>
+              <Select value={newSumberRekening} onValueChange={(v: any) => setNewSumberRekening(v)}>
+                <SelectTrigger id="new-sumber">
+                  <SelectValue placeholder="Pilih unit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SMP">SMP</SelectItem>
+                  <SelectItem value="SMA">SMA</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="new-kodebudget">Kode Budget</Label>
+              <Input 
+                id="new-kodebudget" 
+                placeholder="Contoh: 1.1.1" 
+                value={newKodeBudget}
+                onChange={(e) => setNewKodeBudget(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="new-nodokumen">No Dokumen</Label>
+              <Input 
+                id="new-nodokumen" 
+                placeholder="Contoh: 001/SCB/V/2026" 
+                value={newNoDokumen}
+                onChange={(e) => setNewNoDokumen(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="description">Keterangan</Label>
               <Input 
                 id="description" 
@@ -2197,8 +2278,8 @@ function ImportSubmissionModal({ profile, user, variant = 'default' }: { profile
   );
 
   const downloadTemplate = () => {
-    const headers = ["type", "title", "amount", "transactionDate", "picName", "description", "evidenceUrl", "statusTahap"];
-    const example = ["reimburse", "Beli ATK Kantor", "250000", "2024-01-20", "Budi", "Pembelian alat tulis kantor bulan ini", "https://link-bukti.com", "Verifikasi Dokumen"];
+    const headers = ["type", "title", "amount", "transactionDate", "picName", "sumberRekening", "kodeBudget", "noDokumen", "description", "evidenceUrl", "statusTahap"];
+    const example = ["reimburse", "Beli ATK Kantor", "250000", "2024-01-20", "Budi", "SMP", "1.1.1", "001/SCB/V/2026", "Pembelian alat tulis kantor bulan ini", "https://link-bukti.com", "Verifikasi Dokumen"];
     const csvContent = [headers, example].map(row => row.join(",")).join("\n");
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -2269,6 +2350,9 @@ function ImportSubmissionModal({ profile, user, variant = 'default' }: { profile
               submittedByName: profile.displayName,
               submittedByEmail: profile.email,
               picName: row.picName || profile.displayName,
+              sumberRekening: row.sumberRekening || null,
+              kodeBudget: row.kodeBudget || null,
+              noDokumen: row.noDokumen || null,
               createdAt: finalCreatedAt,
               updatedAt: serverTimestamp(),
               evidenceUrl: row.evidenceUrl || '',
@@ -2357,7 +2441,7 @@ function ImportSubmissionModal({ profile, user, variant = 'default' }: { profile
               <div className="bg-amber-50 p-3 rounded-lg border border-amber-100 mt-2">
                 <p className="text-[10px] text-amber-700 leading-relaxed font-medium">
                   <span className="font-bold underline">Kolom wajib:</span> type, title, amount. <br/>
-                  <span className="font-bold underline">Kolom Opsional:</span> transactionDate (YYYY-MM-DD), picName, description, statusTahap. <br/>
+                  <span className="font-bold underline">Kolom Opsional:</span> transactionDate (YYYY-MM-DD), picName, sumberRekening (SMP/SMA), kodeBudget, noDokumen, description, statusTahap. <br/>
                   <span className="font-bold underline">Format type:</span> uang_muka, reimburse, pembiayaan <br/>
                 </p>
               </div>
@@ -2656,15 +2740,18 @@ function SubmissionDetailView({
     doc.text(`Judul Pengajuan`, 20, 50); doc.text(`: ${submission.title}`, 60, 50);
     doc.text(`Jumlah Anggaran`, 20, 60); doc.text(`: Rp ${submission.amount.toLocaleString('id-ID')}`, 60, 60);
     doc.text(`PIC Pengaju`, 20, 70); doc.text(`: ${submission.picName || submission.submittedByName}`, 60, 70);
-    doc.text(`Tanggal Pengajuan`, 20, 80); doc.text(`: ${format(parseFirestoreDate(submission.createdAt), 'dd MMMM yyyy')}`, 60, 80);
+    doc.text(`Rekening`, 20, 80); doc.text(`: ${submission.sumberRekening || '-'}`, 60, 80);
+    doc.text(`Kode Budget`, 20, 90); doc.text(`: ${submission.kodeBudget || '-'}`, 60, 90);
+    doc.text(`No Dokumen`, 20, 100); doc.text(`: ${submission.noDokumen || '-'}`, 60, 100);
+    doc.text(`Tanggal Pengajuan`, 20, 110); doc.text(`: ${format(parseFirestoreDate(submission.createdAt), 'dd MMMM yyyy')}`, 60, 110);
     
     doc.setFont("helvetica", "bold");
-    doc.text('Deskripsi / Rincian:', 20, 100);
+    doc.text('Deskripsi / Rincian:', 20, 130);
     doc.setFont("helvetica", "normal");
     const splitDesc = doc.splitTextToSize(submission.description || '-', 170);
-    doc.text(splitDesc, 20, 105);
+    doc.text(splitDesc, 20, 135);
     
-    const nextY = 110 + (splitDesc.length * 5);
+    const nextY = 140 + (splitDesc.length * 5);
     
     if (submission.signatures) {
       doc.setFont("helvetica", "bold");
@@ -2702,6 +2789,20 @@ function SubmissionDetailView({
                    <p className="text-sm font-medium text-slate-700 mt-1 leading-relaxed">
                      {submission.description || 'Tidak ada uraian deskripsi.'}
                    </p>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-2 pb-2 border-y border-slate-50">
+                   <div>
+                     <Label className="text-[9px] text-slate-400 lowercase italic">Rekening</Label>
+                     <p className="text-[10px] font-black text-slate-900 uppercase tracking-tighter mt-0.5">{submission.sumberRekening || '-'}</p>
+                   </div>
+                   <div>
+                     <Label className="text-[9px] text-slate-400 lowercase italic">Kode Budget</Label>
+                     <p className="text-[10px] font-black text-slate-900 uppercase tracking-tighter mt-0.5">{submission.kodeBudget || '-'}</p>
+                   </div>
+                   <div>
+                     <Label className="text-[9px] text-slate-400 lowercase italic">No Dokumen</Label>
+                     <p className="text-[10px] font-black text-slate-900 uppercase tracking-tighter mt-0.5">{submission.noDokumen || '-'}</p>
+                   </div>
                 </div>
                 {submission.evidenceUrl && (
                   <div className="pt-4 border-t border-slate-50">
