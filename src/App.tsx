@@ -169,7 +169,8 @@ function SubmissionGrid({
   selectedSubmissions,
   onToggle,
   currentUser,
-  onSelectAll
+  onSelectAll,
+  onBukukan
 }: { 
   items: Submission[], 
   onApprove: (s: Submission, comment?: string) => void,
@@ -180,7 +181,8 @@ function SubmissionGrid({
   selectedSubmissions: Set<string>,
   onToggle: (id: string) => void,
   currentUser: User | null,
-  onSelectAll?: (ids: string[]) => void
+  onSelectAll?: (ids: string[]) => void,
+  onBukukan?: (s: Submission, unit: 'SMP' | 'SMA') => void
 }) {
   const allIds = items.map(s => s.id!).filter(Boolean);
   const allSelected = allIds.length > 0 && allIds.every(id => selectedSubmissions.has(id));
@@ -224,6 +226,7 @@ function SubmissionGrid({
                       onReject={onReject}
                       onDelete={onDelete}
                       onEdit={onEdit}
+                      onBukukan={onBukukan}
                       userRole={userRole}
                       currentUser={currentUser}
                       isSelected={sub.id ? selectedSubmissions.has(sub.id) : false}
@@ -253,7 +256,8 @@ function SubmissionCard({
   userRole,
   currentUser,
   isSelected,
-  onToggle
+  onToggle,
+  onBukukan
 }: { 
   key?: string | number,
   submission: Submission, 
@@ -264,7 +268,8 @@ function SubmissionCard({
   userRole: UserRole,
   currentUser: User | null,
   isSelected: boolean,
-  onToggle: (id: string) => void
+  onToggle: (id: string) => void,
+  onBukukan?: (s: Submission, unit: 'SMP' | 'SMA') => void
 }) {
   const stages = getStagesByType(submission.type);
   const isLastStage = submission.currentStageIndex === stages.length - 1;
@@ -403,6 +408,7 @@ function SubmissionCard({
                         onReject={onReject}
                         onDelete={() => onDelete(submission.id!)}
                         onEdit={onEdit}
+                        onBukukan={onBukukan}
                         userRole={userRole}
                         currentUser={currentUser}
                       />
@@ -681,6 +687,52 @@ export default function App() {
       console.error(error);
       toast.error(`Error: ${error.message}`, { id: toastId });
     }
+  };
+
+  const handleBukukan = async (submission: Submission, unit: 'SMP' | 'SMA') => {
+    const spreadsheetId = '1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU';
+    // Gids for Bank SMP and Bank SMA
+    const gid = unit === 'SMP' ? '1341242520' : '908301693';
+    
+    const today = new Date();
+    const formattedDate = format(today, 'dd/MM/yyyy');
+
+    const rowData = [
+       [
+         "", // Col 0
+         formattedDate, // Col 1
+         submission.noDokumen || '', // Col 2
+         submission.title, // Col 3
+         submission.kodeBudget || '', // Col 4
+         submission.sumberRekening || unit, // Col 5
+         submission.description || '', // Col 6
+         0, // Col 7 Penerimaan
+         submission.amount, // Col 8 Pengeluaran
+       ]
+    ];
+
+    toast.promise(
+      fetch('/api/sheets/append', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spreadsheetId,
+          range: unit === 'SMP' ? 'Buku Kas Bank SMP!A:I' : 'Buku Kas Bank SMA!A:I',
+          data: rowData
+        })
+      }).then(async res => {
+        if(!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Gagal menambah ke Google Sheets');
+        }
+        return res.json();
+      }),
+      {
+        loading: `Membukukan ke Buku Kas ${unit}...`,
+        success: `Berhasil dibukukan ke Buku Kas ${unit}`,
+        error: (err) => `Gagal: ${err.message}`
+      }
+    );
   };
 
   const updateUserRole = async (uid: string, newRole: UserRole) => {
@@ -1414,6 +1466,7 @@ export default function App() {
                           currentUser={user}
                           selectedSubmissions={selectedSubmissions}
                           onToggle={toggleSelection}
+                          onBukukan={handleBukukan}
                         />
                       </TabsContent>
 
@@ -1431,6 +1484,7 @@ export default function App() {
                           currentUser={user}
                           selectedSubmissions={selectedSubmissions}
                           onToggle={toggleSelection}
+                          onBukukan={handleBukukan}
                         />
                       </TabsContent>
 
@@ -1448,6 +1502,7 @@ export default function App() {
                           currentUser={user}
                           selectedSubmissions={selectedSubmissions}
                           onToggle={toggleSelection}
+                          onBukukan={handleBukukan}
                         />
                       </TabsContent>
                     </Tabs>
@@ -2684,6 +2739,7 @@ function SubmissionDetailView({
   onReject, 
   onDelete, 
   onEdit, 
+  onBukukan,
   userRole,
   currentUser
 }: {
@@ -2694,6 +2750,7 @@ function SubmissionDetailView({
   onReject: (s: Submission, comment?: string) => void,
   onDelete: () => void,
   onEdit: (s: Submission) => void,
+  onBukukan?: (s: Submission, unit: 'SMP' | 'SMA') => void,
   userRole: UserRole,
   currentUser: User | null
 }) {
@@ -2704,6 +2761,7 @@ function SubmissionDetailView({
 
   const [activeSigner, setActiveSigner] = useState<'roni' | 'kamal' | null>(null);
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
+  const [isBukukanMenuOpen, setIsBukukanMenuOpen] = useState(false);
 
   const handleSign = async (signature: string) => {
     if (!activeSigner) return;
@@ -2727,6 +2785,9 @@ function SubmissionDetailView({
   const currentStage = stages[submission.currentStageIndex];
   const isManagementStage = currentStage === "Proses Tanda Tangan Oleh Manajemen";
   const hasBothSignatures = submission.signatures?.roni && submission.signatures?.kamal;
+  
+  const transferredIndex = stages.findIndex(s => s.toLowerCase().includes("sudah di transfer"));
+  const isTransferred = transferredIndex !== -1 && submission.currentStageIndex >= transferredIndex;
 
   const downloadPDF = () => {
     const doc = new jsPDF();
@@ -2993,6 +3054,35 @@ function SubmissionDetailView({
           >
             HAPUS
           </Button>
+        )}
+
+        {isTransferred && onBukukan && (
+          <div className="relative">
+            <Button 
+              onClick={() => setIsBukukanMenuOpen(!isBukukanMenuOpen)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-black text-[9px] px-4 h-8 rounded-lg transition-all tracking-widest gap-2"
+            >
+              <BookOpen size={14} />
+              BUKUKAN
+            </Button>
+            
+            {isBukukanMenuOpen && (
+              <div className="absolute bottom-10 right-0 w-48 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50">
+                <button 
+                  onClick={() => { onBukukan(submission, 'SMP'); setIsBukukanMenuOpen(false); }}
+                  className="w-full text-left px-4 py-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 border-b border-slate-50 uppercase tracking-tighter"
+                >
+                  Buku Kas Bank SMP
+                </button>
+                <button 
+                  onClick={() => { onBukukan(submission, 'SMA'); setIsBukukanMenuOpen(false); }}
+                  className="w-full text-left px-4 py-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 uppercase tracking-tighter"
+                >
+                  Buku Kas Bank SMA
+                </button>
+              </div>
+            )}
+          </div>
         )}
         
         {canEdit && (
