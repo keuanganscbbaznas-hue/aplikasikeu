@@ -607,6 +607,77 @@ export default function App() {
     }
   };
 
+  const syncSubmissionsToSheets = async () => {
+    if (submissions.length === 0) {
+      toast.error('Tidak ada data untuk disinkronkan');
+      return;
+    }
+
+    const toastId = toast.loading('Mensinkronkan ke Google Sheets...');
+    
+    try {
+      const statusRes = await fetch('/api/system/sync/status');
+      const statusData = await statusRes.json();
+      
+      if (!statusData.ready) {
+        toast.error('Gagal: Credentials Service Account belum diset.', { 
+          id: toastId,
+          description: 'Beritahu Developer.'
+        });
+        return;
+      }
+
+      const headers = [
+        'ID', 
+        'Tanggal Pengajuan', 
+        'Jenis', 
+        'Judul', 
+        'Penerima Manfaat / CP', 
+        'Nominal', 
+        'Status', 
+        'PIC',
+        'Tahap Saat Ini',
+        'Email Pengaju', 
+        'Link Bukti'
+      ];
+
+      const rows = submissions.map(s => [
+        s.id || '',
+        parseFirestoreDate(s.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+        s.type === 'uang_muka' ? 'Uang Muka' : s.type === 'reimburse' ? 'Reimburse' : s.type === 'laporan_uang_muka' ? 'Laporan UM' : 'Pembiayaan',
+        s.title || '',
+        s.description || '',
+        s.amount || 0,
+        s.status || '',
+        s.picName || '',
+        s.currentStageIndex !== undefined ? (getStagesByType(s.type)[s.currentStageIndex] || '-') : '-',
+        s.submittedByEmail || '',
+        s.evidenceUrl || ''
+      ]);
+
+      const data = [headers, ...rows];
+
+      const response = await fetch('/api/sheets/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spreadsheetId: '1V4Nn0dUmFLdwzXOa3fAHKVuuEbVqAtNEKH_cGBc54tw',
+          data
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Gagal sinkronisasi');
+      }
+
+      toast.success('Berhasil sinkronisasi ke Google Sheets', { id: toastId });
+    } catch (error: any) {
+      console.error(error);
+      toast.error(`Error: ${error.message}`, { id: toastId });
+    }
+  };
+
   const updateUserRole = async (uid: string, newRole: UserRole) => {
     if (!isSuperAdmin) {
       toast.error("Hanya Super Admin yang dapat mengubah role");
@@ -1307,8 +1378,19 @@ export default function App() {
                           <TabsTrigger value="completed" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white uppercase tracking-tight">Settled</TabsTrigger>
                         </TabsList>
                         
-                          {/* Sync feature removed per user request */}
+                        <div className="flex items-center gap-2">
+                          {isAdmin && (
+                            <Button 
+                              onClick={syncSubmissionsToSheets}
+                              variant="outline" 
+                              className="h-10 bg-white border-slate-100 shadow-lg shadow-slate-200/40 rounded-xl px-4 flex items-center gap-2 group hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 transition-all font-black text-[10px] uppercase tracking-wider"
+                            >
+                              <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
+                              <span>Sync to Sheets</span>
+                            </Button>
+                          )}
                         </div>
+                      </div>
 
                       <TabsContent value="all">
                         <SubmissionGrid 

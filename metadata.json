@@ -1,6 +1,8 @@
 {
   "name": "MONETA SCB",
   "description": "MONETA SCB - Monitoring and Electronic Treasury Application. Sistem monitoring dan tracking pengajuan uang muka serta reimburse dengan 16 tahapan alur kerja BAZNAS.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "identity-credentials-get"
+  ],
   "majorCapabilities": []
 }
