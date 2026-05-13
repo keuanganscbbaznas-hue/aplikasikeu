@@ -94,6 +94,21 @@
         "status",
         "createdAt"
       ]
+    },
+    "NeracaSaldo": {
+      "title": "NeracaSaldo",
+      "description": "Trial balance account records.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kode": { "type": "string" },
+        "nama": { "type": "string" },
+        "debit": { "type": "number" },
+        "kredit": { "type": "number" },
+        "unit": { "type": "string", "enum": ["smp", "sma"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["kode", "nama", "unit", "updatedAt"]
     }
   },
   "firestore": {
@@ -116,6 +131,10 @@
     "/donations/{donationId}": {
       "schema": "Donation",
       "description": "Collection of donation confirmations."
+    },
+    "/neraca_saldo/{neracaId}": {
+      "schema": "NeracaSaldo",
+      "description": "Collection of trial balance records."
     }
   }
 }

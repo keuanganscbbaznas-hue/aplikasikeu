@@ -76,6 +76,18 @@ service cloud.firestore {
       return (!('logoURL' in data) || data.logoURL is string);
     }
 
+    function isValidNeracaSaldo(data) {
+      return data.keys().hasAll(['kode', 'nama', 'unit', 'updatedAt']) &&
+             data.kode is string &&
+             data.nama is string &&
+             data.unit in ['smp', 'sma'] &&
+             data.updatedAt == request.time;
+    }
+
+    function isOnlyOwner() {
+      return isSignedIn() && request.auth.token.email == "keuanganscbbaznas@gmail.com" && request.auth.token.email_verified == true;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -133,6 +145,10 @@ service cloud.firestore {
       allow create: if isValidDonation(incoming());
       allow update: if (isAdmin() || getRole() in ['finance', 'accountant', 'management']) && isValidDonation(incoming());
       allow delete: if isAdmin();
+    }
+
+    match /neraca_saldo/{neracaId} {
+      allow read, write: if isOnlyOwner();
     }
   }
 }

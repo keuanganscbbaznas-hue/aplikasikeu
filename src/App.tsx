@@ -48,6 +48,7 @@ import { LaporanManager } from './components/LaporanManager';
 import { AdministrasiManager } from './components/administrasi/AdministrasiManager';
 import { AnalisisManager } from './components/AnalisisManager';
 import { BerkasDigitalManager } from './components/BerkasDigitalManager';
+import { NeracaSaldoManager } from './components/NeracaSaldoManager';
 import SignaturePad from 'signature_pad';
 import { jsPDF } from 'jspdf';
 import { 
@@ -76,6 +77,7 @@ import {
   BookOpen,
   PieChart,
   Settings,
+  ClipboardList,
   Menu,
   X,
   CreditCard,
@@ -463,7 +465,7 @@ export default function App() {
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedSubmissions, setSelectedSubmissions] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'berkas' | 'administrasi' | 'analisis' | 'settings'>('tracking');
+  const [activeTab, setActiveTab] = useState<'tracking' | 'buku_kas' | 'neraca_saldo' | 'anggaran' | 'laporan' | 'berkas' | 'administrasi' | 'analisis' | 'settings'>('tracking');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
   const toggleSelection = (id: string) => {
@@ -975,6 +977,7 @@ export default function App() {
   const sidebarItems = [
     { id: 'tracking', label: 'Tracking Transaksi', icon: LayoutDashboard, access: 'all' },
     { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'admin' },
+    { id: 'neraca_saldo', label: 'Neraca Saldo', icon: ClipboardList, access: 'owner_only' },
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan PertUM ke BAZNAS', icon: FileText, access: 'admin' },
     { id: 'berkas', label: 'Berkas Digital', icon: FolderOpen, access: 'admin' },
@@ -1469,6 +1472,12 @@ export default function App() {
                         </div>
                       </TabsContent>
                     </Tabs>
+                  </div>
+                )}
+
+                {activeTab === 'neraca_saldo' && profile?.email === OWNER_EMAIL && (
+                  <div className="space-y-6">
+                    <NeracaSaldoManager />
                   </div>
                 )}
 
