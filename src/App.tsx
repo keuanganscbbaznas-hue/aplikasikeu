@@ -508,7 +508,7 @@ export default function App() {
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedSubmissions, setSelectedSubmissions] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'berkas' | 'administrasi' | 'analisis' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'berkas' | 'administrasi' | 'analisis' | 'settings'>('tracking');
   const [bukuKasUnit, setBukuKasUnit] = useState<'smp' | 'sma'>('smp');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
@@ -550,6 +550,15 @@ export default function App() {
     if (!profile) return false;
     return profile.email === 'keuangan.scb@gmail.com';
   }, [profile]);
+
+  // Auto-switch away from unauthorized tabs
+  useEffect(() => {
+    if (isAuthReady && profile) {
+      if (activeTab === 'dashboard' && !isAdmin) {
+        setActiveTab('tracking');
+      }
+    }
+  }, [activeTab, isAdmin, isAuthReady, profile]);
 
   const [editType, setEditType] = useState<SubmissionType>('uang_muka');
   const [editTitle, setEditTitle] = useState('');
@@ -1088,7 +1097,7 @@ export default function App() {
   const deferredFilterPIC = useDeferredValue(filterPIC);
 
   const sidebarItems = [
-    { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, access: 'all' },
+    { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, access: 'admin' },
     { id: 'tracking', label: 'Tracking Transaksi', icon: MessageSquare, access: 'all' },
     { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'admin' },
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
@@ -1763,15 +1772,19 @@ export default function App() {
       </AlertDialog>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px] rounded-[2rem]">
-          <form onSubmit={handleUpdate}>
-            <DialogHeader>
-              <DialogTitle className="font-black text-xl tracking-tighter">Edit Pengajuan</DialogTitle>
-              <DialogDescription className="text-xs font-bold text-slate-400">
-                Ubah detail pengajuan.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-6 py-4 md:grid-cols-2">
+        <DialogContent className="max-w-4xl rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
+          <form onSubmit={handleUpdate} className="flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-50 bg-white">
+              <DialogHeader>
+                <DialogTitle className="font-black text-xl tracking-tighter">Edit Pengajuan</DialogTitle>
+                <DialogDescription className="text-xs font-bold text-slate-400">
+                  Ubah detail pengajuan.
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+            
+            <ScrollArea className="flex-1 p-6 bg-slate-50/30">
+              <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-4">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-type">Jenis Pengajuan</Label>
@@ -1925,14 +1938,18 @@ export default function App() {
                 </ScrollArea>
               </div>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                Batal
-              </Button>
-              <Button type="submit">
-                Simpan Perubahan
-              </Button>
-            </DialogFooter>
+          </ScrollArea>
+
+            <div className="p-6 border-t border-slate-50 bg-white">
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  Batal
+                </Button>
+                <Button type="submit">
+                  Simpan Perubahan
+                </Button>
+              </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
@@ -2407,15 +2424,19 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
           </Button>
         }
       />
-      <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Pengajuan Baru</DialogTitle>
-            <DialogDescription>
-              Isi detail pengajuan uang muka atau reimburse Anda di sini.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
+      <DialogContent className="max-w-2xl rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
+        <form onSubmit={handleSubmit} className="flex flex-col max-h-[90vh]">
+          <div className="p-6 border-b border-slate-50 bg-white">
+            <DialogHeader>
+              <DialogTitle className="font-black text-xl tracking-tighter">Pengajuan Baru</DialogTitle>
+              <DialogDescription className="text-xs font-bold text-slate-400">
+                Isi detail pengajuan uang muka atau reimburse Anda di sini.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          
+          <ScrollArea className="flex-1 p-6 bg-slate-50/30">
+            <div className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="type">Jenis Pengajuan</Label>
               <Select value={newType} onValueChange={(v: any) => setNewType(v)}>
@@ -2518,9 +2539,13 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button type="submit" className="w-full">Kirim Pengajuan</Button>
-          </DialogFooter>
+          </ScrollArea>
+          
+          <div className="p-6 border-t border-slate-50 bg-white">
+            <DialogFooter>
+              <Button type="submit" className="w-full font-black uppercase tracking-widest h-11">Kirim Pengajuan</Button>
+            </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Trash2, Edit2, Calendar, FileText, Download, Upload, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
@@ -382,13 +383,17 @@ export function BaznasBudgetManager({ profile, userUid, isReadOnly = false }: { 
                     <Plus className="mr-2" size={18} /> Buat Pengajuan
                   </Button>
                 } />
-              <DialogContent className="sm:max-w-[500px] border-none shadow-2xl rounded-[2rem]">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-black text-slate-800">
-                {editingId ? 'Edit Pengajuan Anggaran' : 'Form Pengajuan Anggaran'}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-5 py-4">
+              <DialogContent className="sm:max-w-[500px] border-none shadow-2xl rounded-[2rem] p-0 overflow-hidden">
+                <div className="max-h-[90vh] flex flex-col">
+                  <div className="p-6 border-b border-slate-50 bg-white">
+                    <DialogHeader>
+                      <DialogTitle className="text-2xl font-black text-slate-800">
+                        {editingId ? 'Edit Pengajuan Anggaran' : 'Form Pengajuan Anggaran'}
+                      </DialogTitle>
+                    </DialogHeader>
+                  </div>
+                  <ScrollArea className="flex-1 p-6">
+                    <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-xs font-bold text-slate-500 uppercase">Bulan</Label>
@@ -479,11 +484,13 @@ export function BaznasBudgetManager({ profile, userUid, isReadOnly = false }: { 
                 </Select>
               </div>
 
-              <Button type="submit" disabled={isSubmitting} className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-base shadow-lg shadow-blue-600/20 mt-4">
-                {isSubmitting ? 'Menyimpan...' : (editingId ? 'Update Pengajuan' : 'Simpan Pengajuan')}
-              </Button>
-            </form>
-          </DialogContent>
+                      <Button type="submit" disabled={isSubmitting} className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-base shadow-lg shadow-blue-600/20 mt-4">
+                        {isSubmitting ? 'Menyimpan...' : (editingId ? 'Update Pengajuan' : 'Simpan Pengajuan')}
+                      </Button>
+                    </form>
+                  </ScrollArea>
+                </div>
+              </DialogContent>
         </Dialog>
         </>
         )}
