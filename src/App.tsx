@@ -1477,7 +1477,7 @@ export default function App() {
                           currentUser={user}
                           selectedSubmissions={selectedSubmissions}
                           onToggle={toggleSelection}
-                          onBukukan={handleBukukan}
+                          onBukukan={isTrackingAdmin ? handleBukukan : undefined}
                         />
                       </TabsContent>
 
@@ -1495,7 +1495,7 @@ export default function App() {
                           currentUser={user}
                           selectedSubmissions={selectedSubmissions}
                           onToggle={toggleSelection}
-                          onBukukan={handleBukukan}
+                          onBukukan={isTrackingAdmin ? handleBukukan : undefined}
                         />
                       </TabsContent>
 
@@ -1513,7 +1513,7 @@ export default function App() {
                           currentUser={user}
                           selectedSubmissions={selectedSubmissions}
                           onToggle={toggleSelection}
-                          onBukukan={handleBukukan}
+                          onBukukan={isTrackingAdmin ? handleBukukan : undefined}
                         />
                       </TabsContent>
                     </Tabs>
