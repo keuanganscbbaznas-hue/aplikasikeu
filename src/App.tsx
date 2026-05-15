@@ -41,6 +41,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CashFlowBoard } from './components/CashFlowBoard';
+import { GlobalBalanceSummary } from './components/GlobalBalanceSummary';
 import { StatusMultiSelect } from './components/StatusMultiSelect';
 import { UM_STAGES, TRANSACTION_STAGES } from './types';
 import { BaznasBudgetManager } from './components/BaznasBudgetManager';
@@ -90,7 +91,9 @@ import {
   Activity,
   Briefcase,
   RefreshCw,
-  Check
+  Check,
+  MessageSquare,
+  BarChart3
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { 
@@ -470,7 +473,7 @@ export default function App() {
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedSubmissions, setSelectedSubmissions] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'berkas' | 'administrasi' | 'analisis' | 'settings'>('tracking');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'berkas' | 'administrasi' | 'analisis' | 'settings'>('dashboard');
   const [bukuKasUnit, setBukuKasUnit] = useState<'smp' | 'sma'>('smp');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
@@ -1047,13 +1050,13 @@ export default function App() {
   const deferredFilterPIC = useDeferredValue(filterPIC);
 
   const sidebarItems = [
-    { id: 'tracking', label: 'Tracking Transaksi', icon: LayoutDashboard, access: 'all' },
+    { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, access: 'all' },
+    { id: 'tracking', label: 'Tracking Transaksi', icon: MessageSquare, access: 'all' },
     { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'admin' },
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan PertUM ke BAZNAS', icon: FileText, access: 'admin' },
     { id: 'berkas', label: 'Berkas Digital', icon: FolderOpen, access: 'admin' },
     { id: 'administrasi', label: 'Administrasi Keuangan', icon: Briefcase, access: 'all' },
-    { id: 'analisis', label: 'Analisis Anggaran vs Laporan', icon: PieChart, access: 'owner' },
     { id: 'settings', label: 'Settingan', icon: Settings, access: 'owner_only' },
   ];
 
@@ -1190,7 +1193,7 @@ export default function App() {
                 item.access === 'all' || 
                 (item.access === 'admin' && (isAdmin || (['laporan'].includes(item.id) && (isKamal || isKeuanganSCB)))) || 
                 (item.access === 'superadmin' && isSuperAdmin) ||
-                (item.access === 'owner' && (profile?.email === OWNER_EMAIL || (['anggaran', 'analisis'].includes(item.id) && (isKamal || isKeuanganSCB)))) ||
+                (item.access === 'owner' && (profile?.email === OWNER_EMAIL || (['anggaran'].includes(item.id) && (isKamal || isKeuanganSCB)))) ||
                 (item.access === 'owner_only' && profile?.email === OWNER_EMAIL);
 
               if (!hasAccess) return null;
@@ -1264,6 +1267,77 @@ export default function App() {
                transition={{ duration: 0.2 }}
                className="max-w-7xl w-full"
              >
+                {activeTab === 'dashboard' && (
+                  <div className="space-y-8">
+                    {/* Welcome Banner */}
+                    <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden">
+                       <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-emerald-500/10 rounded-full blur-[100px] -mr-40 -mt-40" />
+                       <div className="absolute bottom-0 left-0 w-[30rem] h-[30rem] bg-blue-500/5 rounded-full blur-[80px] -ml-20 -mb-20" />
+                       
+                       <div className="relative z-10">
+                          <Badge className="bg-white/10 text-emerald-400 border-none backdrop-blur-md px-4 py-1.5 font-black text-[10px] uppercase tracking-[0.3em] rounded-full mb-6 italic">
+                            System Statistics & Performance
+                          </Badge>
+                          <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-4 leading-[0.9]">
+                            DASHBOARD <br /> <span className="text-emerald-500">KONTROL</span> KEUANGAN
+                          </h1>
+                          <p className="text-slate-400 text-sm md:text-base max-w-xl font-medium tracking-tight mb-8">
+                            Pantau semua aktivitas transaksi, saldo rekening, dan analisis anggaran dalam satu tampilan terpusat.
+                          </p>
+                          <div className="flex items-center gap-4">
+                            <Button onClick={() => setActiveTab('tracking')} className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl px-6 h-12 font-bold text-sm shadow-xl shadow-emerald-900/40 transition-all">
+                               Lihat Semua Transaksi
+                               <ArrowRight size={18} className="ml-2" />
+                            </Button>
+                          </div>
+                       </div>
+                    </div>
+
+                    {/* Balance Summary Section */}
+                    <GlobalBalanceSummary />
+
+                    {/* Accumulation Section - Moved from Tracking */}
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600">
+                           <BarChart3 size={20} />
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-black tracking-tighter text-slate-900 uppercase">
+                            Akumulasi & Realisasi
+                          </h2>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">Berdasarkan data transaksi yang tercatat</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 bg-slate-50 p-8 rounded-[3rem] border border-white">
+                        <MonthlyAccumulationSummary submissions={submissions} />
+                        <StatusAccumulationSummary submissions={submissions} />
+                      </div>
+                    </div>
+
+                    {/* Analysis Section - Moved from its own tab */}
+                    {(profile?.email === OWNER_EMAIL || isKamal || isKeuanganSCB) && (
+                      <div className="space-y-6 pt-4 border-t border-slate-200">
+                         <div className="flex items-center gap-4">
+                            <div className="h-10 w-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                               <PieChart size={20} />
+                            </div>
+                            <div>
+                              <h2 className="text-xl font-black tracking-tighter text-slate-900 uppercase">
+                                Analisis Anggaran vs Laporan
+                              </h2>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">Perbandingan realisasi anggaran BAZNAS</p>
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-2">
+                             <AnalisisManager userUid={user?.uid || ''} isReadOnly={isKeuanganSCB} />
+                          </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {activeTab === 'tracking' && (
                   <div className="space-y-4">
                     {/* Welcome Section */}
@@ -1413,6 +1487,7 @@ export default function App() {
                        </CardContent>
                      </Card>
 
+                    {/* Monthly results summary if handled */}
                     <FilteredResultsSummary 
                       submissions={filteredSubmissions} 
                       isFiltered={
@@ -1436,13 +1511,6 @@ export default function App() {
                         max: maxAmount
                       }}
                     />
-
-                    {isAdmin && (
-                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mt-12 bg-slate-50 p-8 rounded-[3rem] border border-white">
-                        <MonthlyAccumulationSummary submissions={submissions} />
-                        <StatusAccumulationSummary submissions={submissions} />
-                      </div>
-                    )}
 
                     <Tabs defaultValue="all" className="space-y-4 mt-6">
                       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-1">
@@ -1588,10 +1656,6 @@ export default function App() {
 
                 {activeTab === 'administrasi' && (
                   <AdministrasiManager isAdmin={isAdmin || profile?.email === OWNER_EMAIL} />
-                )}
-
-                {activeTab === 'analisis' && (profile?.email === OWNER_EMAIL || isKamal || isKeuanganSCB) && (
-                  <AnalisisManager userUid={user?.uid || ''} isReadOnly={isKeuanganSCB} />
                 )}
 
                 {activeTab === 'settings' && isSuperAdmin && (
