@@ -454,19 +454,17 @@ function SubmissionCard({
                 </Button>
               )}
 
-              {submission.picWhatsapp && (
-                <Button 
-                  variant="ghost" 
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    sendWhatsApp(submission.picWhatsapp!, formatWhatsAppMessage(submission)); 
-                  }}
-                  className="group rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-all shadow-sm border border-emerald-100 h-9 w-9 flex items-center justify-center p-0"
-                  title="Kirim Notifikasi WhatsApp"
-                >
-                  <MessageSquare size={16} />
-                </Button>
-              )}
+              <Button 
+                variant="ghost" 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  sendWhatsApp(submission.picWhatsapp!, formatWhatsAppMessage(submission)); 
+                }}
+                className="group rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-all shadow-sm border border-emerald-100 h-9 w-9 flex items-center justify-center p-0"
+                title="Kirim Notifikasi WhatsApp"
+              >
+                <MessageSquare size={16} />
+              </Button>
             </div>
 
             {(isTransferred || isPendingReport) && (
@@ -3303,6 +3301,14 @@ function SubmissionDetailView({
           </div>
         )}
         
+        <Button 
+          onClick={() => sendWhatsApp(submission.picWhatsapp!, formatWhatsAppMessage(submission))}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[9px] px-4 h-8 rounded-lg transition-all tracking-widest gap-2"
+        >
+          <MessageSquare size={14} />
+          WA NOTIFIKASI
+        </Button>
+
         {canEdit && (
           <Button 
             variant="outline" 

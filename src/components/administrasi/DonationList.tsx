@@ -19,11 +19,23 @@ import {
   XCircle, 
   Clock,
   ExternalLink,
-  Image as ImageIcon
+  Image as ImageIcon,
+  MessageSquare
 } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from 'sonner';
+
+const sendWhatsApp = (phoneNumber: string, message: string) => {
+  if (!phoneNumber) {
+    toast.error("Nomor WhatsApp tidak ditemukan");
+    return;
+  }
+  const cleanedPhone = phoneNumber.replace(/\D/g, '');
+  const finalPhone = cleanedPhone.startsWith('0') ? '62' + cleanedPhone.slice(1) : cleanedPhone;
+  const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
+  window.open(url, '_blank');
+};
 
 export const DonationList = () => {
   const [donations, setDonations] = useState<any[]>([]);
@@ -191,6 +203,13 @@ export const DonationList = () => {
                               </Button>
                             </>
                           )}
+                          <Button 
+                            onClick={() => sendWhatsApp(donation.contact, `Halo ${donation.donaturName},\n\nTerima kasih telah berdonasi ke Sekolah Cendekia BAZNAS.\nDonasi Anda sebesar Rp ${donation.amount.toLocaleString('id-ID')} telah kami terima.\n\nSemoga menjadi amal jariyah. Terima kasih.`)}
+                            variant="ghost" size="sm" className="h-8 w-8 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                            title="Kirim Terima Kasih WA"
+                          >
+                            <MessageSquare size={16} />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
