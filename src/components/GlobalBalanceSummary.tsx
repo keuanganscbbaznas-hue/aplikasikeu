@@ -90,7 +90,7 @@ export function GlobalBalanceSummary() {
     fetchAllBalances();
   }, []);
 
-  const totalGlobal = Object.values(balances).reduce((sum, b) => sum + b, 0);
+  const totalGlobal = Object.values(balances).reduce((sum: number, b: number) => sum + b, 0);
 
   if (loading) {
     return (
@@ -110,7 +110,7 @@ export function GlobalBalanceSummary() {
         </h2>
         <div className="flex items-center gap-2 px-4 py-1 bg-emerald-50 rounded-full border border-emerald-100">
            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Total Saldo Gabungan</span>
-           <span className="text-sm font-black text-emerald-700">Rp {totalGlobal.toLocaleString('id-ID')}</span>
+           <span className="text-sm font-black text-emerald-700">Rp {(totalGlobal as number).toLocaleString('id-ID')}</span>
         </div>
       </div>
       

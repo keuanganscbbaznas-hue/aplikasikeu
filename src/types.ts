@@ -6,6 +6,7 @@ export interface UserProfile {
   displayName: string;
   photoURL?: string;
   role: UserRole;
+  whatsapp?: string;
   createdAt: any;
 }
 
@@ -97,6 +98,7 @@ export interface Submission {
   submittedByName: string;
   submittedByEmail: string;
   picName?: string;
+  picWhatsapp?: string;
   sumberRekening?: 'SMP' | 'SMA';
   kodeBudget?: string;
   noDokumen?: string;

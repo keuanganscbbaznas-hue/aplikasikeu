@@ -378,10 +378,10 @@ export function BaznasBudgetManager({ profile, userUid, isReadOnly = false }: { 
                 if (!open) resetForm();
               }}>
                 <DialogTrigger render={
-                  <Button className="font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-600/20" />
-                }>
-                  <Plus className="mr-2" size={18} /> Buat Pengajuan
-                </DialogTrigger>
+                  <Button className="font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-600/20">
+                    <Plus className="mr-2" size={18} /> Buat Pengajuan
+                  </Button>
+                } />
               <DialogContent className="sm:max-w-[500px] border-none shadow-2xl rounded-[2rem]">
             <DialogHeader>
               <DialogTitle className="text-2xl font-black text-slate-800">

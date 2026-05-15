@@ -112,6 +112,29 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { resizeImage } from './lib/utils';
+import { Phone } from 'lucide-react';
+
+const formatWhatsAppMessage = (submission: Submission) => {
+  const stages = getStagesByType(submission.type);
+  const currentStatus = stages[submission.currentStageIndex];
+  const url = window.location.origin;
+  
+  return `Halo PIC ${submission.picName || submission.submittedByName},\n\nInformasi Update Pengajuan:\n📌 Judul: *${submission.title}*\n💰 Nominal: *Rp ${submission.amount.toLocaleString('id-ID')}*\n🔄 Status: *${currentStatus}*\n\nSilakan cek detail selengkapnya di aplikasi: ${url}\n\nTerima kasih.`;
+};
+
+const sendWhatsApp = (phoneNumber: string, message: string) => {
+  if (!phoneNumber) {
+    toast.error("Nomor WhatsApp tidak ditemukan");
+    return;
+  }
+  // Remove non-numeric characters
+  const cleanedPhone = phoneNumber.replace(/\D/g, '');
+  // Prefix with 62 if starts with 0
+  const finalPhone = cleanedPhone.startsWith('0') ? '62' + cleanedPhone.slice(1) : cleanedPhone;
+  
+  const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
+  window.open(url, '_blank');
+};
 
 const OWNER_EMAIL = 'keuanganscbbaznas@gmail.com';
 const SUPER_ADMIN_EMAILS = [OWNER_EMAIL, 'kamal2015go@gmail.com'];
@@ -430,6 +453,20 @@ function SubmissionCard({
                   <Edit2 size={16} />
                 </Button>
               )}
+
+              {submission.picWhatsapp && (
+                <Button 
+                  variant="ghost" 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    sendWhatsApp(submission.picWhatsapp!, formatWhatsAppMessage(submission)); 
+                  }}
+                  className="group rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-all shadow-sm border border-emerald-100 h-9 w-9 flex items-center justify-center p-0"
+                  title="Kirim Notifikasi WhatsApp"
+                >
+                  <MessageSquare size={16} />
+                </Button>
+              )}
             </div>
 
             {(isTransferred || isPendingReport) && (
@@ -521,6 +558,7 @@ export default function App() {
   const [editAmount, setEditAmount] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editPicName, setEditPicName] = useState('');
+  const [editPicWhatsapp, setEditPicWhatsapp] = useState('');
   const [editSumberRekening, setEditSumberRekening] = useState<'SMP' | 'SMA' | ''>('');
   const [editKodeBudget, setEditKodeBudget] = useState('');
   const [editNoDokumen, setEditNoDokumen] = useState('');
@@ -940,6 +978,7 @@ export default function App() {
     setEditAmount(submission.amount.toString());
     setEditDescription(submission.description || '');
     setEditPicName(submission.picName || '');
+    setEditPicWhatsapp(submission.picWhatsapp || '');
     setEditSumberRekening(submission.sumberRekening || '');
     setEditKodeBudget(submission.kodeBudget || '');
     setEditNoDokumen(submission.noDokumen || '');
@@ -976,6 +1015,7 @@ export default function App() {
       amount: Number(editAmount),
       description: editDescription,
       picName: editPicName,
+      picWhatsapp: editPicWhatsapp || null,
       sumberRekening: editSumberRekening || null,
       kodeBudget: editKodeBudget || null,
       noDokumen: editNoDokumen || null,
@@ -1168,22 +1208,7 @@ export default function App() {
           </div>
 
           <div className="px-4 py-6">
-             <div className="bg-slate-800/50 rounded-2xl p-4 border border-white/5 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-full -mr-8 -mt-8 blur-xl group-hover:bg-emerald-500/20 transition-colors" />
-                <div className="flex items-center gap-3 relative z-10">
-                   <div className="h-10 w-10 flex items-center justify-center rounded-full bg-slate-700 ring-2 ring-slate-600/50 overflow-hidden">
-                      {profile?.photoURL ? (
-                        <img src={profile.photoURL} alt="Profile" className="h-full w-full object-cover" />
-                      ) : (
-                        <UserIcon size={20} className="text-emerald-400" />
-                      )}
-                   </div>
-                   <div className="flex flex-col min-w-0">
-                     <p className="text-xs font-black text-white truncate uppercase tracking-tight">{profile?.displayName}</p>
-                     <p className="text-[10px] font-bold text-emerald-500 mt-1 uppercase tracking-tighter">{profile?.role}</p>
-                   </div>
-                </div>
-             </div>
+             <UserProfileDialog profile={profile} user={user} onUpdate={(data) => setProfile(prev => ({ ...prev, ...data } as UserProfile))} />
           </div>
 
           <nav className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
@@ -1795,6 +1820,15 @@ export default function App() {
                   />
                 </div>
                 <div className="grid gap-2">
+                  <Label htmlFor="edit-pic-wa">WhatsApp PIC (Optional)</Label>
+                  <Input 
+                    id="edit-pic-wa" 
+                    placeholder="Contoh: 08123456789"
+                    value={editPicWhatsapp}
+                    onChange={(e) => setEditPicWhatsapp(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
                   <Label htmlFor="edit-sumber">Sumber Rekening</Label>
                   <Select 
                     value={editSumberRekening} 
@@ -2192,12 +2226,109 @@ function WorkflowStepper({ stages, currentIdx, isLastStage }: { stages: readonly
   );
 }
 
+function UserProfileDialog({ 
+  profile, 
+  user,
+  onUpdate 
+}: { 
+  profile: UserProfile | null, 
+  user: any,
+  onUpdate: (data: Partial<UserProfile>) => void 
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [displayName, setDisplayName] = useState(profile?.displayName || '');
+  const [whatsapp, setWhatsapp] = useState(profile?.whatsapp || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (profile) {
+      setDisplayName(profile.displayName || '');
+      setWhatsapp(profile.whatsapp || '');
+    }
+  }, [profile, isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    
+    setIsSaving(true);
+    try {
+      await updateDoc(doc(db, 'users', user.uid), {
+        displayName,
+        whatsapp,
+        updatedAt: serverTimestamp()
+      });
+      onUpdate({ ...profile, displayName, whatsapp } as UserProfile);
+      setIsOpen(false);
+      toast.success("Profil berhasil diperbarui");
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal memperbarui profil");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger 
+        nativeButton={false}
+        render={
+          <div className="bg-slate-800/50 rounded-2xl p-4 border border-white/5 relative overflow-hidden group cursor-pointer hover:bg-slate-800 transition-colors">
+             <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-full -mr-8 -mt-8 blur-xl group-hover:bg-emerald-500/20 transition-colors" />
+             <div className="flex items-center gap-3 relative z-10">
+                <div className="h-10 w-10 flex items-center justify-center rounded-full bg-slate-700 ring-2 ring-slate-600/50 overflow-hidden shrink-0">
+                   {profile?.photoURL ? (
+                     <img src={profile.photoURL} alt="Profile" className="h-full w-full object-cover" />
+                   ) : (
+                     <UserIcon size={20} className="text-emerald-400" />
+                   )}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <p className="text-[11px] font-black text-white truncate uppercase tracking-tight">{profile?.displayName}</p>
+                  <p className="text-[9px] font-bold text-emerald-500 mt-0.5 uppercase tracking-tighter">{profile?.role}</p>
+                </div>
+                <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                   <Settings size={12} className="text-slate-400" />
+                </div>
+             </div>
+          </div>
+        }
+      />
+      <DialogContent className="sm:max-w-[425px]">
+         <form onSubmit={handleSubmit}>
+            <DialogHeader>
+               <DialogTitle className="font-black text-xl tracking-tighter">Edit Profil</DialogTitle>
+               <DialogDescription className="text-xs font-bold text-slate-400">Perbarui informasi profil Anda.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-6">
+               <div className="grid gap-2">
+                  <Label htmlFor="profile-name" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Nama Lengkap</Label>
+                  <Input id="profile-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required className="h-10 rounded-xl" />
+               </div>
+               <div className="grid gap-2">
+                  <Label htmlFor="profile-whatsapp" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Nomor WhatsApp</Label>
+                  <Input id="profile-whatsapp" placeholder="Contoh: 08123456789" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="h-10 rounded-xl" />
+               </div>
+            </div>
+            <DialogFooter>
+               <Button type="submit" disabled={isSaving} className="w-full h-11 rounded-xl font-bold bg-slate-900">
+                  {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
+               </Button>
+            </DialogFooter>
+         </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, user: any }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newType, setNewType] = useState<SubmissionType>('uang_muka');
   const [newTitle, setNewTitle] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newPicName, setNewPicName] = useState('');
+  const [newPicWhatsapp, setNewPicWhatsapp] = useState('');
   const [newSumberRekening, setNewSumberRekening] = useState<'SMP' | 'SMA' | ''>('');
   const [newKodeBudget, setNewKodeBudget] = useState('');
   const [newNoDokumen, setNewNoDokumen] = useState('');
@@ -2221,6 +2352,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
         submittedByName: profile.displayName,
         submittedByEmail: profile.email,
         picName: newPicName,
+        picWhatsapp: newPicWhatsapp || null,
         sumberRekening: newSumberRekening || null,
         kodeBudget: newKodeBudget || null,
         noDokumen: newNoDokumen || null,
@@ -2244,6 +2376,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
       setNewDescription('');
       setNewEvidenceUrl('');
       setNewPicName('');
+      setNewPicWhatsapp('');
       setNewSumberRekening('');
       setNewKodeBudget('');
       setNewNoDokumen('');
@@ -2330,6 +2463,15 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
               />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="pic-wa">WhatsApp PIC (Optional)</Label>
+              <Input 
+                id="pic-wa" 
+                placeholder="Contoh: 08123456789" 
+                value={newPicWhatsapp}
+                onChange={(e) => setNewPicWhatsapp(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="new-sumber">Sumber Rekening</Label>
               <Select value={newSumberRekening} onValueChange={(v: any) => setNewSumberRekening(v)}>
                 <SelectTrigger id="new-sumber">
@@ -2401,10 +2543,14 @@ function ImportSubmissionModal({ profile, user, variant = 'default' }: { profile
       Import CSV
     </Button>
   ) : (
-    <DialogTrigger render={<Button variant="outline" className="gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary transition-all" />}>
-      <Upload size={18} />
-      Import CSV
-    </DialogTrigger>
+    <DialogTrigger 
+      render={
+        <Button variant="outline" className="gap-2 border-primary/20 hover:bg-primary/5 hover:text-primary transition-all">
+          <Upload size={18} />
+          Import CSV
+        </Button>
+      }
+    />
   );
 
   const downloadTemplate = () => {
