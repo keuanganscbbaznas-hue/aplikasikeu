@@ -119,7 +119,7 @@ const formatWhatsAppMessage = (submission: Submission) => {
   const currentStatus = stages[submission.currentStageIndex];
   const url = 'https://aplikasikeu.vercel.app';
   
-  return `Assalamu'alaikum PIC ${submission.picName || submission.submittedByName}, Informasi Update Pengajuan:\n📦 Judul: *${submission.title}*\n💰 Nominal: *Rp ${submission.amount.toLocaleString('id-ID')}*\n📝 Status: *${currentStatus}*\n\nSilakan cek detail selengkapnya di aplikasi: ${url}\n\nTerima kasih.`;
+  return `Assalamu'alaikum \nPIC ${submission.picName || submission.submittedByName}, Informasi Update Pengajuan:\n📦 Judul: ${submission.title}\n💰 Nominal: Rp ${submission.amount.toLocaleString('id-ID')}\n📝 Status: ${currentStatus}\n\nSilakan cek detail selengkapnya di aplikasi: ${url}\n\nTerima kasih.`;
 };
 
 const sendWhatsApp = (phoneNumber: string, message: string) => {
@@ -297,6 +297,10 @@ function SubmissionCard({
   onToggle: (id: string) => void,
   onBukukan?: (s: Submission, unit: 'Kas Tunai SMP' | 'Kas Tunai SMA' | 'Kas Bank SMP' | 'Kas Bank SMA') => void
 }) {
+  const isOwner = currentUser?.email === OWNER_EMAIL;
+  const isAdmin = userRole === 'admin' || (currentUser?.email ? ADMIN_EMAILS.includes(currentUser.email) : false);
+  const canSendWA = isAdmin || isOwner;
+
   const stages = getStagesByType(submission.type);
   const isLastStage = submission.currentStageIndex === stages.length - 1;
   
@@ -454,17 +458,19 @@ function SubmissionCard({
                 </Button>
               )}
 
-              <Button 
-                variant="ghost" 
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  sendWhatsApp(submission.picWhatsapp!, formatWhatsAppMessage(submission)); 
-                }}
-                className="group rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-all shadow-sm border border-emerald-100 h-9 w-9 flex items-center justify-center p-0"
-                title="Kirim Notifikasi WhatsApp"
-              >
-                <MessageSquare size={16} />
-              </Button>
+              {canSendWA && (
+                <Button 
+                  variant="ghost" 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    sendWhatsApp(submission.picWhatsapp!, formatWhatsAppMessage(submission)); 
+                  }}
+                  className="group rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 transition-all shadow-sm border border-emerald-100 h-9 w-9 flex items-center justify-center p-0"
+                  title="Kirim Notifikasi WhatsApp"
+                >
+                  <MessageSquare size={16} />
+                </Button>
+              )}
             </div>
 
             {(isTransferred || isPendingReport) && (
@@ -3073,6 +3079,10 @@ function SubmissionDetailView({
   userRole: UserRole,
   currentUser: User | null
 }) {
+  const isOwner = currentUser?.email === OWNER_EMAIL;
+  const isAdmin = userRole === 'admin' || (currentUser?.email ? ADMIN_EMAILS.includes(currentUser.email) : false);
+  const canSendWA = isAdmin || isOwner;
+
   const isTrackingAdmin = currentUser?.email ? TRACKING_ADMIN_EMAILS.includes(currentUser.email) : false;
   const canApprove = isTrackingAdmin;
   const canEdit = isTrackingAdmin;
@@ -3466,13 +3476,15 @@ function SubmissionDetailView({
           </div>
         )}
         
-        <Button 
-          onClick={() => sendWhatsApp(submission.picWhatsapp!, formatWhatsAppMessage(submission))}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[9px] px-4 h-8 rounded-lg transition-all tracking-widest gap-2"
-        >
-          <MessageSquare size={14} />
-          WA NOTIFIKASI
-        </Button>
+        {canSendWA && (
+          <Button 
+            onClick={() => sendWhatsApp(submission.picWhatsapp!, formatWhatsAppMessage(submission))}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[9px] px-4 h-8 rounded-lg transition-all tracking-widest gap-2"
+          >
+            <MessageSquare size={14} />
+            WA NOTIFIKASI
+          </Button>
+        )}
 
         {canEdit && (
           <Button 
