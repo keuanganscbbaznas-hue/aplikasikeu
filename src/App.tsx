@@ -1784,161 +1784,174 @@ export default function App() {
             </div>
             
             <ScrollArea className="flex-1 p-6 bg-slate-50/30">
-              <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-type">Jenis Pengajuan</Label>
-                  <Select 
-                    value={editType} 
-                    onValueChange={(v: SubmissionType) => setEditType(v)}
-                  >
-                    <SelectTrigger id="edit-type">
-                      <SelectValue placeholder="Pilih Jenis" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="uang_muka">Uang Muka</SelectItem>
-                      <SelectItem value="reimburse">Reimburse</SelectItem>
-                      <SelectItem value="pembiayaan">Pembiayaan</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-title">Judul Pengajuan</Label>
-                  <Input 
-                    id="edit-title" 
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-amount">Nominal (Rp)</Label>
-                  <Input 
-                    id="edit-amount" 
-                    type="number" 
-                    value={editAmount}
-                    onChange={(e) => setEditAmount(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-pic">Nama PIC</Label>
-                  <Input 
-                    id="edit-pic" 
-                    value={editPicName}
-                    onChange={(e) => setEditPicName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-pic-wa">WhatsApp PIC (Optional)</Label>
-                  <Input 
-                    id="edit-pic-wa" 
-                    placeholder="Contoh: 08123456789"
-                    value={editPicWhatsapp}
-                    onChange={(e) => setEditPicWhatsapp(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-sumber">Sumber Rekening</Label>
-                  <Select 
-                    value={editSumberRekening} 
-                    onValueChange={(v: 'SMP' | 'SMA') => setEditSumberRekening(v)}
-                  >
-                    <SelectTrigger id="edit-sumber">
-                      <SelectValue placeholder="Pilih Unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="SMP">SMP</SelectItem>
-                      <SelectItem value="SMA">SMA</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-kodebudget">Kode Budget</Label>
-                  <Input 
-                    id="edit-kodebudget" 
-                    value={editKodeBudget}
-                    onChange={(e) => setEditKodeBudget(e.target.value)}
-                    placeholder="Contoh: 1.1.1"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-nodokumen">No Dokumen</Label>
-                  <Input 
-                    id="edit-nodokumen" 
-                    value={editNoDokumen}
-                    onChange={(e) => setEditNoDokumen(e.target.value)}
-                    placeholder="Contoh: 001/SCB/V/2026"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-status">Status Alur (Admin)</Label>
-                  <Select 
-                    value={editStageIndex.toString()} 
-                    onValueChange={(v) => setEditStageIndex(parseInt(v))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih Tahap" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getStagesByType(editType).map((stage, idx) => (
-                        <SelectItem key={idx} value={idx.toString()}>
-                          Tahap {idx + 1}: {stage}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-createdat">Tanggal Pengajuan</Label>
-                  <Input 
-                    id="edit-createdat" 
-                    type="datetime-local" 
-                    value={editCreatedAt}
-                    onChange={(e) => setEditCreatedAt(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-description">Keterangan</Label>
-                  <Input 
-                    id="edit-description" 
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-evidence">Link Bukti</Label>
-                  <Input 
-                    id="edit-evidence" 
-                    value={editEvidenceUrl}
-                    onChange={(e) => setEditEvidenceUrl(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <Label>Edit Waktu Persetujuan</Label>
-                <ScrollArea className="h-[300px] rounded-md border p-2">
-                  <div className="space-y-4">
-                    {editHistory.map((h, i) => (
-                      <div key={i} className="rounded-lg border bg-slate-50 p-2 text-[10px]">
-                        <p className="font-bold text-primary">{h.stage}</p>
-                        <p className="mb-1 text-slate-500">Oleh: {h.actorName}</p>
-                        <Input 
-                          type="datetime-local" 
-                          className="h-7 text-[10px]"
-                          value={h.timestamp ? format(h.timestamp instanceof Timestamp ? h.timestamp.toDate() : new Date(h.timestamp), "yyyy-MM-dd'T'HH:mm") : ''}
-                          onChange={(e) => handleUpdateHistoryTime(i, e.target.value)}
-                        />
-                      </div>
-                    ))}
+              <div className="grid gap-8 lg:grid-cols-3">
+                <div className="lg:col-span-2 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid gap-1.5 ml-1">
+                      <Label htmlFor="edit-type" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Jenis Pengajuan</Label>
+                      <Select 
+                        value={editType} 
+                        onValueChange={(v: SubmissionType) => setEditType(v)}
+                      >
+                        <SelectTrigger id="edit-type" className="h-9 rounded-xl border-slate-200">
+                          <SelectValue placeholder="Pilih Jenis" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="uang_muka">Uang Muka</SelectItem>
+                          <SelectItem value="reimburse">Reimburse</SelectItem>
+                          <SelectItem value="pembiayaan">Pembiayaan</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1.5 ml-1">
+                      <Label htmlFor="edit-title" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Judul Pengajuan</Label>
+                      <Input 
+                        id="edit-title" 
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        required
+                        className="h-9 rounded-xl border-slate-200"
+                      />
+                    </div>
+                    <div className="grid gap-1.5 ml-1">
+                      <Label htmlFor="edit-amount" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Nominal (Rp)</Label>
+                      <Input 
+                        id="edit-amount" 
+                        type="number" 
+                        value={editAmount}
+                        onChange={(e) => setEditAmount(e.target.value)}
+                        required
+                        className="h-9 rounded-xl border-slate-200"
+                      />
+                    </div>
+                    <div className="grid gap-1.5 ml-1">
+                      <Label htmlFor="edit-pic" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Nama PIC</Label>
+                      <Input 
+                        id="edit-pic" 
+                        value={editPicName}
+                        onChange={(e) => setEditPicName(e.target.value)}
+                        required
+                        className="h-9 rounded-xl border-slate-200"
+                      />
+                    </div>
+                    <div className="grid gap-1.5 ml-1">
+                      <Label htmlFor="edit-pic-wa" className="text-[10px] font-black uppercase tracking-wider text-slate-500">WhatsApp PIC (Optional)</Label>
+                      <Input 
+                        id="edit-pic-wa" 
+                        placeholder="Contoh: 08123456789"
+                        value={editPicWhatsapp}
+                        onChange={(e) => setEditPicWhatsapp(e.target.value)}
+                        className="h-9 rounded-xl border-slate-200"
+                      />
+                    </div>
+                    <div className="grid gap-1.5 ml-1">
+                      <Label htmlFor="edit-sumber" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Sumber Rekening</Label>
+                      <Select 
+                        value={editSumberRekening} 
+                        onValueChange={(v: 'SMP' | 'SMA') => setEditSumberRekening(v)}
+                      >
+                        <SelectTrigger id="edit-sumber" className="h-9 rounded-xl border-slate-200">
+                          <SelectValue placeholder="Pilih Unit" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="SMP">SMP</SelectItem>
+                          <SelectItem value="SMA">SMA</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1.5 ml-1">
+                      <Label htmlFor="edit-kodebudget" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Kode Budget</Label>
+                      <Input 
+                        id="edit-kodebudget" 
+                        value={editKodeBudget}
+                        onChange={(e) => setEditKodeBudget(e.target.value)}
+                        placeholder="Contoh: 1.1.1"
+                        className="h-9 rounded-xl border-slate-200"
+                      />
+                    </div>
+                    <div className="grid gap-1.5 ml-1">
+                      <Label htmlFor="edit-nodokumen" className="text-[10px] font-black uppercase tracking-wider text-slate-500">No Dokumen</Label>
+                      <Input 
+                        id="edit-nodokumen" 
+                        value={editNoDokumen}
+                        onChange={(e) => setEditNoDokumen(e.target.value)}
+                        placeholder="Contoh: 001/SCB/V/2026"
+                        className="h-9 rounded-xl border-slate-200"
+                      />
+                    </div>
+                    <div className="grid gap-1.5 ml-1">
+                      <Label htmlFor="edit-status" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Status Alur (Admin)</Label>
+                      <Select 
+                        value={editStageIndex.toString()} 
+                        onValueChange={(v) => setEditStageIndex(parseInt(v))}
+                      >
+                        <SelectTrigger className="h-9 rounded-xl border-slate-200 font-bold text-primary">
+                          <SelectValue placeholder="Pilih Tahap" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          {getStagesByType(editType).map((stage, idx) => (
+                            <SelectItem key={idx} value={idx.toString()} className="text-[10px]">
+                              T{idx + 1}: {stage}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-1.5 ml-1">
+                      <Label htmlFor="edit-createdat" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Tanggal Pengajuan</Label>
+                      <Input 
+                        id="edit-createdat" 
+                        type="datetime-local" 
+                        value={editCreatedAt}
+                        onChange={(e) => setEditCreatedAt(e.target.value)}
+                        required
+                        className="h-9 rounded-xl border-slate-200"
+                      />
+                    </div>
+                    <div className="grid gap-1.5 ml-1">
+                      <Label htmlFor="edit-description" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Keterangan</Label>
+                      <Input 
+                        id="edit-description" 
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        className="h-9 rounded-xl border-slate-200"
+                      />
+                    </div>
+                    <div className="grid gap-1.5 ml-1">
+                      <Label htmlFor="edit-evidence" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Link Bukti</Label>
+                      <Input 
+                        id="edit-evidence" 
+                        value={editEvidenceUrl}
+                        onChange={(e) => setEditEvidenceUrl(e.target.value)}
+                        className="h-9 rounded-xl border-slate-200"
+                      />
+                    </div>
                   </div>
-                </ScrollArea>
+                </div>
+
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                    <Clock size={12} /> Edit Waktu Persetujuan
+                  </Label>
+                  <div className="h-[400px] rounded-2xl border border-slate-100 bg-white/50 p-3 overflow-y-auto">
+                    <div className="space-y-2">
+                      {editHistory.map((h, i) => (
+                        <div key={i} className="rounded-xl border border-slate-50 bg-slate-50/50 p-2.5 text-[10px]">
+                          <p className="font-black text-primary uppercase tracking-tighter mb-0.5">{h.stage}</p>
+                          <p className="mb-2 text-slate-500 font-bold">Oleh: {h.actorName}</p>
+                          <Input 
+                            type="datetime-local" 
+                            className="h-8 rounded-lg text-[10px] border-slate-200 bg-white"
+                            value={h.timestamp ? format(h.timestamp instanceof Timestamp ? h.timestamp.toDate() : new Date(h.timestamp), "yyyy-MM-dd'T'HH:mm") : ''}
+                            onChange={(e) => handleUpdateHistoryTime(i, e.target.value)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </ScrollArea>
+            </ScrollArea>
 
             <div className="p-6 border-t border-slate-50 bg-white">
               <DialogFooter>
@@ -2424,126 +2437,141 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
           </Button>
         }
       />
-      <DialogContent className="max-w-2xl rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
-        <form onSubmit={handleSubmit} className="flex flex-col max-h-[90vh]">
+      <DialogContent className="max-w-4xl rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
+        <form onSubmit={handleSubmit} className="flex flex-col max-h-[95vh]">
           <div className="p-6 border-b border-slate-50 bg-white">
             <DialogHeader>
-              <DialogTitle className="font-black text-xl tracking-tighter">Pengajuan Baru</DialogTitle>
-              <DialogDescription className="text-xs font-bold text-slate-400">
+              <DialogTitle className="font-black text-xl tracking-tighter text-slate-900 uppercase">Pengajuan Baru</DialogTitle>
+              <DialogDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 Isi detail pengajuan uang muka atau reimburse Anda di sini.
               </DialogDescription>
             </DialogHeader>
           </div>
           
-          <ScrollArea className="flex-1 p-6 bg-slate-50/30">
-            <div className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="type">Jenis Pengajuan</Label>
-              <Select value={newType} onValueChange={(v: any) => setNewType(v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih jenis" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="uang_muka">Uang Muka</SelectItem>
-                  <SelectItem value="reimburse">Reimburse</SelectItem>
-                  <SelectItem value="pembiayaan">Pembiayaan</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="title">Judul Pengajuan</Label>
-              <Input 
-                id="title" 
-                placeholder="Contoh: Operasional Kantor Jan 2024" 
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="amount">Nominal (Rp)</Label>
-              <Input 
-                id="amount" 
-                type="number" 
-                placeholder="Contoh: 1500000" 
-                value={newAmount}
-                onChange={(e) => setNewAmount(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="pic">Nama PIC</Label>
-              <Input 
-                id="pic" 
-                placeholder="Masukkan nama PIC" 
-                value={newPicName}
-                onChange={(e) => setNewPicName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="pic-wa">WhatsApp PIC (Optional)</Label>
-              <Input 
-                id="pic-wa" 
-                placeholder="Contoh: 08123456789" 
-                value={newPicWhatsapp}
-                onChange={(e) => setNewPicWhatsapp(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="new-sumber">Sumber Rekening</Label>
-              <Select value={newSumberRekening} onValueChange={(v: any) => setNewSumberRekening(v)}>
-                <SelectTrigger id="new-sumber">
-                  <SelectValue placeholder="Pilih unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SMP">SMP</SelectItem>
-                  <SelectItem value="SMA">SMA</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="new-kodebudget">Kode Budget</Label>
-              <Input 
-                id="new-kodebudget" 
-                placeholder="Contoh: 1.1.1" 
-                value={newKodeBudget}
-                onChange={(e) => setNewKodeBudget(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="new-nodokumen">No Dokumen</Label>
-              <Input 
-                id="new-nodokumen" 
-                placeholder="Contoh: 001/SCB/V/2026" 
-                value={newNoDokumen}
-                onChange={(e) => setNewNoDokumen(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">Keterangan</Label>
-              <Input 
-                id="description" 
-                placeholder="Detail pengajuan..." 
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="evidence">Link Bukti Dokumen (Optional)</Label>
-              <Input 
-                id="evidence" 
-                placeholder="https://drive.google.com/..." 
-                value={newEvidenceUrl}
-                onChange={(e) => setNewEvidenceUrl(e.target.value)}
-              />
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+              <div className="space-y-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="type" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Jenis Pengajuan</Label>
+                  <Select value={newType} onValueChange={(v: any) => setNewType(v)}>
+                    <SelectTrigger className="h-10 rounded-xl border-slate-200">
+                      <SelectValue placeholder="Pilih jenis" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="uang_muka">Uang Muka</SelectItem>
+                      <SelectItem value="reimburse">Reimburse</SelectItem>
+                      <SelectItem value="pembiayaan">Pembiayaan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="title" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Judul Pengajuan</Label>
+                  <Input 
+                    id="title" 
+                    placeholder="Contoh: Operasional Kantor Jan 2024" 
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    required
+                    className="h-10 rounded-xl border-slate-200"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="amount" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Nominal (Rp)</Label>
+                  <Input 
+                    id="amount" 
+                    type="number" 
+                    placeholder="Contoh: 1500000" 
+                    value={newAmount}
+                    onChange={(e) => setNewAmount(e.target.value)}
+                    required
+                    className="h-10 rounded-xl border-slate-200"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="pic" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Nama PIC</Label>
+                  <Input 
+                    id="pic" 
+                    placeholder="Masukkan nama PIC" 
+                    value={newPicName}
+                    onChange={(e) => setNewPicName(e.target.value)}
+                    required
+                    className="h-10 rounded-xl border-slate-200"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="pic-wa" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">WhatsApp PIC (Optional)</Label>
+                  <Input 
+                    id="pic-wa" 
+                    placeholder="Contoh: 08123456789" 
+                    value={newPicWhatsapp}
+                    onChange={(e) => setNewPicWhatsapp(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="new-sumber" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Sumber Rekening</Label>
+                  <Select value={newSumberRekening} onValueChange={(v: any) => setNewSumberRekening(v)}>
+                    <SelectTrigger id="new-sumber" className="h-10 rounded-xl border-slate-200">
+                      <SelectValue placeholder="Pilih unit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SMP">SMP</SelectItem>
+                      <SelectItem value="SMA">SMA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="new-kodebudget" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Kode Budget</Label>
+                  <Input 
+                    id="new-kodebudget" 
+                    placeholder="Contoh: 1.1.1" 
+                    value={newKodeBudget}
+                    onChange={(e) => setNewKodeBudget(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="new-nodokumen" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">No Dokumen</Label>
+                  <Input 
+                    id="new-nodokumen" 
+                    placeholder="Contoh: 001/SCB/V/2026" 
+                    value={newNoDokumen}
+                    onChange={(e) => setNewNoDokumen(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="description" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Keterangan</Label>
+                  <Input 
+                    id="description" 
+                    placeholder="Detail pengajuan..." 
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="evidence" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Link Bukti Dokumen (Optional)</Label>
+                  <Input 
+                    id="evidence" 
+                    placeholder="https://drive.google.com/..." 
+                    value={newEvidenceUrl}
+                    onChange={(e) => setNewEvidenceUrl(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200"
+                  />
+                </div>
+              </div>
             </div>
           </div>
-          </ScrollArea>
           
           <div className="p-6 border-t border-slate-50 bg-white">
             <DialogFooter>
-              <Button type="submit" className="w-full font-black uppercase tracking-widest h-11">Kirim Pengajuan</Button>
+              <Button type="submit" className="w-full font-black uppercase tracking-[0.2em] h-12 rounded-xl bg-slate-900 text-white shadow-xl shadow-slate-200">
+                Kirim Pengajuan
+              </Button>
             </DialogFooter>
           </div>
         </form>
