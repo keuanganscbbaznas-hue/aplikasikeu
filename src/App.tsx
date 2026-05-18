@@ -691,6 +691,9 @@ export default function App() {
         'Tanggal Pengajuan', 
         'Jenis', 
         'Judul', 
+        'Kode Budget',
+        'Rekening',
+        'No Dokumen',
         'Penerima Manfaat / CP', 
         'Nominal', 
         'Status', 
@@ -705,6 +708,9 @@ export default function App() {
         parseFirestoreDate(s.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
         s.type === 'uang_muka' ? 'Uang Muka' : s.type === 'reimburse' ? 'Reimburse' : s.type === 'laporan_uang_muka' ? 'Laporan UM' : 'Pembiayaan',
         s.title || '',
+        s.kodeBudget || '-',
+        s.sumberRekening || '-',
+        s.noDokumen || '-',
         s.description || '',
         s.amount || 0,
         s.status || '',
@@ -1058,7 +1064,7 @@ export default function App() {
       return;
     }
 
-    const headers = ["ID", "Jenis", "Judul", "Nominal", "Status", "Tahap", "Pengaju", "Email Pengaju", "Tanggal Buat", "Link Bukti"];
+    const headers = ["ID", "Jenis", "Judul", "Kode Budget", "Rekening", "No Dokumen", "Nominal", "Status", "Tahap", "Pengaju", "Email Pengaju", "Tanggal Buat", "Link Bukti"];
     const rows = submissions.map(s => {
       const stages = getStagesByType(s.type);
       const currentStatus = stages[s.currentStageIndex] || s.status;
@@ -1066,6 +1072,9 @@ export default function App() {
         s.id,
         s.type === 'uang_muka' ? 'Uang Muka' : s.type === 'reimburse' ? 'Reimburse' : 'Pembiayaan',
         s.title,
+        s.kodeBudget || '-',
+        s.sumberRekening || '-',
+        s.noDokumen || '-',
         s.amount,
         currentStatus,
         s.currentStageIndex + 1,
