@@ -1781,196 +1781,232 @@ export default function App() {
       </AlertDialog>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-4xl rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
-          <form onSubmit={handleUpdate} className="flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-slate-50 bg-white">
+        <DialogContent className="max-w-6xl max-h-[95vh] flex flex-col rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
+          <form onSubmit={handleUpdate} className="flex flex-col flex-1 overflow-hidden">
+            <div className="p-6 border-b border-slate-50 bg-white shrink-0">
               <DialogHeader>
-                <DialogTitle className="font-black text-xl tracking-tighter">Edit Pengajuan</DialogTitle>
-                <DialogDescription className="text-xs font-bold text-slate-400">
-                  Ubah detail pengajuan.
+                <DialogTitle className="font-black text-xl tracking-tighter text-slate-900 uppercase">Edit Pengajuan</DialogTitle>
+                <DialogDescription className="text-xs font-bold text-slate-400 font-mono tracking-widest uppercase">
+                  Ubah detail pengajuan & riwayat transaksi
                 </DialogDescription>
               </DialogHeader>
             </div>
             
-            <ScrollArea className="flex-1 p-6 bg-slate-50/30">
-              <div className="grid gap-8 lg:grid-cols-3">
-                <div className="lg:col-span-2 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="grid gap-1.5 ml-1">
-                      <Label htmlFor="edit-type" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Jenis Pengajuan</Label>
-                      <Select 
-                        value={editType} 
-                        onValueChange={(v: SubmissionType) => setEditType(v)}
-                      >
-                        <SelectTrigger id="edit-type" className="h-9 rounded-xl border-slate-200">
-                          <SelectValue placeholder="Pilih Jenis" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                          <SelectItem value="uang_muka">Uang Muka</SelectItem>
-                          <SelectItem value="reimburse">Reimburse</SelectItem>
-                          <SelectItem value="pembiayaan">Pembiayaan</SelectItem>
-                        </SelectContent>
-                      </Select>
+            <ScrollArea className="flex-1 min-h-0 bg-slate-50/30">
+              <div className="p-8">
+                <div className="grid gap-12 lg:grid-cols-12">
+                <div className="lg:col-span-7 space-y-8">
+                  <div>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 ml-1 flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Informasi Utama
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-type" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Jenis Pengajuan</Label>
+                        <Select 
+                          value={editType} 
+                          onValueChange={(v: SubmissionType) => setEditType(v)}
+                        >
+                          <SelectTrigger id="edit-type" className="h-10 rounded-xl border-slate-200 bg-white">
+                            <SelectValue placeholder="Pilih Jenis" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value="uang_muka">Uang Muka</SelectItem>
+                            <SelectItem value="reimburse">Reimburse</SelectItem>
+                            <SelectItem value="pembiayaan">Pembiayaan</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-title" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Judul Pengajuan</Label>
+                        <Input 
+                          id="edit-title" 
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          required
+                          className="h-10 rounded-xl border-slate-200 bg-white"
+                        />
+                      </div>
+                      <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-amount" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Nominal (Rp)</Label>
+                        <Input 
+                          id="edit-amount" 
+                          type="number" 
+                          value={editAmount}
+                          onChange={(e) => setEditAmount(e.target.value)}
+                          required
+                          className="h-10 rounded-xl border-slate-200 bg-white"
+                        />
+                      </div>
+                      <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-pic" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Nama PIC</Label>
+                        <Input 
+                          id="edit-pic" 
+                          value={editPicName}
+                          onChange={(e) => setEditPicName(e.target.value)}
+                          required
+                          className="h-10 rounded-xl border-slate-200 bg-white"
+                        />
+                      </div>
+                      <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-pic-wa" className="text-[9px] font-black uppercase tracking-wider text-slate-500">WhatsApp PIC (Optional)</Label>
+                        <Input 
+                          id="edit-pic-wa" 
+                          placeholder="Contoh: 08123456789"
+                          value={editPicWhatsapp}
+                          onChange={(e) => setEditPicWhatsapp(e.target.value)}
+                          className="h-10 rounded-xl border-slate-200 bg-white"
+                        />
+                      </div>
+                      <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-sumber" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Sumber Rekening</Label>
+                        <Select 
+                          value={editSumberRekening} 
+                          onValueChange={(v: 'SMP' | 'SMA') => setEditSumberRekening(v)}
+                        >
+                          <SelectTrigger id="edit-sumber" className="h-10 rounded-xl border-slate-200 bg-white">
+                            <SelectValue placeholder="Pilih Unit" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value="SMP">SMP</SelectItem>
+                            <SelectItem value="SMA">SMA</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div className="grid gap-1.5 ml-1">
-                      <Label htmlFor="edit-title" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Judul Pengajuan</Label>
-                      <Input 
-                        id="edit-title" 
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        required
-                        className="h-9 rounded-xl border-slate-200"
-                      />
-                    </div>
-                    <div className="grid gap-1.5 ml-1">
-                      <Label htmlFor="edit-amount" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Nominal (Rp)</Label>
-                      <Input 
-                        id="edit-amount" 
-                        type="number" 
-                        value={editAmount}
-                        onChange={(e) => setEditAmount(e.target.value)}
-                        required
-                        className="h-9 rounded-xl border-slate-200"
-                      />
-                    </div>
-                    <div className="grid gap-1.5 ml-1">
-                      <Label htmlFor="edit-pic" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Nama PIC</Label>
-                      <Input 
-                        id="edit-pic" 
-                        value={editPicName}
-                        onChange={(e) => setEditPicName(e.target.value)}
-                        required
-                        className="h-9 rounded-xl border-slate-200"
-                      />
-                    </div>
-                    <div className="grid gap-1.5 ml-1">
-                      <Label htmlFor="edit-pic-wa" className="text-[10px] font-black uppercase tracking-wider text-slate-500">WhatsApp PIC (Optional)</Label>
-                      <Input 
-                        id="edit-pic-wa" 
-                        placeholder="Contoh: 08123456789"
-                        value={editPicWhatsapp}
-                        onChange={(e) => setEditPicWhatsapp(e.target.value)}
-                        className="h-9 rounded-xl border-slate-200"
-                      />
-                    </div>
-                    <div className="grid gap-1.5 ml-1">
-                      <Label htmlFor="edit-sumber" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Sumber Rekening</Label>
-                      <Select 
-                        value={editSumberRekening} 
-                        onValueChange={(v: 'SMP' | 'SMA') => setEditSumberRekening(v)}
-                      >
-                        <SelectTrigger id="edit-sumber" className="h-9 rounded-xl border-slate-200">
-                          <SelectValue placeholder="Pilih Unit" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                          <SelectItem value="SMP">SMP</SelectItem>
-                          <SelectItem value="SMA">SMA</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-1.5 ml-1">
-                      <Label htmlFor="edit-kodebudget" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Kode Budget</Label>
-                      <Input 
-                        id="edit-kodebudget" 
-                        value={editKodeBudget}
-                        onChange={(e) => setEditKodeBudget(e.target.value)}
-                        placeholder="Contoh: 1.1.1"
-                        className="h-9 rounded-xl border-slate-200"
-                      />
-                    </div>
-                    <div className="grid gap-1.5 ml-1">
-                      <Label htmlFor="edit-nodokumen" className="text-[10px] font-black uppercase tracking-wider text-slate-500">No Dokumen</Label>
-                      <Input 
-                        id="edit-nodokumen" 
-                        value={editNoDokumen}
-                        onChange={(e) => setEditNoDokumen(e.target.value)}
-                        placeholder="Contoh: 001/SCB/V/2026"
-                        className="h-9 rounded-xl border-slate-200"
-                      />
-                    </div>
-                    <div className="grid gap-1.5 ml-1">
-                      <Label htmlFor="edit-status" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Status Alur (Admin)</Label>
-                      <Select 
-                        value={editStageIndex.toString()} 
-                        onValueChange={(v) => setEditStageIndex(parseInt(v))}
-                      >
-                        <SelectTrigger className="h-9 rounded-xl border-slate-200 font-bold text-primary">
-                          <SelectValue placeholder="Pilih Tahap" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl">
-                          {getStagesByType(editType).map((stage, idx) => (
-                            <SelectItem key={idx} value={idx.toString()} className="text-[10px]">
-                              T{idx + 1}: {stage}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-1.5 ml-1">
-                      <Label htmlFor="edit-createdat" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Tanggal Pengajuan</Label>
-                      <Input 
-                        id="edit-createdat" 
-                        type="datetime-local" 
-                        value={editCreatedAt}
-                        onChange={(e) => setEditCreatedAt(e.target.value)}
-                        required
-                        className="h-9 rounded-xl border-slate-200"
-                      />
-                    </div>
-                    <div className="grid gap-1.5 ml-1">
-                      <Label htmlFor="edit-description" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Keterangan</Label>
-                      <Input 
-                        id="edit-description" 
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
-                        className="h-9 rounded-xl border-slate-200"
-                      />
-                    </div>
-                    <div className="grid gap-1.5 ml-1">
-                      <Label htmlFor="edit-evidence" className="text-[10px] font-black uppercase tracking-wider text-slate-500">Link Bukti</Label>
-                      <Input 
-                        id="edit-evidence" 
-                        value={editEvidenceUrl}
-                        onChange={(e) => setEditEvidenceUrl(e.target.value)}
-                        className="h-9 rounded-xl border-slate-200"
-                      />
+                  </div>
+
+                  <div>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 ml-1 flex items-center gap-2">
+                       <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                       Administrasi & Dokumen
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-kodebudget" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Kode Budget</Label>
+                        <Input 
+                          id="edit-kodebudget" 
+                          value={editKodeBudget}
+                          onChange={(e) => setEditKodeBudget(e.target.value)}
+                          placeholder="Contoh: 1.1.1"
+                          className="h-10 rounded-xl border-slate-200 bg-white"
+                        />
+                      </div>
+                      <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-nodokumen" className="text-[9px] font-black uppercase tracking-wider text-slate-500">No Dokumen</Label>
+                        <Input 
+                          id="edit-nodokumen" 
+                          value={editNoDokumen}
+                          onChange={(e) => setEditNoDokumen(e.target.value)}
+                          placeholder="Contoh: 001/SCB/V/2026"
+                          className="h-10 rounded-xl border-slate-200 bg-white"
+                        />
+                      </div>
+                      <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-status" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Status Alur (Admin)</Label>
+                        <Select 
+                          value={editStageIndex.toString()} 
+                          onValueChange={(v) => setEditStageIndex(parseInt(v))}
+                        >
+                          <SelectTrigger className="h-10 rounded-xl border-slate-200 font-bold text-emerald-700 bg-white">
+                            <SelectValue placeholder="Pilih Tahap" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl max-h-[300px]">
+                            {getStagesByType(editType).map((stage, idx) => (
+                              <SelectItem key={idx} value={idx.toString()} className="text-[10px] font-bold">
+                                Tahap {idx + 1}: {stage}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-createdat" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Tanggal Pengajuan</Label>
+                        <Input 
+                          id="edit-createdat" 
+                          type="datetime-local" 
+                          value={editCreatedAt}
+                          onChange={(e) => setEditCreatedAt(e.target.value)}
+                          required
+                          className="h-10 rounded-xl border-slate-200 bg-white"
+                        />
+                      </div>
+                      <div className="grid gap-2 ml-1 md:col-span-2">
+                        <Label htmlFor="edit-description" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Keterangan</Label>
+                        <Input 
+                          id="edit-description" 
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          className="h-10 rounded-xl border-slate-200 bg-white"
+                        />
+                      </div>
+                      <div className="grid gap-2 ml-1 md:col-span-2">
+                        <Label htmlFor="edit-evidence" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Link Bukti Dokumen</Label>
+                        <Input 
+                          id="edit-evidence" 
+                          value={editEvidenceUrl}
+                          onChange={(e) => setEditEvidenceUrl(e.target.value)}
+                          className="h-10 rounded-xl border-slate-200 bg-white"
+                          placeholder="https://drive.google.com/..."
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                    <Clock size={12} /> Edit Waktu Persetujuan
-                  </Label>
-                  <div className="h-[400px] rounded-2xl border border-slate-100 bg-white/50 p-3 overflow-y-auto">
-                    <div className="space-y-2">
+                <div className="lg:col-span-5 space-y-6">
+                  <div className="flex items-center justify-between ml-1">
+                    <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2">
+                      <Clock size={12} className="text-emerald-500" /> Edit Waktu Persetujuan
+                    </Label>
+                    <span className="text-[8px] bg-slate-200/50 px-2 py-0.5 rounded-full font-bold text-slate-500 uppercase">Admin Only</span>
+                  </div>
+                  <div className="h-[450px] lg:h-[550px] rounded-[2rem] border border-slate-100 bg-white p-5 overflow-y-auto shadow-inner">
+                    <div className="flex flex-col gap-3">
                       {editHistory.map((h, i) => (
-                        <div key={i} className="rounded-xl border border-slate-50 bg-slate-50/50 p-2.5 text-[10px]">
-                          <p className="font-black text-primary uppercase tracking-tighter mb-0.5">{h.stage}</p>
-                          <p className="mb-2 text-slate-500 font-bold">Oleh: {h.actorName}</p>
-                          <Input 
-                            type="datetime-local" 
-                            className="h-8 rounded-lg text-[10px] border-slate-200 bg-white"
-                            value={h.timestamp ? format(h.timestamp instanceof Timestamp ? h.timestamp.toDate() : new Date(h.timestamp), "yyyy-MM-dd'T'HH:mm") : ''}
-                            onChange={(e) => handleUpdateHistoryTime(i, e.target.value)}
-                          />
+                        <div key={i} className="group rounded-2xl border border-slate-50 bg-slate-50/50 p-4 text-[10px] hover:bg-white hover:border-emerald-100 hover:shadow-md transition-all duration-300">
+                          <div className="flex flex-col gap-1 mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              <p className="font-black text-emerald-800 uppercase tracking-tighter leading-tight flex-1">{h.stage}</p>
+                            </div>
+                            <p className="text-[9px] text-slate-400 font-bold ml-3.5 uppercase italic">Oleh: {h.actorName}</p>
+                          </div>
+                          <div className="relative pl-3.5">
+                            <Input 
+                              type="datetime-local" 
+                              className="h-8 rounded-lg text-[10px] font-bold border-slate-100 bg-white"
+                              value={h.timestamp ? format(h.timestamp instanceof Timestamp ? h.timestamp.toDate() : new Date(h.timestamp), "yyyy-MM-dd'T'HH:mm") : ''}
+                              onChange={(e) => handleUpdateHistoryTime(i, e.target.value)}
+                            />
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
               </div>
-            </ScrollArea>
+            </div>
+          </ScrollArea>
 
-            <div className="p-6 border-t border-slate-50 bg-white">
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <div className="p-5 border-t border-slate-50 bg-white shrink-0">
+              <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setIsEditDialogOpen(false)}
+                  className="rounded-xl px-8 h-10 font-bold text-slate-500 border-slate-200 hover:bg-slate-50"
+                >
                   Batal
                 </Button>
-                <Button type="submit">
+                <Button 
+                  type="submit"
+                  className="rounded-xl px-10 h-10 font-black uppercase tracking-[0.2em] bg-emerald-700 hover:bg-emerald-800 text-white shadow-lg shadow-emerald-100"
+                >
                   Simpan Perubahan
                 </Button>
-              </DialogFooter>
+              </div>
             </div>
           </form>
         </DialogContent>
@@ -2446,9 +2482,9 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
           </Button>
         }
       />
-      <DialogContent className="max-w-4xl rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
-        <form onSubmit={handleSubmit} className="flex flex-col max-h-[95vh]">
-          <div className="p-6 border-b border-slate-50 bg-white">
+      <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 border-b border-slate-50 bg-white shrink-0">
             <DialogHeader>
               <DialogTitle className="font-black text-xl tracking-tighter text-slate-900 uppercase">Pengajuan Baru</DialogTitle>
               <DialogDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -2457,8 +2493,9 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
             </DialogHeader>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+          <ScrollArea className="flex-1 min-h-0 bg-slate-50/30">
+            <div className="p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div className="space-y-4">
                 <div className="grid gap-2">
                   <Label htmlFor="type" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Jenis Pengajuan</Label>
@@ -2574,9 +2611,10 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
                 </div>
               </div>
             </div>
-          </div>
+            </div>
+          </ScrollArea>
           
-          <div className="p-6 border-t border-slate-50 bg-white">
+          <div className="p-6 border-t border-slate-50 bg-white shrink-0">
             <DialogFooter>
               <Button type="submit" className="w-full font-black uppercase tracking-[0.2em] h-12 rounded-xl bg-slate-900 text-white shadow-xl shadow-slate-200">
                 Kirim Pengajuan
