@@ -3082,6 +3082,60 @@ function SubmissionDetailView({
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
   const [isBukukanMenuOpen, setIsBukukanMenuOpen] = useState(false);
 
+  // Generate a full chronology from stage 0 up to current stage index
+  const fullChronology = useMemo(() => {
+    const chronology = [];
+    
+    // We iterate up to currentStageIndex to show the "Path"
+    for (let i = 0; i <= submission.currentStageIndex; i++) {
+      const stageName = stages[i];
+      const historyEntries = submission.history.filter(h => h.stage === stageName);
+      
+      if (historyEntries.length > 0) {
+        // Add each history entry as a chronology point
+        historyEntries.forEach(h => {
+          chronology.push({
+            type: 'history',
+            stage: h.stage,
+            actorName: h.actorName,
+            status: h.status,
+            timestamp: h.timestamp,
+            comment: h.comment,
+            isCurrent: i === submission.currentStageIndex && historyEntries.indexOf(h) === historyEntries.length - 1
+          });
+        });
+      } else {
+        // No history entry for this stage yet (could be skipped or current stage)
+        chronology.push({
+          type: 'placeholder',
+          stage: stageName,
+          actorName: '-',
+          status: i < submission.currentStageIndex ? 'LEWATI/SELESAI' : 'SEDANG DIPROSES',
+          timestamp: null,
+          isCurrent: i === submission.currentStageIndex
+        });
+      }
+    }
+    
+    // Also include any history entries that might be for stages BEYOND current index (if manual rollback happened)
+    submission.history.forEach(h => {
+      const stageIdx = stages.indexOf(h.stage);
+      if (stageIdx > submission.currentStageIndex) {
+        chronology.push({
+          type: 'history',
+          stage: h.stage,
+          actorName: h.actorName,
+          status: h.status,
+          timestamp: h.timestamp,
+          comment: h.comment,
+          isCurrent: false
+        });
+      }
+    });
+
+    return chronology;
+  }, [submission.history, submission.currentStageIndex, stages]);
+
   const handleSign = async (signature: string) => {
     if (!activeSigner) return;
     try {
@@ -3324,43 +3378,54 @@ function SubmissionDetailView({
         </div>
 
         <div className="space-y-6">
-           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm h-full">
-              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Riwayat Aktivitas</h4>
-              <ScrollArea className="h-[350px] pr-4">
-                <div className="relative space-y-6 pl-6 before:absolute before:left-2 before:top-2 before:h-[calc(100%-16px)] before:w-0.5 before:bg-slate-100">
-                  {submission.history.map((h, i) => (
-                    <div key={i} className="relative">
-                      <div className="absolute -left-[22px] top-1 h-3 w-3 rounded-full border-2 border-white bg-slate-900 shadow-sm" />
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-black text-slate-900 tracking-tighter w-[60%]">{h.stage}</p>
-                          <span className="text-[9px] font-medium text-slate-400 text-right w-[40%] flex flex-col">
-                            <span>{format(parseFirestoreDate(h.timestamp), 'HH:mm,')}</span>
-                            <span>{format(parseFirestoreDate(h.timestamp), 'dd/MM')}</span>
-                          </span>
-                        </div>
-                        <div className="flex flex-col gap-1 mb-2">
-                           <span className="text-[9px] font-medium text-slate-500">Oleh: {h.actorName}</span>
-                           <Badge variant="outline" className="w-fit h-4 px-1.5 text-[8px] bg-slate-50 border-slate-100 text-slate-500 uppercase rounded">{h.status}</Badge>
-                        </div>
-                        {h.comment && (
-                          <div className="rounded-lg bg-slate-50/50 p-2.5 text-[10px] text-slate-600 border border-slate-100 italic">
-                            "{h.comment}"
-                          </div>
-                        )}
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm h-full">
+            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Riwayat Aktivitas (Chronology)</h4>
+            <ScrollArea className="h-[450px] pr-4">
+              <div className="relative space-y-6 pl-6 before:absolute before:left-2 before:top-2 before:h-[calc(100%-16px)] before:w-0.5 before:bg-slate-100">
+                {fullChronology.map((item, i) => (
+                  <div key={i} className="relative">
+                    <div className={`absolute -left-[22px] top-1 h-3 w-3 rounded-full border-2 border-white shadow-sm ${
+                      item.isCurrent ? 'bg-emerald-500 animate-pulse scale-125' : 
+                      item.type === 'history' ? 'bg-slate-900' : 'bg-slate-200'
+                    }`} />
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <p className={`text-[10px] font-black tracking-tighter w-[60%] ${item.isCurrent ? 'text-emerald-700' : 'text-slate-900'}`}>{item.stage}</p>
+                        <span className="text-[9px] font-medium text-slate-400 text-right w-[40%] flex flex-col">
+                          {item.timestamp ? (
+                            <>
+                              <span>{format(parseFirestoreDate(item.timestamp), 'HH:mm,')}</span>
+                              <span>{format(parseFirestoreDate(item.timestamp), 'dd/MM')}</span>
+                            </>
+                          ) : (
+                            <span className="italic opacity-50">-:-, --/--</span>
+                          )}
+                        </span>
                       </div>
+                      <div className="flex flex-col gap-1 mb-2">
+                        <span className="text-[9px] font-medium text-slate-500">Oleh: {item.actorName}</span>
+                        <Badge 
+                        variant="outline" 
+                        className={`w-fit h-4 px-1.5 text-[8px] uppercase rounded border-none ${
+                        item.status === 'APPROVED' || item.status === 'approved' ? 'bg-emerald-50 text-emerald-600' :
+                        item.status === 'REJECTED' || item.status === 'rejected' ? 'bg-red-50 text-red-600' :
+                        item.isCurrent ? 'bg-emerald-500 text-white' : 'bg-slate-50 text-slate-500'
+                        }`}
+                        >
+                        {item.status}
+                        </Badge>
+                      </div>
+                      {item.comment && (
+                        <div className="rounded-lg bg-orange-50/30 p-2.5 text-[10px] text-slate-600 border border-orange-100/50 italic">
+                        "{item.comment}"
+                        </div>
+                      )}
                     </div>
-                  ))}
-                  {!isLastStage && (
-                    <div className="relative">
-                       <div className="absolute -left-[22px] top-1 h-3 w-3 rounded-full border-2 border-white bg-slate-200 animate-pulse" />
-                       <p className="text-[10px] font-black text-slate-900 tracking-tighter w-[60%]">{stages[submission.currentStageIndex]}</p>
-                       <span className="text-[9px] font-medium text-slate-500 mt-1 block">Oleh: -</span>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-           </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
         </div>
       </div>
 
