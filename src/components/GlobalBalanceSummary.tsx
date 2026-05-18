@@ -19,12 +19,14 @@ const SHEETS = [
 
 export function GlobalBalanceSummary() {
   const [balances, setBalances] = React.useState<Record<string, number>>({});
+  const [lastUpdate, setLastUpdate] = React.useState<Date | null>(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     async function fetchAllBalances() {
       setLoading(true);
       const balanceMap: Record<string, number> = {};
+      const dates: Date[] = [];
       
       const promises = SHEETS.map(async (sheet) => {
         return new Promise<void>((resolve) => {
@@ -58,15 +60,57 @@ export function GlobalBalanceSummary() {
 
                 // Check for last Saldo Akhir column specifically as well
                 let lastValidSaldo = 0;
+                let sheetLastDate: Date | null = null;
                 for (let i = data.length - 1; i >= 0; i--) {
                   const s = parseRupiah(data[i][9]);
-                  const hasDate = data[i][1] && data[i][1].length > 0;
-                  if (hasDate && (s > 0 || (data[i][9] && data[i][9].trim() !== ''))) {
-                    lastValidSaldo = s;
-                    break;
+                  const dateStr = data[i][1];
+                  const hasDate = dateStr && dateStr.length > 5;
+
+                  if (dateStr && dateStr.trim().length > 0 && !sheetLastDate) {
+                    const parts = dateStr.split(/[\/\- ]/);
+                    if (parts.length >= 3) {
+                      let d = parseInt(parts[0]);
+                      let m = 0;
+                      let y = 0;
+
+                      // Handle month as number or text
+                      const mText = parts[1].toLowerCase();
+                      const monthMap: Record<string, number> = { 
+                        'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'mei': 4, 'may': 4, 'jun': 5, 
+                        'jul': 6, 'agu': 7, 'aug': 7, 'sep': 8, 'okt': 9, 'oct': 9, 'nov': 10, 'des': 11, 'dec': 11
+                      };
+
+                      if (isNaN(Number(mText))) {
+                        m = monthMap[mText] || monthMap[mText.substring(0,3)] || 0;
+                      } else {
+                        m = parseInt(mText) - 1;
+                      }
+
+                      // Handle year
+                      const yText = parts[2];
+                      if (yText.length === 2) {
+                        y = 2000 + parseInt(yText);
+                      } else {
+                        y = parseInt(yText);
+                      }
+
+                      if (!isNaN(d) && !isNaN(m) && !isNaN(y) && y > 2000) {
+                        const parsedDate = new Date(y, m, d);
+                        if (!isNaN(parsedDate.getTime())) {
+                          sheetLastDate = parsedDate;
+                        }
+                      }
+                    }
                   }
+
+                  if (hasDate && (s > 0 || (data[i][9] && data[i][9].trim() !== ''))) {
+                    if (lastValidSaldo === 0) lastValidSaldo = s;
+                  }
+
+                  if (sheetLastDate && lastValidSaldo !== 0) break;
                 }
 
+                if (sheetLastDate) dates.push(sheetLastDate);
                 balanceMap[sheet.name] = lastValidSaldo !== 0 ? lastValidSaldo : (saldoAwal + totalPenerimaan - totalPengeluaran);
               } else {
                 balanceMap[sheet.name] = 0;
@@ -84,6 +128,10 @@ export function GlobalBalanceSummary() {
 
       await Promise.all(promises);
       setBalances(balanceMap);
+      if (dates.length > 0) {
+        const maxTime = Math.max(...dates.map(d => d.getTime()));
+        setLastUpdate(new Date(maxTime));
+      }
       setLoading(false);
     }
 
@@ -105,12 +153,29 @@ export function GlobalBalanceSummary() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-black tracking-tighter text-slate-900 uppercase">
-          Informasi Saldo Rekening
-        </h2>
-        <div className="flex items-center gap-2 px-4 py-1 bg-emerald-50 rounded-full border border-emerald-100">
-           <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Total Saldo Gabungan</span>
-           <span className="text-sm font-black text-emerald-700">Rp {(totalGlobal as number).toLocaleString('id-ID')}</span>
+        <div>
+          <h2 className="text-xl font-black tracking-tighter text-slate-900 uppercase">
+            Informasi Saldo Rekening
+          </h2>
+          {lastUpdate && (
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+              Berdasarkan Pembukuan Kas Terakhir
+            </p>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-2 px-4 py-1 bg-emerald-50 rounded-full border border-emerald-100">
+             <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Total Saldo Gabungan</span>
+             <span className="text-sm font-black text-emerald-700">Rp {(totalGlobal as number).toLocaleString('id-ID')}</span>
+          </div>
+          {lastUpdate && (
+            <div className="flex items-center gap-1.5 mr-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">
+                Update per {lastUpdate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </span>
+            </div>
+          )}
         </div>
       </div>
       
