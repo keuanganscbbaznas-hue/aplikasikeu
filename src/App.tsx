@@ -117,9 +117,9 @@ import { Phone } from 'lucide-react';
 const formatWhatsAppMessage = (submission: Submission) => {
   const stages = getStagesByType(submission.type);
   const currentStatus = stages[submission.currentStageIndex];
-  const url = window.location.origin;
+  const url = 'https://aplikasikeu.vercel.app';
   
-  return `Halo PIC ${submission.picName || submission.submittedByName},\n\nInformasi Update Pengajuan:\n📌 Judul: *${submission.title}*\n💰 Nominal: *Rp ${submission.amount.toLocaleString('id-ID')}*\n🔄 Status: *${currentStatus}*\n\nSilakan cek detail selengkapnya di aplikasi: ${url}\n\nTerima kasih.`;
+  return `Assalamu'alaikum PIC ${submission.picName || submission.submittedByName}, Informasi Update Pengajuan:\n📦 Judul: *${submission.title}*\n💰 Nominal: *Rp ${submission.amount.toLocaleString('id-ID')}*\n📝 Status: *${currentStatus}*\n\nSilakan cek detail selengkapnya di aplikasi: ${url}\n\nTerima kasih.`;
 };
 
 const sendWhatsApp = (phoneNumber: string, message: string) => {
