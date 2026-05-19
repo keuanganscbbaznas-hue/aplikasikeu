@@ -14,33 +14,28 @@ const monthMap: Record<string, number> = {
 
 const parseRupiah = (val: string) => {
   if (!val || typeof val !== 'string') return 0;
-  
-  let isNegative = false;
   let cleaned = val.trim();
+  let isNegative = false;
+  
   if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
     isNegative = true;
     cleaned = cleaned.slice(1, -1);
   }
   if (cleaned.startsWith('-')) {
     isNegative = true;
-    cleaned = cleaned.slice(1);
+    cleaned = cleaned.slice(1).trim();
   }
 
-  // Identify if there's a decimal part (Indonesian uses comma, English uses dot)
-  const lastComma = cleaned.lastIndexOf(',');
-  const lastDot = cleaned.lastIndexOf('.');
+  cleaned = cleaned.replace(/Rp/gi, '').trim();
   
-  // If there's a comma near the end, and it's after any dot, it's likely Indonesian decimal
-  if (lastComma > lastDot && lastComma > cleaned.length - 4) {
-    cleaned = cleaned.substring(0, lastComma);
-  } 
-  // If there's a dot near the end, and it's after any comma, it's likely English decimal
-  else if (lastDot > lastComma && lastDot > cleaned.length - 4) {
-    cleaned = cleaned.substring(0, lastDot);
+  // Handle decimals like 1.000,50 or 1,000.50
+  const decimalMatch = cleaned.match(/[,.](\d{1,2})$/);
+  if (decimalMatch) {
+    cleaned = cleaned.substring(0, cleaned.length - (decimalMatch[1].length + 1));
   }
 
   cleaned = cleaned.replace(/[^0-9]/g, '');
-  const num = Number(cleaned) || 0;
+  const num = parseInt(cleaned, 10) || 0;
   return isNegative ? -num : num;
 };
 
@@ -81,6 +76,17 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
     const yearsSet = new Set<string>();
 
     if (rawData.length > 5) {
+      // Find indices dynamically
+      const header = rawData[0];
+      const findIdx = (names: string[]) => header.findIndex(h => 
+         h && names.some(n => h.toLowerCase().includes(n.toLowerCase()))
+      );
+
+      const tglIdx = findIdx(['tgl', 'tanggal']);
+      const debetIdx = findIdx(['debet', 'penerimaan', 'masuk']);
+      const kreditIdx = findIdx(['kredit', 'pengeluaran', 'keluar']);
+      const saldoIdx = findIdx(['saldo akhir', 'saldo']);
+
       // Find initial saldo
       let saldoAwal = 0;
       for (let i = 0; i < Math.min(15, rawData.length); i++) {
@@ -91,18 +97,21 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
         );
 
         if (isSaldoAwalRow) {
-          saldoAwal = parseRupiah(row[8]) || parseRupiah(row[6]) || parseRupiah(row[7]) || 0;
+          const s = saldoIdx >= 0 ? parseRupiah(row[saldoIdx]) : 0;
+          const d = debetIdx >= 0 ? parseRupiah(row[debetIdx]) : 0;
+          const k = kreditIdx >= 0 ? parseRupiah(row[kreditIdx]) : 0;
+          saldoAwal = s || d || k || 0;
           break;
         }
       }
-      currentSaldo += saldoAwal;
+      currentSaldo = saldoAwal;
 
       // Extract rows
       const rows = rawData; 
       rows.forEach(row => {
-        if (!row || row.length < 9) return;
+        if (!row || row.length < 5) return;
         
-        const tgl = row[0];
+        const tgl = tglIdx >= 0 ? (row[tglIdx] || '') : '';
         if (!tgl || tgl.toLowerCase().includes('tgl')) return;
 
         const isSaldoAwalRow = row.some(cell => 
@@ -136,8 +145,8 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
 
         yearsSet.add(yearFull);
 
-        const penerimaan = parseRupiah(row[6]);
-        const pengeluaran = parseRupiah(row[7]);
+        const penerimaan = debetIdx >= 0 ? parseRupiah(row[debetIdx]) : 0;
+        const pengeluaran = kreditIdx >= 0 ? parseRupiah(row[kreditIdx]) : 0;
         
         totalPener += penerimaan;
         totalPengel += pengeluaran;
@@ -148,11 +157,11 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
         }
 
         // Saldo Akhir based on the row's Saldo Akhir column if present
-        const s = parseRupiah(row[8]);
-        if (row[8] && row[8].trim() !== '' && row[8].trim() !== '-') {
+        const s = saldoIdx >= 0 ? parseRupiah(row[saldoIdx]) : 0;
+        if (saldoIdx >= 0 && row[saldoIdx] && row[saldoIdx].trim() !== '' && row[saldoIdx].trim() !== '-') {
           currentSaldo = s;
         } else {
-          // If no running balance, we could compute it, but usually the sheet has it
+          currentSaldo = currentSaldo + penerimaan - pengeluaran;
         }
       });
     }

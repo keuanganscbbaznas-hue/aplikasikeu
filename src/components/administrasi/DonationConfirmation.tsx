@@ -170,21 +170,25 @@ export const DonationConfirmation = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-black text-slate-800 tracking-tight">Konfirmasi Donasi</h2>
-        <p className="text-sm text-slate-500 font-medium mt-1">Formulir konfirmasi transfer donasi untuk Sekolah Cendekia BAZNAS yang akan diteruskan ke tim keuangan.</p>
+    <div className="space-y-6 pb-6">
+      <div className="mb-8">
+        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Konfirmasi Donasi</h2>
+        <p className="text-base text-slate-500 font-medium mt-2 max-w-2xl leading-relaxed">
+          Terima kasih atas kebaikan Anda. Silakan isi formulir konfirmasi transfer donasi untuk Sekolah Cendekia BAZNAS di bawah ini.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <Card className="lg:col-span-8 rounded-[2rem] border-slate-100 shadow-sm overflow-hidden">
-          <CardHeader className="bg-slate-50/50 border-b border-slate-100 px-8 py-6">
-            <CardTitle className="text-lg font-black text-slate-800 flex items-center gap-2">
-              <ClipboardCheck className="text-primary" size={20} />
-              Formulir Konfirmasi
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+        <Card className="xl:col-span-8 rounded-[2.5rem] border-slate-100 shadow-sm overflow-hidden bg-white">
+          <CardHeader className="bg-slate-50/50 border-b border-slate-100 px-8 py-8">
+            <CardTitle className="text-lg font-black text-slate-800 flex items-center gap-3">
+              <div className="h-10 w-10 bg-slate-900 text-white rounded-xl flex items-center justify-center">
+                <ClipboardCheck size={20} />
+              </div>
+              Detail Transaksi Donasi
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
+          <CardContent className="p-8 md:p-10">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
@@ -302,7 +306,7 @@ export const DonationConfirmation = () => {
           </CardContent>
         </Card>
 
-        <div className="lg:col-span-4 space-y-6">
+        <div className="xl:col-span-4 space-y-6">
           <Card className="rounded-[2rem] border-none bg-emerald-600 text-white shadow-xl shadow-emerald-900/20">
             <CardContent className="p-8">
               <h3 className="text-xl font-black mb-4 leading-tight">Konfirmasi Membantu Akurasi</h3>

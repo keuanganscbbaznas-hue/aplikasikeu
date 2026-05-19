@@ -51,6 +51,7 @@ import { AnalisisManager } from './components/AnalisisManager';
 import { BerkasDigitalManager } from './components/BerkasDigitalManager';
 import SignaturePad from 'signature_pad';
 import { jsPDF } from 'jspdf';
+import { DonationConfirmation } from './components/administrasi/DonationConfirmation';
 import { 
   LayoutDashboard, 
   Plus, 
@@ -93,7 +94,8 @@ import {
   RefreshCw,
   Check,
   MessageSquare,
-  BarChart3
+  BarChart3,
+  ClipboardCheck
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { 
@@ -1333,6 +1335,23 @@ export default function App() {
                                Lihat Semua Transaksi
                                <ArrowRight size={18} className="ml-2" />
                             </Button>
+
+
+                            <Dialog>
+                              <DialogTrigger render={
+                                <Button variant="outline" className="bg-white/10 hover:bg-white/20 border-white/20 text-white rounded-2xl px-6 h-12 font-bold text-sm backdrop-blur-md transition-all">
+                                   <ClipboardCheck size={18} className="mr-2" />
+                                   Konfirmasi Donasi
+                                </Button>
+                              } />
+                              <DialogContent className="max-w-6xl sm:max-w-6xl w-[95vw] h-[90vh] max-h-[90vh] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white flex flex-col">
+                                 <ScrollArea className="flex-1 w-full h-full">
+                                   <div className="p-6 md:p-12 lg:p-16">
+                                     <DonationConfirmation />
+                                   </div>
+                                 </ScrollArea>
+                              </DialogContent>
+                            </Dialog>
                           </div>
                        </div>
                     </div>

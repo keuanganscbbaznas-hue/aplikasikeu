@@ -27,22 +27,15 @@ export const AdministrasiManager = ({ isAdmin = false }: AdministrasiManagerProp
         <TabsList className="bg-white/50 p-1.5 rounded-2xl h-auto flex flex-wrap shadow-sm border border-slate-100 mb-8">
           <TabsTrigger 
             value="templates" 
-            className="flex-1 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
+            className="flex-3 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
           >
             <FileText size={14} />
             Template Dokumen
           </TabsTrigger>
-          <TabsTrigger 
-            value="donasi" 
-            className="flex-1 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
-          >
-            <ClipboardCheck size={14} />
-            Konfirmasi Donasi
-          </TabsTrigger>
           {isAdmin && (
             <TabsTrigger 
               value="list" 
-              className="flex-1 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
+              className="flex-2 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
             >
               <ListFilter size={14} />
               Data Donasi
@@ -57,10 +50,6 @@ export const AdministrasiManager = ({ isAdmin = false }: AdministrasiManagerProp
         >
           <TabsContent value="templates">
             <DocumentTemplates />
-          </TabsContent>
-          
-          <TabsContent value="donasi">
-            <DonationConfirmation />
           </TabsContent>
 
           {isAdmin && (
