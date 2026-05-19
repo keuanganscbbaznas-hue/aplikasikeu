@@ -752,33 +752,26 @@ export default function App() {
   const handleBukukan = async (submission: Submission, sheetType: 'Kas Tunai SMP' | 'Kas Tunai SMA' | 'Kas Bank SMP' | 'Kas Bank SMA') => {
     const spreadsheetId = '1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU';
     
-    // Parse createdAt or use today
-    let subDate = new Date();
-    try {
-      if (submission.createdAt) {
-        subDate = parseFirestoreDate(submission.createdAt);
-      }
-    } catch (e) {
-      console.error("Error parsing submission date", e);
-    }
-    
-    const formattedDate = format(subDate, 'dd/MM/yyyy');
+    // TGL: Use today as transaction date
+    const today = new Date();
+    const formattedDate = format(today, 'd/MMM/yy');
 
-    // Map submission type to abbreviation for "JJ" column
-    const typeAbbr = submission.type === 'uang_muka' ? 'UM' : 
+    // JJ: Abbreviation for Type
+    // Based on sheet sample: CA (Cash Advance), KK (Kas Kecil), etc.
+    const typeAbbr = submission.type === 'uang_muka' ? 'CA' : 
                      submission.type === 'reimburse' ? 'RE' : 
                      'PB';
 
     const rowData = [
        [
-         formattedDate, // Col B: TGL
-         submission.noDokumen || '', // Col C: NO. DOC
-         typeAbbr, // Col D: JJ
-         submission.kodeBudget || '', // Col E: KODE ANGGARAN
-         submission.submittedByName || '', // Col F: PIC
-         submission.title, // Col G: KETERANGAN
-         0, // Col H: DEBET (Penerimaan)
-         submission.amount, // Col I: KREDIT (Pengeluaran)
+         formattedDate,                        // Col B: TGL
+         submission.noDokumen || '',           // Col C: NO. DOC
+         typeAbbr,                             // Col D: JJ
+         submission.kodeBudget || '',          // Col E: KODE ANGGARAN
+         submission.picName || submission.submittedByName || '', // Col F: PIC
+         submission.title,                     // Col G: KETERANGAN
+         '',                                   // Col H: DEBET (Blank for expense)
+         submission.amount                     // Col I: KREDIT (Nominal)
        ]
     ];
 
@@ -788,7 +781,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           spreadsheetId,
-          range: `${sheetType}!B11:I`,
+          range: `'${sheetType}'!B11:I`,
           data: rowData
         })
       }).then(async res => {
@@ -797,6 +790,10 @@ export default function App() {
           throw new Error(err.message || err.error || 'Gagal menambah ke Google Sheets');
         }
         return res.json();
+      }).then((data) => {
+        // Automatically open the spreadsheet after success
+        window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`, '_blank');
+        return data;
       }),
       {
         loading: `Membukukan ke ${sheetType}...`,
