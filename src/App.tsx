@@ -52,6 +52,7 @@ import { BerkasDigitalManager } from './components/BerkasDigitalManager';
 import SignaturePad from 'signature_pad';
 import { jsPDF } from 'jspdf';
 import { DonationConfirmation } from './components/administrasi/DonationConfirmation';
+import { DocumentTemplates } from './components/administrasi/DocumentTemplates';
 import { 
   LayoutDashboard, 
   Plus, 
@@ -269,12 +270,11 @@ function SubmissionGrid({
           <div className="flex flex-col items-center justify-center py-20 text-slate-400">
             <FileText size={48} strokeWidth={1} className="mb-4 opacity-20" />
             <p className="font-black uppercase tracking-[0.2em] text-[10px] opacity-50">Data Tidak Ditemukan</p>
-          </div>
-        )}
-    </div>
+                      </div>
+                    )}
+      </div>
   );
 }
-
 function SubmissionCard({ 
   submission, 
   onApprove, 
@@ -563,7 +563,8 @@ export default function App() {
   useEffect(() => {
     if (isAuthReady && profile) {
       if (activeTab === 'dashboard' && !isAdmin) {
-        setActiveTab('tracking');
+        // Redirection removed as per request to make dashboard visible to all
+        // setActiveTab('tracking');
       }
     }
   }, [activeTab, isAdmin, isAuthReady, profile]);
@@ -1111,7 +1112,7 @@ export default function App() {
   const deferredFilterPIC = useDeferredValue(filterPIC);
 
   const sidebarItems = [
-    { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, access: 'admin' },
+    { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, access: 'all' },
     { id: 'tracking', label: 'Tracking Transaksi', icon: MessageSquare, access: 'all' },
     { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'admin' },
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
@@ -1330,11 +1331,27 @@ export default function App() {
                           <p className="text-slate-400 text-sm md:text-base max-w-xl font-medium tracking-tight mb-8">
                             Pantau semua aktivitas transaksi, saldo rekening, dan analisis anggaran dalam satu tampilan terpusat.
                           </p>
-                          <div className="flex items-center gap-4">
+                          <div className="flex flex-wrap items-center gap-4">
                             <Button onClick={() => setActiveTab('tracking')} className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl px-6 h-12 font-bold text-sm shadow-xl shadow-emerald-900/40 transition-all">
                                Lihat Semua Transaksi
                                <ArrowRight size={18} className="ml-2" />
                             </Button>
+
+                            <Dialog>
+                              <DialogTrigger render={
+                                <Button className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl px-6 h-12 font-bold text-sm shadow-xl shadow-emerald-900/40 transition-all text-white">
+                                   <FileText size={18} className="mr-2" />
+                                   Template Dokumen
+                                </Button>
+                              } />
+                              <DialogContent className="max-w-6xl sm:max-w-6xl w-[95vw] h-[90vh] max-h-[90vh] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white flex flex-col">
+                                 <ScrollArea className="flex-1 w-full h-full">
+                                   <div className="p-6 md:p-12 lg:p-16">
+                                     <DocumentTemplates />
+                                   </div>
+                                 </ScrollArea>
+                              </DialogContent>
+                            </Dialog>
 
 
                             <Dialog>
@@ -1357,30 +1374,32 @@ export default function App() {
                     </div>
 
                     {/* Balance Summary Section */}
-                    <GlobalBalanceSummary />
+                    {isAdmin && <GlobalBalanceSummary />}
 
                     {/* Accumulation Section - Moved from Tracking */}
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600">
-                           <BarChart3 size={20} />
+                    {isAdmin && (
+                      <div className="space-y-6">
+                        <div className="flex items-center gap-4">
+                          <div className="h-10 w-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600">
+                             <BarChart3 size={20} />
+                          </div>
+                          <div>
+                            <h2 className="text-xl font-black tracking-tighter text-slate-900 uppercase">
+                              Akumulasi & Realisasi
+                            </h2>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">Berdasarkan data transaksi yang tercatat</p>
+                          </div>
                         </div>
-                        <div>
-                          <h2 className="text-xl font-black tracking-tighter text-slate-900 uppercase">
-                            Akumulasi & Realisasi
-                          </h2>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">Berdasarkan data transaksi yang tercatat</p>
+                        
+                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 bg-slate-50 p-8 rounded-[3rem] border border-white">
+                          <MonthlyAccumulationSummary submissions={submissions} />
+                          <StatusAccumulationSummary submissions={submissions} />
                         </div>
                       </div>
-                      
-                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 bg-slate-50 p-8 rounded-[3rem] border border-white">
-                        <MonthlyAccumulationSummary submissions={submissions} />
-                        <StatusAccumulationSummary submissions={submissions} />
-                      </div>
-                    </div>
-
+                    )}
                     {/* Analysis Section - Moved from its own tab */}
-                    {(profile?.email === OWNER_EMAIL || isKamal || isKeuanganSCB) && (
+                    {isAdmin && (
+
                       <div className="space-y-6 pt-4 border-t border-slate-200">
                          <div className="flex items-center gap-4">
                             <div className="h-10 w-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">

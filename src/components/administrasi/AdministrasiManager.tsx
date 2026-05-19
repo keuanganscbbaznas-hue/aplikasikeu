@@ -1,9 +1,7 @@
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DocumentTemplates } from './DocumentTemplates';
-import { DonationConfirmation } from './DonationConfirmation';
 import { DonationList } from './DonationList';
-import { FileText, ClipboardCheck, Briefcase, ListFilter } from 'lucide-react';
+import { Briefcase, ListFilter } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface AdministrasiManagerProps {
@@ -23,19 +21,12 @@ export const AdministrasiManager = ({ isAdmin = false }: AdministrasiManagerProp
         </div>
       </div>
 
-      <Tabs defaultValue="templates" className="w-full">
+      <Tabs defaultValue={isAdmin ? "list" : "none"} className="w-full">
         <TabsList className="bg-white/50 p-1.5 rounded-2xl h-auto flex flex-wrap shadow-sm border border-slate-100 mb-8">
-          <TabsTrigger 
-            value="templates" 
-            className="flex-3 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
-          >
-            <FileText size={14} />
-            Template Dokumen
-          </TabsTrigger>
           {isAdmin && (
             <TabsTrigger 
               value="list" 
-              className="flex-2 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
+              className="flex-1 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
             >
               <ListFilter size={14} />
               Data Donasi
@@ -48,10 +39,6 @@ export const AdministrasiManager = ({ isAdmin = false }: AdministrasiManagerProp
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <TabsContent value="templates">
-            <DocumentTemplates />
-          </TabsContent>
-
           {isAdmin && (
             <TabsContent value="list">
               <DonationList />
