@@ -1339,7 +1339,7 @@ export default function App() {
 
                             <Dialog>
                               <DialogTrigger render={
-                                <Button variant="outline" className="bg-white/10 hover:bg-white/20 border-white/20 text-white rounded-2xl px-6 h-12 font-bold text-sm backdrop-blur-md transition-all">
+                                <Button className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl px-6 h-12 font-bold text-sm shadow-xl shadow-emerald-900/40 transition-all">
                                    <ClipboardCheck size={18} className="mr-2" />
                                    Konfirmasi Donasi
                                 </Button>
