@@ -25,7 +25,7 @@ import {
 } from 'firebase/firestore';
 import { 
   ref, 
-  uploadBytes, 
+  uploadBytesResumable, 
   getDownloadURL, 
   deleteObject 
 } from 'firebase/storage';
@@ -57,6 +57,8 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [compressionProgress, setCompressionProgress] = useState(0);
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   // Form state
@@ -87,15 +89,18 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
 
     try {
       setIsUploading(true);
+      setUploadProgress(0);
+      setCompressionProgress(0);
       
       let fileToUpload = file;
 
       // Compress if it's an image
       if (mediaType === 'image') {
         const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1280,
-          useWebWorker: true
+          maxSizeMB: 0.4, // More aggressive compression
+          maxWidthOrHeight: 1200,
+          useWebWorker: true,
+          onProgress: (p: number) => setCompressionProgress(p)
         };
         try {
           fileToUpload = await imageCompression(file, options);
@@ -106,24 +111,39 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
       }
 
       const storageRef = ref(storage, `gallery/${Date.now()}_${fileToUpload.name}`);
-      const uploadResult = await uploadBytes(storageRef, fileToUpload);
-      const url = await getDownloadURL(uploadResult.ref);
+      const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
 
-      await addDoc(collection(db, 'dashboard_gallery'), {
-        type: mediaType,
-        url,
-        title,
-        description,
-        createdAt: serverTimestamp(),
-      });
+      uploadTask.on('state_changed', 
+        (snapshot) => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setUploadProgress(progress);
+        }, 
+        (error) => {
+          console.error('Upload failed:', error);
+          toast.error(`Gagal mengunggah: ${error.message}`);
+          setIsUploading(false);
+        }, 
+        async () => {
+          const url = await getDownloadURL(uploadTask.snapshot.ref);
 
-      toast.success('Media berhasil diunggah');
-      setShowUploadModal(false);
-      resetForm();
-    } catch (error) {
+          await addDoc(collection(db, 'dashboard_gallery'), {
+            type: mediaType,
+            url,
+            title,
+            description,
+            createdAt: serverTimestamp(),
+          });
+
+          toast.success('Media berhasil disimpan');
+          setShowUploadModal(false);
+          resetForm();
+          setIsUploading(false);
+        }
+      );
+
+    } catch (error: any) {
       console.error(error);
-      toast.error('Gagal mengunggah media');
-    } finally {
+      toast.error(`Terjadi kesalahan: ${error.message}`);
       setIsUploading(false);
     }
   };
@@ -171,7 +191,7 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
             </div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1.5 flex items-center gap-1.5">
               <Sparkles size={12} className="text-amber-500" />
-              Galeri dokumentasi kegiatan & kolaborasi strategis SCB BAZNAS
+              GALERI DOKUMENTASI KEGIATAN DAN KOLABORASI STRATEGIS MONETA
             </p>
           </div>
         </div>
@@ -251,13 +271,49 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
                     )}
                   </div>
                 </div>
-                <Button 
-                  onClick={handleUpload} 
-                  disabled={isUploading || !file} 
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 rounded-xl"
-                >
-                  {isUploading ? 'Sedang mengunggah...' : 'Unggah Sekarang'}
-                </Button>
+                <div className="space-y-4">
+                  <Button 
+                    onClick={handleUpload} 
+                    disabled={isUploading || !file} 
+                    className="w-full bg-indigo-600 hover:bg-indigo-700 h-12 rounded-xl"
+                  >
+                    {isUploading ? 'Sedang Diproses...' : 'Unggah Sekarang'}
+                  </Button>
+
+                  {isUploading && (
+                    <div className="space-y-3">
+                      {compressionProgress > 0 && compressionProgress < 100 && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
+                            <span>Mengompresi Gambar...</span>
+                            <span>{Math.round(compressionProgress)}%</span>
+                          </div>
+                          <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                            <motion.div 
+                              className="h-full bg-amber-400" 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${compressionProgress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[10px] font-black uppercase text-indigo-400">
+                          <span>Mengunggah ke Server...</span>
+                          <span>{Math.round(uploadProgress)}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <motion.div 
+                            className="h-full bg-indigo-600" 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </DialogContent>
           </Dialog>
