@@ -13,8 +13,35 @@ const monthMap: Record<string, number> = {
 };
 
 const parseRupiah = (val: string) => {
-  if (!val) return 0;
-  return Number(val.replace(/\./g, '').trim()) || 0;
+  if (!val || typeof val !== 'string') return 0;
+  
+  let isNegative = false;
+  let cleaned = val.trim();
+  if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+    isNegative = true;
+    cleaned = cleaned.slice(1, -1);
+  }
+  if (cleaned.startsWith('-')) {
+    isNegative = true;
+    cleaned = cleaned.slice(1);
+  }
+
+  // Identify if there's a decimal part (Indonesian uses comma, English uses dot)
+  const lastComma = cleaned.lastIndexOf(',');
+  const lastDot = cleaned.lastIndexOf('.');
+  
+  // If there's a comma near the end, and it's after any dot, it's likely Indonesian decimal
+  if (lastComma > lastDot && lastComma > cleaned.length - 4) {
+    cleaned = cleaned.substring(0, lastComma);
+  } 
+  // If there's a dot near the end, and it's after any comma, it's likely English decimal
+  else if (lastDot > lastComma && lastDot > cleaned.length - 4) {
+    cleaned = cleaned.substring(0, lastDot);
+  }
+
+  cleaned = cleaned.replace(/[^0-9]/g, '');
+  const num = Number(cleaned) || 0;
+  return isNegative ? -num : num;
 };
 
 export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
@@ -56,30 +83,40 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
     if (rawData.length > 5) {
       // Find initial saldo
       let saldoAwal = 0;
-      for (let i = 0; i < Math.min(10, rawData.length); i++) {
-        if (rawData[i][6]?.includes('Saldo Awal')) {
-          saldoAwal = parseRupiah(rawData[i][9]);
+      for (let i = 0; i < Math.min(15, rawData.length); i++) {
+        const row = rawData[i];
+        if (!row) continue;
+        const isSaldoAwalRow = row.some(cell => 
+          cell && typeof cell === 'string' && cell.toLowerCase().includes('saldo awal')
+        );
+
+        if (isSaldoAwalRow) {
+          saldoAwal = parseRupiah(row[8]) || parseRupiah(row[6]) || parseRupiah(row[7]) || 0;
           break;
         }
       }
       currentSaldo += saldoAwal;
 
       // Extract rows
-      const rows = rawData.slice(2); // Skip header and saldo awal
+      const rows = rawData; 
       rows.forEach(row => {
         if (!row || row.length < 9) return;
         
-        const tgl = row[1];
-        if (!tgl) return;
+        const tgl = row[0];
+        if (!tgl || tgl.toLowerCase().includes('tgl')) return;
+
+        const isSaldoAwalRow = row.some(cell => 
+          cell && typeof cell === 'string' && cell.toLowerCase().includes('saldo awal')
+        );
+        if (isSaldoAwalRow) return;
         
         let monthNum = 0;
         let yearFull = selectedYear;
 
         // Try parsing variations like 9/Jan/26, 09-01-2026, 9 Jan 2026
         const parts = tgl.split(/[\/\- ]/);
-        if (parts.length >= 3) {
+        if (parts.length >= 2) {
           const mText = parts[1].toLowerCase();
-          const yText = parts[2];
           
           if (isNaN(Number(mText))) {
             monthNum = monthMap[mText] || monthMap[mText.substring(0,3)] || 0;
@@ -87,23 +124,20 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
             monthNum = Number(mText);
           }
 
-          if (yText.length === 2) {
-            yearFull = "20" + yText;
-          } else if (yText.length === 4) {
-            yearFull = yText;
-          }
-        } else {
-          const d = new Date(tgl);
-          if (!isNaN(d.getTime())) {
-             monthNum = d.getMonth() + 1;
-             yearFull = d.getFullYear().toString();
+          if (parts[2]) {
+            const yText = parts[2];
+            if (yText.length === 2) {
+              yearFull = "20" + yText;
+            } else if (yText.length === 4) {
+              yearFull = yText;
+            }
           }
         }
 
         yearsSet.add(yearFull);
 
-        const penerimaan = parseRupiah(row[7]);
-        const pengeluaran = parseRupiah(row[8]);
+        const penerimaan = parseRupiah(row[6]);
+        const pengeluaran = parseRupiah(row[7]);
         
         totalPener += penerimaan;
         totalPengel += pengeluaran;
@@ -112,22 +146,15 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
           chartData[monthNum - 1].penerimaan += penerimaan;
           chartData[monthNum - 1].pengeluaran += pengeluaran;
         }
-      });
 
-      // Saldo Akhir based on the last row's Saldo Akhir column if present, or computed
-      let lastValidSaldo = 0;
-      for (let i = rawData.length - 1; i >= 0; i--) {
-        const s = parseRupiah(rawData[i][9]);
-        if (s > 0 || (rawData[i][9] && rawData[i][9].trim() !== '')) {
-           lastValidSaldo = s;
-           break;
+        // Saldo Akhir based on the row's Saldo Akhir column if present
+        const s = parseRupiah(row[8]);
+        if (row[8] && row[8].trim() !== '' && row[8].trim() !== '-') {
+          currentSaldo = s;
+        } else {
+          // If no running balance, we could compute it, but usually the sheet has it
         }
-      }
-      if (lastValidSaldo !== 0) {
-        currentSaldo = lastValidSaldo;
-      } else {
-        currentSaldo = saldoAwal + totalPener - totalPengel;
-      }
+      });
     }
 
     // Default current year if none available

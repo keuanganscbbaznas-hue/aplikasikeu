@@ -4,8 +4,35 @@ import { Wallet, Landmark, CreditCard, Banknote } from 'lucide-react';
 import Papa from 'papaparse';
 
 const parseRupiah = (val: string) => {
-  if (!val) return 0;
-  return Number(val.replace(/\./g, "").trim()) || 0;
+  if (!val || typeof val !== 'string') return 0;
+  
+  let isNegative = false;
+  let cleaned = val.trim();
+  if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+    isNegative = true;
+    cleaned = cleaned.slice(1, -1);
+  }
+  if (cleaned.startsWith('-')) {
+    isNegative = true;
+    cleaned = cleaned.slice(1);
+  }
+
+  // Identify if there's a decimal part (Indonesian uses comma, English uses dot)
+  const lastComma = cleaned.lastIndexOf(',');
+  const lastDot = cleaned.lastIndexOf('.');
+  
+  // If there's a comma near the end, and it's after any dot, it's likely Indonesian decimal
+  if (lastComma > lastDot && lastComma > cleaned.length - 4) {
+    cleaned = cleaned.substring(0, lastComma);
+  } 
+  // If there's a dot near the end, and it's after any comma, it's likely English decimal
+  else if (lastDot > lastComma && lastDot > cleaned.length - 4) {
+    cleaned = cleaned.substring(0, lastDot);
+  }
+
+  cleaned = cleaned.replace(/[^0-9]/g, '');
+  const num = Number(cleaned) || 0;
+  return isNegative ? -num : num;
 };
 
 const SHEET_ID = '1i5cIa8XjrvwF57C8ntrH5fDpgLyppguw3K1sI1VKjXU';
@@ -35,83 +62,82 @@ export function GlobalBalanceSummary() {
             download: true,
             complete: (results) => {
               const data = results.data as string[][];
-              if (data && data.length > 5) {
-                // Find initial saldo from "Saldo Awal" row
-                let saldoAwal = 0;
-                for (let i = 0; i < Math.min(15, data.length); i++) {
-                   if (data[i][6]?.includes('Saldo Awal')) {
-                     saldoAwal = parseRupiah(data[i][9]);
-                     break;
-                   }
-                }
-
-                // Calculate activity
-                let totalPenerimaan = 0;
-                let totalPengeluaran = 0;
-                
-                // Skip header rows
-                const rows = data.slice(11); // Usually data starts around row 11 based on previous tool calls
-                rows.forEach(row => {
-                  if (row && row.length >= 9) {
-                    totalPenerimaan += parseRupiah(row[7]);
-                    totalPengeluaran += parseRupiah(row[8]);
-                  }
-                });
-
-                // Check for last Saldo Akhir column specifically as well
-                let lastValidSaldo = 0;
+              if (data && data.length > 0) {
+                let currentBalance = 0;
                 let sheetLastDate: Date | null = null;
-                for (let i = data.length - 1; i >= 0; i--) {
-                  const s = parseRupiah(data[i][9]);
-                  const dateStr = data[i][1];
-                  const hasDate = dateStr && dateStr.length > 5;
+                let foundSaldoAwal = false;
 
-                  if (dateStr && dateStr.trim().length > 0 && !sheetLastDate) {
+                // Scan all rows
+                for (let i = 0; i < data.length; i++) {
+                  const row = data[i];
+                  if (!row || row.length < 6) continue; // Minimal row with keterangan
+
+                  const dateStr = row[0] || '';
+                  const debet = parseRupiah(row[6]);
+                  const kredit = parseRupiah(row[7]);
+                  const saldoAkhir = parseRupiah(row[8]);
+
+                  // Search for "Saldo Awal" in any column of this row
+                  const isSaldoAwalRow = row.some(cell => 
+                    cell && typeof cell === 'string' && cell.toLowerCase().includes('saldo awal')
+                  );
+
+                  if (isSaldoAwalRow) {
+                    // Initialize with saldo akhir if present, else use debet (sometimes people put it there)
+                    currentBalance = saldoAkhir || debet || 0;
+                    foundSaldoAwal = true;
+                    // Try to parse date even on saldo awal row
+                  }
+
+                  // If row has a date and it's not the header
+                  if (dateStr && dateStr.trim().length > 0 && !dateStr.toLowerCase().includes('tgl')) {
+                    // Try to parse date for last update check
                     const parts = dateStr.split(/[\/\- ]/);
-                    if (parts.length >= 3) {
-                      let d = parseInt(parts[0]);
-                      let m = 0;
-                      let y = 0;
+                    if (parts.length >= 2) { // Allow shorter dates if needed
+                      try {
+                        const d = parseInt(parts[0]);
+                        let m = 0;
+                        let y = new Date().getFullYear(); // default to current year
+                        
+                        const mText = parts[1].toLowerCase();
+                        const monthMap: Record<string, number> = { 
+                          'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'mei': 4, 'may': 4, 'jun': 5, 
+                          'jul': 6, 'agu': 7, 'aug': 7, 'sep': 8, 'okt': 9, 'oct': 9, 'nov': 10, 'des': 11, 'dec': 11
+                        };
 
-                      // Handle month as number or text
-                      const mText = parts[1].toLowerCase();
-                      const monthMap: Record<string, number> = { 
-                        'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'mei': 4, 'may': 4, 'jun': 5, 
-                        'jul': 6, 'agu': 7, 'aug': 7, 'sep': 8, 'okt': 9, 'oct': 9, 'nov': 10, 'des': 11, 'dec': 11
-                      };
-
-                      if (isNaN(Number(mText))) {
-                        m = monthMap[mText] || monthMap[mText.substring(0,3)] || 0;
-                      } else {
-                        m = parseInt(mText) - 1;
-                      }
-
-                      // Handle year
-                      const yText = parts[2];
-                      if (yText.length === 2) {
-                        y = 2000 + parseInt(yText);
-                      } else {
-                        y = parseInt(yText);
-                      }
-
-                      if (!isNaN(d) && !isNaN(m) && !isNaN(y) && y > 2000) {
-                        const parsedDate = new Date(y, m, d);
-                        if (!isNaN(parsedDate.getTime())) {
-                          sheetLastDate = parsedDate;
+                        if (isNaN(Number(mText))) {
+                          m = monthMap[mText] || monthMap[mText.substring(0,3)] || 0;
+                        } else {
+                          m = parseInt(mText) - 1;
                         }
+
+                        if (parts[2]) {
+                          const yText = parts[2];
+                          y = yText.length === 2 ? 2000 + parseInt(yText) : parseInt(yText);
+                        }
+
+                        if (!isNaN(d) && !isNaN(m) && !isNaN(y) && y > 2000) {
+                          const parsedDate = new Date(y, m, d);
+                          if (!isNaN(parsedDate.getTime())) {
+                            sheetLastDate = parsedDate;
+                          }
+                        }
+                      } catch (e) { /* ignore parse errors */ }
+                    }
+
+                    // Update balance: only if it's not the already-processed saldo awal row
+                    if (!isSaldoAwalRow) {
+                      if (row[8] && row[8].trim() !== '' && row[8].trim() !== '-') {
+                        currentBalance = saldoAkhir;
+                      } else {
+                        currentBalance = currentBalance + debet - kredit;
                       }
                     }
                   }
-
-                  if (hasDate && (s > 0 || (data[i][9] && data[i][9].trim() !== ''))) {
-                    if (lastValidSaldo === 0) lastValidSaldo = s;
-                  }
-
-                  if (sheetLastDate && lastValidSaldo !== 0) break;
                 }
 
                 if (sheetLastDate) dates.push(sheetLastDate);
-                balanceMap[sheet.name] = lastValidSaldo !== 0 ? lastValidSaldo : (saldoAwal + totalPenerimaan - totalPengeluaran);
+                balanceMap[sheet.name] = currentBalance;
               } else {
                 balanceMap[sheet.name] = 0;
               }
