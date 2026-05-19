@@ -49,6 +49,7 @@ import { LaporanManager } from './components/LaporanManager';
 import { AdministrasiManager } from './components/administrasi/AdministrasiManager';
 import { AnalisisManager } from './components/AnalisisManager';
 import { BerkasDigitalManager } from './components/BerkasDigitalManager';
+import { LearningSection } from './components/LearningSection';
 import SignaturePad from 'signature_pad';
 import { jsPDF } from 'jspdf';
 import { DonationConfirmation } from './components/administrasi/DonationConfirmation';
@@ -558,6 +559,10 @@ export default function App() {
     if (!profile) return false;
     return profile.email === 'keuangan.scb@gmail.com';
   }, [profile]);
+
+  const isOwner = useMemo(() => {
+    return user?.email === OWNER_EMAIL;
+  }, [user]);
 
   // Auto-switch away from unauthorized tabs
   useEffect(() => {
@@ -1417,6 +1422,9 @@ export default function App() {
                           </div>
                       </div>
                     )}
+
+                    {/* Learning & Collaborating Section */}
+                    <LearningSection isOwner={isOwner} />
                   </div>
                 )}
 

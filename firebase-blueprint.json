@@ -97,6 +97,20 @@
         "status",
         "createdAt"
       ]
+    },
+    "DashboardGallery": {
+      "title": "DashboardGallery",
+      "description": "Media items (photos/videos) for the dashboard gallery.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["image", "video"] },
+        "url": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "url", "createdAt"]
     }
   },
   "firestore": {
@@ -119,6 +133,10 @@
     "/donations/{donationId}": {
       "schema": "Donation",
       "description": "Collection of donation confirmations."
+    },
+    "/dashboard_gallery/{galleryId}": {
+      "schema": "DashboardGallery",
+      "description": "Collection of media for the dashboard."
     }
   }
 }

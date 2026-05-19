@@ -76,6 +76,15 @@ service cloud.firestore {
       return (!('logoURL' in data) || data.logoURL is string);
     }
 
+    function isValidGallery(data) {
+      return data.keys().hasAll(['type', 'url', 'createdAt']) &&
+             data.type in ['image', 'video'] &&
+             data.url is string &&
+             data.createdAt == request.time &&
+             (!('title' in data) || data.title is string) &&
+             (!('description' in data) || data.description is string);
+    }
+
     function isOnlyOwner() {
       return isSignedIn() && request.auth.token.email == "keuanganscbbaznas@gmail.com" && request.auth.token.email_verified == true;
     }
@@ -137,6 +146,13 @@ service cloud.firestore {
       allow create: if isValidDonation(incoming());
       allow update: if (isAdmin() || getRole() in ['finance', 'accountant', 'management']) && isValidDonation(incoming());
       allow delete: if isAdmin();
+    }
+
+    match /dashboard_gallery/{galleryId} {
+      allow read: if true;
+      allow create: if isOnlyOwner() && isValidGallery(incoming());
+      allow update: if isOnlyOwner() && isValidGallery(incoming());
+      allow delete: if isOnlyOwner();
     }
   }
 }
