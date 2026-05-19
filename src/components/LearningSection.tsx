@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import imageCompression from 'browser-image-compression';
 import { 
   Plus, 
   Video, 
@@ -86,8 +87,26 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
 
     try {
       setIsUploading(true);
-      const storageRef = ref(storage, `gallery/${Date.now()}_${file.name}`);
-      const uploadResult = await uploadBytes(storageRef, file);
+      
+      let fileToUpload = file;
+
+      // Compress if it's an image
+      if (mediaType === 'image') {
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1280,
+          useWebWorker: true
+        };
+        try {
+          fileToUpload = await imageCompression(file, options);
+          console.log(`Image compressed from ${file.size / 1024 / 1024}MB to ${fileToUpload.size / 1024 / 1024}MB`);
+        } catch (compressionError) {
+          console.warn('Compression failed, uploading original', compressionError);
+        }
+      }
+
+      const storageRef = ref(storage, `gallery/${Date.now()}_${fileToUpload.name}`);
+      const uploadResult = await uploadBytes(storageRef, fileToUpload);
       const url = await getDownloadURL(uploadResult.ref);
 
       await addDoc(collection(db, 'dashboard_gallery'), {
