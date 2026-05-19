@@ -62,7 +62,7 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   // Form state
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState('Learning With MONETA SCB');
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');

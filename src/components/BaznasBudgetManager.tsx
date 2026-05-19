@@ -328,7 +328,7 @@ export function BaznasBudgetManager({ profile, userUid, isReadOnly = false }: { 
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Pengajuan Anggaran BAZNAS</h2>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Pengajuan Anggaran MONETA</h2>
           <p className="text-sm text-slate-500 font-medium mt-1">Input rencana anggaran program, operasional, dan makan.</p>
         </div>
         

@@ -1177,7 +1177,7 @@ export default function App() {
               <div className="mx-auto flex h-24 w-24 items-center justify-center p-2 rounded-full bg-white shadow-sm ring-1 ring-slate-100">
                 <img 
                   src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Logo_BAZNAS.png/512px-Logo_BAZNAS.png" 
-                  alt="Logo Sekolah Cendekia BAZNAS" 
+                  alt="Logo MONETA SCB" 
                   className="h-full w-full object-contain p-1"
                   referrerPolicy="no-referrer"
                 />
@@ -1195,7 +1195,7 @@ export default function App() {
               </Button>
             </CardContent>
             <CardFooter className="flex flex-col gap-2 text-center text-xs text-slate-500">
-              <p>© 2026 BAZNAS - Sekolah Cendekia BAZNAS</p>
+              <p>© 2026 MONETA - MONETA SCB</p>
             </CardFooter>
           </Card>
         </motion.div>
@@ -1446,7 +1446,7 @@ export default function App() {
                              Halo, {profile?.displayName}!
                            </h1>
                            <p className="text-emerald-50/70 text-xs md:text-sm max-w-xl font-medium tracking-tight">
-                              Portal manajemen keuangan Sekolah Cendekia BAZNAS.
+                              Portal manajemen keuangan MONETA SCB.
                            </p>
                          </div>
 

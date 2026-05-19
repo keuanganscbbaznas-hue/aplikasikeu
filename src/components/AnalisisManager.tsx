@@ -154,7 +154,7 @@ export function AnalisisManager({ userUid, isReadOnly = false }: { userUid: stri
                 <p className="text-xl font-black text-emerald-900">Rp {totalLaporan.toLocaleString('id-ID')}</p>
             </div>
             <div className="p-4 bg-rose-50 rounded-2xl md:col-span-2">
-                <p className="text-xs font-bold text-rose-600 uppercase tracking-widest">SISA PERTUM SCB KE BAZNAS</p>
+                <p className="text-xs font-bold text-rose-600 uppercase tracking-widest">SISA PERTUM SCB KE MONETA</p>
                 <p className="text-xl font-black text-rose-900">Rp {(totalPencairan - totalLaporan).toLocaleString('id-ID')}</p>
             </div>
           </div>
