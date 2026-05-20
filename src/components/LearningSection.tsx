@@ -76,6 +76,7 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
   const [editDescription, setEditDescription] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedPreviewItem, setSelectedPreviewItem] = useState<GalleryItem | null>(null);
 
   useEffect(() => {
     const q = query(collection(db, 'dashboard_gallery'), orderBy('createdAt', 'desc'));
@@ -103,66 +104,54 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
       setCompressionProgress(0);
       
       let fileToUpload = file;
+      let url = '';
 
-      // Safe multi-threaded or light client-side canvas optimization
       if (mediaType === 'image') {
-        const fileSizeMB = file.size / (1024 * 1024);
+        // Enforce safe high-quality compression to stay under Firestore document size limits (max 1MB, target 450KB)
+        // This ensures the custom Vercel build and standard builds never get broken links.
+        toast.info('Mengompresi dan menyiapkan gambar berkualitas tinggi...', { duration: 2500 });
+        const options = {
+          maxSizeMB: 0.45, 
+          maxWidthOrHeight: 1600, 
+          useWebWorker: false, // prevent sandbox iframe worker freezes
+          initialQuality: 0.85,
+          onProgress: (p: number) => setCompressionProgress(p)
+        };
         
-        // Skip compression if toggle is off OR if file is very small
-        if (optimizeImage && fileSizeMB > 0.2) {
-          toast.info('Mengoptimalkan gambar agar unggah lebih cepat...', { duration: 2500 });
-          const options = {
-            maxSizeMB: 0.15, // Highly optimized lightweight target
-            maxWidthOrHeight: 1200, 
-            useWebWorker: false, // CRITICAL: prevents freezing in sandboxed iframes!
-            initialQuality: 0.65,
-            onProgress: (p: number) => setCompressionProgress(p)
-          };
-          try {
-            fileToUpload = await imageCompression(file, options);
-            setCompressionProgress(100);
-          } catch (compressionError) {
-            console.warn('Compression failed, uploading original', compressionError);
-          }
+        try {
+          fileToUpload = await imageCompression(file, options);
+          setCompressionProgress(100);
+        } catch (compressionError) {
+          console.warn('Compression failed, using original file', compressionError);
         }
+
+        setUploadProgress(30);
+
+        // Convert compressed file to Base64
+        const reader = new FileReader();
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(fileToUpload);
+        });
+
+        if (base64Data.length > 1040000) {
+          throw new Error('Berkas gambar terlampau besar secara visual. Mohon gunakan gambar dengan resolusi lebih rendah.');
+        }
+
+        setUploadProgress(75);
+        url = base64Data;
+
+      } else {
+        // Fallback for short video clips or other media via storage
+        setUploadProgress(20);
+        const storageRef = ref(storage, `gallery/${Date.now()}_${fileToUpload.name}`);
+        const uploadResult = await uploadBytes(storageRef, fileToUpload);
+        setUploadProgress(70);
+        url = await getDownloadURL(uploadResult.ref);
       }
 
-      setUploadProgress(15);
-      
-      // Convert fileToUpload to Base64
-      const reader = new FileReader();
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (err) => reject(err);
-        reader.readAsDataURL(fileToUpload);
-      });
-
-      setUploadProgress(40);
-      toast.info('Mengirimkan berkas ke server...', { duration: 1500 });
-
-      // Post data to Node server direct endpoint
-      const response = await fetch('/api/gallery/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          filename: fileToUpload.name,
-          base64Data,
-          mimeType: fileToUpload.type,
-        }),
-      });
-
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error || 'Server gagal menyimpan berkas');
-      }
-
-      setUploadProgress(85);
-      const resData = await response.json();
-      const url = resData.url;
-
-      setUploadProgress(92);
+      setUploadProgress(90);
 
       const galleryData = {
         type: mediaType,
@@ -223,12 +212,14 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
     if (!window.confirm('Hapus media ini?')) return;
 
     try {
-      // Delete from storage first (best effort)
-      try {
-        const desertRef = ref(storage, item.url);
-        await deleteObject(desertRef);
-      } catch (err) {
-        console.warn('Storage delete skipped or failed', err);
+      // Delete from storage first if it is an actual hosted storage url
+      if (item.url && (item.url.startsWith('http') || item.url.startsWith('gs:'))) {
+        try {
+          const desertRef = ref(storage, item.url);
+          await deleteObject(desertRef);
+        } catch (err) {
+          console.warn('Storage delete skipped or failed', err);
+        }
       }
 
       await deleteDoc(doc(db, 'dashboard_gallery', item.id));
@@ -432,48 +423,42 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
                 exit={{ opacity: 0, scale: 0.9 }}
                 transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
               >
-                <Card className="group relative overflow-hidden rounded-[2.5rem] border-none shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-indigo-200/40 transition-all duration-500 bg-white">
-                  <div className="aspect-[4/5] overflow-hidden bg-slate-900">
+                <Card className="group relative overflow-hidden rounded-[2rem] border border-slate-100 bg-white shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-indigo-200/30 transition-all duration-500 flex flex-col h-full">
+                  {/* Media container on TOP - landscape 16:10 aspect ratio */}
+                  <div 
+                    className="relative aspect-[16/10] overflow-hidden bg-slate-950 cursor-pointer"
+                    onClick={() => setSelectedPreviewItem(item)}
+                  >
                     {item.type === 'image' ? (
                       <img 
                         src={item.url} 
                         alt={item.title} 
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                         referrerPolicy="no-referrer"
                       />
                     ) : (
                       <div className="relative w-full h-full">
                         <video 
                           src={item.url} 
-                          className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
+                          className="w-full h-full object-cover opacity-90 transition-opacity"
                         />
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="h-16 w-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 group-hover:scale-110 transition-transform">
-                            <Play size={24} fill="currentColor" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/25 transition-colors">
+                          <div className="h-14 w-14 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 group-hover:scale-110 transition-transform shadow-lg">
+                            <Play size={22} fill="currentColor" className="ml-1" />
                           </div>
                         </div>
                       </div>
                     )}
                     
-                    {/* Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity duration-500" />
-                    
-                    {/* Content */}
-                    <div className="absolute bottom-0 left-0 right-0 p-8 transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                      <div className="flex items-center gap-2 mb-3">
-                         {item.type === 'image' ? <ImageIcon size={14} className="text-emerald-400" /> : <Video size={14} className="text-amber-400" />}
-                         <span className="text-[10px] font-black tracking-widest uppercase text-white/60">{item.type}</span>
-                      </div>
-                      <h4 className="text-xl font-black tracking-tight text-white mb-2 leading-tight">
-                        {item.title || 'Tanpa Judul'}
-                      </h4>
-                      <p className="text-white/60 text-xs font-bold leading-relaxed line-clamp-2">
-                        {item.description || 'Kegiatan kolaborasi strategis dalam penguatan ekosistem zakat.'}
-                      </p>
+                    {/* Media Type Floating Badge */}
+                    <div className="absolute top-4 left-4 bg-slate-900/60 backdrop-blur-md rounded-xl px-3 py-1.5 flex items-center gap-1.5 border border-white/10 shadow-sm z-10">
+                       {item.type === 'image' ? <ImageIcon size={12} className="text-emerald-400" /> : <Video size={12} className="text-amber-400" />}
+                       <span className="text-[9px] font-black tracking-widest uppercase text-white">{item.type}</span>
                     </div>
 
+                    {/* Owner Edit / Delete Float actions on hover */}
                     {isOwner && (
-                      <div className="absolute top-6 right-6 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                      <div className="absolute top-4 right-4 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300 z-20">
                         <Button
                           type="button"
                           variant="secondary"
@@ -482,10 +467,10 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
                             e.stopPropagation();
                             handleStartEdit(item);
                           }}
-                          className="h-10 w-10 rounded-2xl bg-white/30 hover:bg-white backdrop-blur-md text-white hover:text-slate-900 border border-white/40 shadow-sm transition-all flex items-center justify-center cursor-pointer"
+                          className="h-9 w-9 rounded-xl bg-white/90 hover:bg-white text-slate-800 border border-slate-200 shadow-sm transition-all flex items-center justify-center cursor-pointer"
                           title="Edit Keterangan"
                         >
-                          <Edit2 size={16} />
+                          <Edit2 size={13} />
                         </Button>
                         <Button
                           type="button"
@@ -495,13 +480,43 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
                             e.stopPropagation();
                             handleDelete(item);
                           }}
-                          className="h-10 w-10 rounded-2xl bg-red-500/35 hover:bg-red-650 backdrop-blur-md text-white border border-red-500/40 shadow-sm transition-all flex items-center justify-center cursor-pointer"
+                          className="h-9 w-9 rounded-xl bg-red-500 hover:bg-red-600 text-white border border-red-600/20 shadow-sm transition-all flex items-center justify-center cursor-pointer"
                           title="Hapus Media"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={13} />
                         </Button>
                       </div>
                     )}
+
+                    {/* Quick Lightbox View Overlay */}
+                    <div className="absolute inset-0 bg-indigo-950/10 opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center z-0">
+                      <span className="bg-slate-900/80 backdrop-blur-md text-white border border-white/10 font-bold text-xs uppercase px-4 py-2 rounded-2xl shadow-lg flex items-center gap-2 transform translate-y-2 group-hover:translate-y-0 transition-all duration-500">
+                        Klik Untuk Lihat Detail
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Complete Description panel BELOW - White background with excellent typography and contrast */}
+                  <div className="p-6 flex flex-col flex-1 justify-between bg-white">
+                    <div className="space-y-2">
+                      <h4 className="text-base font-black tracking-tight text-slate-900 leading-snug line-clamp-2 uppercase">
+                        {item.title || 'Belajar Membuat Aplikasi Sendiri Bersama Kepala Sekolah dan Tendik SCB'}
+                      </h4>
+                      <p className="text-slate-500 text-xs font-bold leading-relaxed line-clamp-3">
+                        {item.description || 'Workshop intensif pengembangan aplikasi MONETA SCB.'}
+                      </p>
+                    </div>
+
+                    <div className="mt-5 pt-4 border-t border-slate-100/80 flex items-center justify-between text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      <span>SCB ACADEMY DOCS</span>
+                      <button 
+                        type="button"
+                        onClick={() => setSelectedPreviewItem(item)}
+                        className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 transition-colors uppercase tracking-widest cursor-pointer flex items-center gap-1.5"
+                      >
+                        Lihat Penuh →
+                      </button>
+                    </div>
                   </div>
                 </Card>
               </motion.div>
@@ -509,6 +524,51 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
           </AnimatePresence>
         </div>
       )}
+
+      {/* Fullscreen Lightbox Preview Modal */}
+      <Dialog open={!!selectedPreviewItem} onOpenChange={(open) => !open && setSelectedPreviewItem(null)}>
+        <DialogContent className="max-w-4xl w-[95vw] rounded-[2rem] border-none shadow-2xl bg-slate-950 text-white p-3 overflow-hidden flex flex-col justify-center">
+          {selectedPreviewItem && (
+            <div className="relative w-full flex flex-col bg-slate-950 rounded-[1.8rem] overflow-hidden">
+              <div className="flex-1 flex items-center justify-center p-4 md:p-8 bg-slate-900/40 min-h-[40vh] max-h-[60vh]">
+                {selectedPreviewItem.type === 'image' ? (
+                  <img 
+                    src={selectedPreviewItem.url} 
+                    alt={selectedPreviewItem.title} 
+                    className="max-h-[50vh] max-w-full object-contain rounded-2xl shadow-xl border border-white/5"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <video 
+                    src={selectedPreviewItem.url} 
+                    controls 
+                    autoPlay
+                    className="max-h-[50vh] max-w-full object-contain rounded-2xl shadow-xl"
+                  />
+                )}
+              </div>
+              
+              {/* Image Description under Lightbox */}
+              <div className="p-6 md:p-8 bg-slate-900 border-t border-white/5 text-left">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[10px] font-black tracking-widest uppercase bg-indigo-500/20 text-indigo-300 px-2.5 py-0.5 rounded-md border border-indigo-500/10">
+                    {selectedPreviewItem.type}
+                  </span>
+                  <span className="text-[10px] font-black text-slate-400 tracking-wider">
+                    DOKUMENTASI KEGIATAN SCB
+                  </span>
+                </div>
+                <h3 className="text-lg md:text-xl font-black tracking-tight text-white uppercase leading-snug">
+                  {selectedPreviewItem.title || 'Belajar Membuat Aplikasi Sendiri Bersama Kepala Sekolah dan Tendik SCB'}
+                </h3>
+                <p className="text-slate-300 text-xs md:text-sm leading-relaxed mt-2.5 font-bold">
+                  {selectedPreviewItem.description || 'Workshop intensif pengembangan aplikasi MONETA SCB.'}
+                </p>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Media Details Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
