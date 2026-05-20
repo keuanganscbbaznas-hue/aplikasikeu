@@ -10,7 +10,8 @@ import {
   Play,
   Presentation,
   Users2,
-  Sparkles
+  Sparkles,
+  Edit2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -25,6 +26,7 @@ import {
 } from 'firebase/firestore';
 import { 
   ref, 
+  uploadBytes, 
   uploadBytesResumable, 
   getDownloadURL, 
   deleteObject 
@@ -66,6 +68,14 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
   const [description, setDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
+  const [optimizeImage, setOptimizeImage] = useState(true);
+
+  // Edit details state
+  const [editingItem, setEditingItem] = useState<GalleryItem | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, 'dashboard_gallery'), orderBy('createdAt', 'desc'));
@@ -94,68 +104,76 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
       
       let fileToUpload = file;
 
-      // Extremely aggressive optimization for speed
+      // Safe multi-threaded or light client-side canvas optimization
       if (mediaType === 'image') {
         const fileSizeMB = file.size / (1024 * 1024);
         
-        // Skip compression if file is reasonably small (< 1MB)
-        if (fileSizeMB > 1.0) {
+        // Skip compression if toggle is off OR if file is very small
+        if (optimizeImage && fileSizeMB > 0.2) {
+          toast.info('Mengoptimalkan gambar agar unggah lebih cepat...', { duration: 2500 });
           const options = {
-            maxSizeMB: 0.1, // Fast upload
-            maxWidthOrHeight: 1000,
-            useWebWorker: true,
-            initialQuality: 0.5,
+            maxSizeMB: 0.15, // Highly optimized lightweight target
+            maxWidthOrHeight: 1200, 
+            useWebWorker: false, // CRITICAL: prevents freezing in sandboxed iframes!
+            initialQuality: 0.65,
             onProgress: (p: number) => setCompressionProgress(p)
           };
           try {
             fileToUpload = await imageCompression(file, options);
+            setCompressionProgress(100);
           } catch (compressionError) {
             console.warn('Compression failed, uploading original', compressionError);
           }
-        } else {
-          setCompressionProgress(100);
         }
       }
 
-      setUploadProgress(10);
-      const storageRef = ref(storage, `gallery/${Date.now()}_${fileToUpload.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
-
-      // Using a promise to handle the resumable upload for better control
-      await new Promise((resolve, reject) => {
-        uploadTask.on('state_changed', 
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            // Map 0-100% upload to 10-90% total progress
-            setUploadProgress(10 + (progress * 0.8));
-          }, 
-          (error) => {
-            console.error('Upload failed:', error);
-            toast.error(`Unggah gagal: ${error.message}`);
-            reject(error);
-          }, 
-          async () => {
-            try {
-              const url = await getDownloadURL(uploadTask.snapshot.ref);
-              setUploadProgress(95);
-
-              const galleryData = {
-                type: mediaType,
-                url,
-                title: title || 'Kegiatan MONETA SCB',
-                description: description || '',
-                createdAt: serverTimestamp(),
-              };
-
-              await addDoc(collection(db, 'dashboard_gallery'), galleryData);
-              setUploadProgress(100);
-              resolve(true);
-            } catch (err) {
-              reject(err);
-            }
-          }
-        );
+      setUploadProgress(15);
+      
+      // Convert fileToUpload to Base64
+      const reader = new FileReader();
+      const base64Data = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(fileToUpload);
       });
+
+      setUploadProgress(40);
+      toast.info('Mengirimkan berkas ke server...', { duration: 1500 });
+
+      // Post data to Node server direct endpoint
+      const response = await fetch('/api/gallery/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          filename: fileToUpload.name,
+          base64Data,
+          mimeType: fileToUpload.type,
+        }),
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.error || 'Server gagal menyimpan berkas');
+      }
+
+      setUploadProgress(85);
+      const resData = await response.json();
+      const url = resData.url;
+
+      setUploadProgress(92);
+
+      const galleryData = {
+        type: mediaType,
+        url,
+        title: title || 'Belajar Membuat Aplikasi Sendiri Bersama Kepala Sekolah dan Tendik SCB',
+        description: description || 'Dokumentasi kegiatan pengembangan aplikasi MONETA SCB.',
+        createdAt: serverTimestamp(),
+      };
+
+      await addDoc(collection(db, 'dashboard_gallery'), galleryData);
+      setUploadProgress(100);
 
       toast.success('Media berhasil disimpan');
       setShowUploadModal(false);
@@ -167,6 +185,37 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
     } finally {
       setIsUploading(false);
       setCompressionProgress(0);
+    }
+  };
+
+  const handleStartEdit = (item: GalleryItem) => {
+    setEditingItem(item);
+    setEditTitle(item.title || '');
+    setEditDescription(item.description || '');
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+
+    try {
+      setIsSavingEdit(true);
+      const { updateDoc, doc, serverTimestamp } = await import('firebase/firestore');
+      
+      await updateDoc(doc(db, 'dashboard_gallery', editingItem.id), {
+        title: editTitle || 'Belajar Membuat Aplikasi Sendiri Bersama Kepala Sekolah dan Tendik SCB',
+        description: editDescription || 'Dokumentasi kegiatan pengembangan aplikasi MONETA SCB.',
+        createdAt: serverTimestamp(), // Re-apply serverTimestamp to satisfy isValidGallery rule check
+      });
+
+      toast.success('Keterangan media berhasil diperbarui');
+      setShowEditModal(false);
+      setEditingItem(null);
+    } catch (error: any) {
+      console.error('Failed to update media details:', error);
+      toast.error(`Gagal menyimpan: ${error.message || 'Terjadi kesalahan'}`);
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -191,10 +240,11 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
   };
 
   const resetForm = () => {
-    setTitle('');
+    setTitle('Learning With MONETA SCB');
     setDescription('');
     setFile(null);
     setMediaType('image');
+    setOptimizeImage(true);
   };
 
   return (
@@ -267,6 +317,20 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
                     Video
                   </Button>
                 </div>
+                {mediaType === 'image' && (
+                  <div className="flex items-center gap-3 p-3 bg-indigo-50/50 border border-indigo-100/50 rounded-2xl">
+                    <input 
+                      type="checkbox" 
+                      id="optimize-toggle" 
+                      checked={optimizeImage} 
+                      onChange={(e) => setOptimizeImage(e.target.checked)}
+                      className="h-4.5 w-4.5 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                    />
+                    <label htmlFor="optimize-toggle" className="text-[11px] font-black tracking-wide text-indigo-950 cursor-pointer select-none leading-tight uppercase">
+                      Kompresi Gambar Otomatis (Ubah resolusi agar upload instan)
+                    </label>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>File</Label>
                   <div 
@@ -409,14 +473,34 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
                     </div>
 
                     {isOwner && (
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => handleDelete(item)}
-                        className="absolute top-6 right-6 h-10 w-10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/20 hover:bg-red-500 backdrop-blur-md border border-red-500/30"
-                      >
-                        <Trash2 size={18} />
-                      </Button>
+                      <div className="absolute top-6 right-6 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStartEdit(item);
+                          }}
+                          className="h-10 w-10 rounded-2xl bg-white/30 hover:bg-white backdrop-blur-md text-white hover:text-slate-900 border border-white/40 shadow-sm transition-all flex items-center justify-center cursor-pointer"
+                          title="Edit Keterangan"
+                        >
+                          <Edit2 size={16} />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(item);
+                          }}
+                          className="h-10 w-10 rounded-2xl bg-red-500/35 hover:bg-red-650 backdrop-blur-md text-white border border-red-500/40 shadow-sm transition-all flex items-center justify-center cursor-pointer"
+                          title="Hapus Media"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </Card>
@@ -425,6 +509,57 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
           </AnimatePresence>
         </div>
       )}
+
+      {/* Edit Media Details Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-md rounded-[2rem] border-none shadow-2xl bg-white p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2 uppercase">
+              <Edit2 size={20} className="text-indigo-600" />
+              EDIT KETERANGAN MEDIA
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-black uppercase text-slate-400 tracking-wider">Judul Media</Label>
+              <Input 
+                value={editTitle} 
+                onChange={(e) => setEditTitle(e.target.value)} 
+                placeholder="Judul media baru..."
+                className="rounded-xl border-slate-200 focus-visible:ring-indigo-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-black uppercase text-slate-400 tracking-wider">Deskripsi Media</Label>
+              <Input 
+                value={editDescription} 
+                onChange={(e) => setEditDescription(e.target.value)} 
+                placeholder="Deskripsi media baru..."
+                className="rounded-xl border-slate-200 focus-visible:ring-indigo-500"
+              />
+            </div>
+            <div className="flex gap-3 justify-end pt-4">
+              <Button 
+                type="button"
+                variant="outline"
+                className="rounded-xl border-slate-200 font-bold px-4"
+                disabled={isSavingEdit}
+                onClick={() => setShowEditModal(false)}
+              >
+                Batal
+              </Button>
+              <Button 
+                type="button"
+                onClick={handleSaveEdit} 
+                className="bg-indigo-600 hover:bg-indigo-700 font-bold text-white rounded-xl px-5"
+                disabled={isSavingEdit}
+              >
+                {isSavingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

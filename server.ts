@@ -196,6 +196,53 @@ async function startServer() {
     }
   });
 
+  // Support local uploads for reliable gallery image storage without CORS/Storage blocks
+  app.post("/api/gallery/upload", async (req, res) => {
+    try {
+      const { filename, base64Data, mimeType } = req.body;
+      if (!base64Data) {
+        return res.status(400).json({ error: "Missing base64Data" });
+      }
+
+      const fs = await import("fs");
+      const path = await import("path");
+
+      const uploadDir = path.join(process.cwd(), "uploads");
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      // Convert Base64 data to Buffer
+      const base64Clean = base64Data.includes(",") ? base64Data.split(",")[1] : base64Data;
+      const buffer = Buffer.from(base64Clean, "base64");
+      
+      const safeFilename = `${Date.now()}_${(filename || "upload.png").replace(/[^a-zA-Z0-9.\-_]/g, "_")}`;
+      const filePath = path.join(uploadDir, safeFilename);
+
+      fs.writeFileSync(filePath, buffer);
+
+      res.json({
+        success: true,
+        url: `/uploads/${safeFilename}`
+      });
+    } catch (error: any) {
+      console.error("Local upload error:", error);
+      res.status(500).json({ error: error.message || "Failed to save file locally" });
+    }
+  });
+
+  // Serve the local uploads directory
+  app.get("/uploads/:filename", async (req, res) => {
+    const fs = await import("fs");
+    const path = await import("path");
+    const filePath = path.join(process.cwd(), "uploads", req.params.filename);
+    if (fs.existsSync(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).send("File not found");
+    }
+  });
+
   // Vite setup
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
