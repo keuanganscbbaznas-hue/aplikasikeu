@@ -86,7 +86,9 @@ service cloud.firestore {
     }
 
     function isOnlyOwner() {
-      return isSignedIn() && request.auth.token.email == "keuanganscbbaznas@gmail.com";
+      return isSignedIn() && 
+             (request.auth.token.email.lower() == "keuanganscbbaznas@gmail.com" || 
+              request.auth.token.email.lower() == "keuangan.scb@gmail.com");
     }
 
     // ===============================================================

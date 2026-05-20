@@ -25,7 +25,7 @@ import {
 } from 'firebase/firestore';
 import { 
   ref, 
-  uploadBytesResumable, 
+  uploadBytes, 
   getDownloadURL, 
   deleteObject 
 } from 'firebase/storage';
@@ -94,57 +94,60 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
       
       let fileToUpload = file;
 
-      // Compress if it's an image
+      // Extremely aggressive optimization for speed
       if (mediaType === 'image') {
-        const options = {
-          maxSizeMB: 0.4, // More aggressive compression
-          maxWidthOrHeight: 1200,
-          useWebWorker: true,
-          onProgress: (p: number) => setCompressionProgress(p)
-        };
-        try {
-          fileToUpload = await imageCompression(file, options);
-          console.log(`Image compressed from ${file.size / 1024 / 1024}MB to ${fileToUpload.size / 1024 / 1024}MB`);
-        } catch (compressionError) {
-          console.warn('Compression failed, uploading original', compressionError);
+        const fileSizeMB = file.size / (1024 * 1024);
+        
+        // Skip compression if file is already small (e.g. < 200KB)
+        if (fileSizeMB > 0.2) {
+          const options = {
+            maxSizeMB: 0.08, // Very small for blazing fast upload
+            maxWidthOrHeight: 800,
+            useWebWorker: true,
+            initialQuality: 0.4, // Prioritize speed
+            onProgress: (p: number) => setCompressionProgress(p)
+          };
+          try {
+            fileToUpload = await imageCompression(file, options);
+          } catch (compressionError) {
+            console.warn('Compression failed, uploading original', compressionError);
+          }
+        } else {
+          setCompressionProgress(100);
         }
       }
 
+      setUploadProgress(20);
       const storageRef = ref(storage, `gallery/${Date.now()}_${fileToUpload.name}`);
-      const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
+      
+      // Direct upload for speed
+      const uploadResult = await uploadBytes(storageRef, fileToUpload);
+      setUploadProgress(80);
+      
+      const url = await getDownloadURL(uploadResult.ref);
+      setUploadProgress(90);
 
-      uploadTask.on('state_changed', 
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
-        }, 
-        (error) => {
-          console.error('Upload failed:', error);
-          toast.error(`Gagal mengunggah: ${error.message}`);
-          setIsUploading(false);
-        }, 
-        async () => {
-          const url = await getDownloadURL(uploadTask.snapshot.ref);
+      const galleryData = {
+        type: mediaType,
+        url,
+        title: title || 'Kegiatan MONETA SCB',
+        description: description || '',
+        createdAt: serverTimestamp(),
+      };
 
-          await addDoc(collection(db, 'dashboard_gallery'), {
-            type: mediaType,
-            url,
-            title,
-            description,
-            createdAt: serverTimestamp(),
-          });
+      await addDoc(collection(db, 'dashboard_gallery'), galleryData);
+      setUploadProgress(100);
 
-          toast.success('Media berhasil disimpan');
-          setShowUploadModal(false);
-          resetForm();
-          setIsUploading(false);
-        }
-      );
-
+      toast.success('Media berhasil disimpan');
+      setShowUploadModal(false);
+      resetForm();
     } catch (error: any) {
-      console.error(error);
-      toast.error(`Terjadi kesalahan: ${error.message}`);
+      console.error('Upload process failed:', error);
+      toast.error(`Gagal: ${error.message || 'Terjadi kesalahan'}`);
+      setUploadProgress(0);
+    } finally {
       setIsUploading(false);
+      setCompressionProgress(0);
     }
   };
 

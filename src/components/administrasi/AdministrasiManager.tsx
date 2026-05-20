@@ -16,7 +16,7 @@ export const AdministrasiManager = ({ isAdmin = false }: AdministrasiManagerProp
           <Briefcase size={24} />
         </div>
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Administrasi Keuangan</h1>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Laporan Donasi</h1>
           <p className="text-sm font-medium text-slate-500">Kelola dokumen dan konfirmasi donasi dalam satu tempat.</p>
         </div>
       </div>

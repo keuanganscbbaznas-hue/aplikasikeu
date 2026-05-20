@@ -561,7 +561,9 @@ export default function App() {
   }, [profile]);
 
   const isOwner = useMemo(() => {
-    return user?.email === OWNER_EMAIL;
+    if (!user?.email) return false;
+    return user.email.toLowerCase() === OWNER_EMAIL.toLowerCase() || 
+           user.email.toLowerCase() === 'keuangan.scb@gmail.com';
   }, [user]);
 
   // Auto-switch away from unauthorized tabs
@@ -1123,7 +1125,7 @@ export default function App() {
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan PertUM ke BAZNAS', icon: FileText, access: 'admin' },
     { id: 'berkas', label: 'Berkas Digital', icon: FolderOpen, access: 'admin' },
-    { id: 'administrasi', label: 'Administrasi Keuangan', icon: Briefcase, access: 'all' },
+    { id: 'administrasi', label: 'Laporan Donasi', icon: Briefcase, access: 'admin' },
     { id: 'settings', label: 'Settingan', icon: Settings, access: 'owner_only' },
   ];
 
