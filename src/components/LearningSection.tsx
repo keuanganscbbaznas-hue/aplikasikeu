@@ -25,7 +25,7 @@ import {
 } from 'firebase/firestore';
 import { 
   ref, 
-  uploadBytes, 
+  uploadBytesResumable, 
   getDownloadURL, 
   deleteObject 
 } from 'firebase/storage';
@@ -98,13 +98,13 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
       if (mediaType === 'image') {
         const fileSizeMB = file.size / (1024 * 1024);
         
-        // Skip compression if file is already small (e.g. < 200KB)
-        if (fileSizeMB > 0.2) {
+        // Skip compression if file is reasonably small (< 1MB)
+        if (fileSizeMB > 1.0) {
           const options = {
-            maxSizeMB: 0.08, // Very small for blazing fast upload
-            maxWidthOrHeight: 800,
+            maxSizeMB: 0.1, // Fast upload
+            maxWidthOrHeight: 1000,
             useWebWorker: true,
-            initialQuality: 0.4, // Prioritize speed
+            initialQuality: 0.5,
             onProgress: (p: number) => setCompressionProgress(p)
           };
           try {
@@ -117,26 +117,45 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
         }
       }
 
-      setUploadProgress(20);
+      setUploadProgress(10);
       const storageRef = ref(storage, `gallery/${Date.now()}_${fileToUpload.name}`);
-      
-      // Direct upload for speed
-      const uploadResult = await uploadBytes(storageRef, fileToUpload);
-      setUploadProgress(80);
-      
-      const url = await getDownloadURL(uploadResult.ref);
-      setUploadProgress(90);
+      const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
 
-      const galleryData = {
-        type: mediaType,
-        url,
-        title: title || 'Kegiatan MONETA SCB',
-        description: description || '',
-        createdAt: serverTimestamp(),
-      };
+      // Using a promise to handle the resumable upload for better control
+      await new Promise((resolve, reject) => {
+        uploadTask.on('state_changed', 
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            // Map 0-100% upload to 10-90% total progress
+            setUploadProgress(10 + (progress * 0.8));
+          }, 
+          (error) => {
+            console.error('Upload failed:', error);
+            toast.error(`Unggah gagal: ${error.message}`);
+            reject(error);
+          }, 
+          async () => {
+            try {
+              const url = await getDownloadURL(uploadTask.snapshot.ref);
+              setUploadProgress(95);
 
-      await addDoc(collection(db, 'dashboard_gallery'), galleryData);
-      setUploadProgress(100);
+              const galleryData = {
+                type: mediaType,
+                url,
+                title: title || 'Kegiatan MONETA SCB',
+                description: description || '',
+                createdAt: serverTimestamp(),
+              };
+
+              await addDoc(collection(db, 'dashboard_gallery'), galleryData);
+              setUploadProgress(100);
+              resolve(true);
+            } catch (err) {
+              reject(err);
+            }
+          }
+        );
+      });
 
       toast.success('Media berhasil disimpan');
       setShowUploadModal(false);

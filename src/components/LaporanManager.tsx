@@ -149,7 +149,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `Laporan_BAZNAS_${new Date().getTime()}.csv`;
+    link.download = `Laporan_MONETA_${new Date().getTime()}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

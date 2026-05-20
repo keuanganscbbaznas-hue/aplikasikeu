@@ -69,7 +69,7 @@ export function AnalisisManager({ userUid, isReadOnly = false }: { userUid: stri
             Laporan: totalLaporan
         },
         {
-            Bulan: 'SISA PERTUM SCB KE BAZNAS',
+            Bulan: 'SISA PERTUM SCB KE MONETA',
             Pencairan: totalPencairan - totalLaporan
         }
     ];
@@ -87,7 +87,7 @@ export function AnalisisManager({ userUid, isReadOnly = false }: { userUid: stri
         body: [
             ...chartData.map(d => [d.month, d.Pencairan, d.Laporan]),
             ['TOTAL', totalPencairan, totalLaporan],
-            ['SISA PERTUM SCB KE BAZNAS', totalPencairan - totalLaporan, '']
+            ['SISA PERTUM SCB KE MONETA', totalPencairan - totalLaporan, '']
         ]
     });
     doc.save(`Analisis_${year}.pdf`);

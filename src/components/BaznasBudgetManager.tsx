@@ -91,7 +91,7 @@ export function BaznasBudgetManager({ profile, userUid, isReadOnly = false }: { 
           status,
           updatedAt: serverTimestamp()
         });
-        toast.success('Pengajuan anggaran BAZNAS berhasil diupdate');
+        toast.success('Pengajuan anggaran MONETA berhasil diupdate');
       } else {
         await addDoc(collection(db, 'baznas_budgets'), {
           month,
@@ -107,7 +107,7 @@ export function BaznasBudgetManager({ profile, userUid, isReadOnly = false }: { 
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
-        toast.success('Pengajuan anggaran BAZNAS berhasil dibuat');
+        toast.success('Pengajuan anggaran MONETA berhasil dibuat');
       }
 
       setIsDialogOpen(false);
@@ -170,7 +170,7 @@ export function BaznasBudgetManager({ profile, userUid, isReadOnly = false }: { 
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `Anggaran_BAZNAS_${new Date().getTime()}.csv`;
+    link.download = `Anggaran_MONETA_${new Date().getTime()}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -189,7 +189,7 @@ export function BaznasBudgetManager({ profile, userUid, isReadOnly = false }: { 
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `Template_Import_Anggaran_BAZNAS.csv`;
+    link.download = `Template_Import_Anggaran_MONETA.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -314,7 +314,7 @@ export function BaznasBudgetManager({ profile, userUid, isReadOnly = false }: { 
       // If content is longer than page, it will be single long page or scaled down
       // Here we just add it to the first page (scaled to width)
       pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Laporan_Anggaran_BAZNAS_${chartYear}.pdf`);
+      pdf.save(`Laporan_Anggaran_MONETA_${chartYear}.pdf`);
       toast.success('Berhasil mendownload PDF');
     } catch (error) {
       console.error('PDF export error:', error);

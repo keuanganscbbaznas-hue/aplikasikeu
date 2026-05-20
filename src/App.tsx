@@ -566,6 +566,50 @@ export default function App() {
            user.email.toLowerCase() === 'keuangan.scb@gmail.com';
   }, [user]);
 
+  // One-time documentation injection for the user
+  useEffect(() => {
+    if (isOwner && !localStorage.getItem('doc_injected_v4')) {
+      const injectDoc = async () => {
+        try {
+          const { collection, addDoc, serverTimestamp, getDocs, query, where, limit } = await import('firebase/firestore');
+          const { db } = await import('./firebase');
+          
+          // Check if ANY gallery items exist to avoid redundant injection
+          const q = query(collection(db, 'dashboard_gallery'), limit(1));
+          const existing = await getDocs(q);
+          
+          if (existing.empty) {
+            // First item
+            await addDoc(collection(db, 'dashboard_gallery'), {
+              type: 'image',
+              url: '/regenerated_image_1777445252050.png',
+              title: 'Workshop Aplikasi MONETA SCB',
+              description: 'Pengembangan tata kelola keuangan digital bersama Kepala Sekolah dan Tenaga Pendidik Sekolah Cendekia BAZNAS.',
+              createdAt: serverTimestamp(),
+            });
+            
+            // Second item
+            await addDoc(collection(db, 'dashboard_gallery'), {
+              type: 'image',
+              url: '/regenerated_image_1777346158205.png',
+              title: 'Belajar Membuat Aplikasi Sendiri',
+              description: 'Sesi kolaborasi strategis dalam membangun sistem Monitoring & Electronic Treasury Application.',
+              createdAt: serverTimestamp(),
+            });
+            
+            localStorage.setItem('doc_injected_v4', 'true');
+            console.log('Documentation injected successfully');
+          } else {
+            localStorage.setItem('doc_injected_v4', 'true');
+          }
+        } catch (e) {
+          console.error('Injection failed:', e);
+        }
+      };
+      injectDoc();
+    }
+  }, [isOwner]);
+
   // Auto-switch away from unauthorized tabs
   useEffect(() => {
     if (isAuthReady && profile) {
