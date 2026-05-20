@@ -100,19 +100,17 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
 
     try {
       setIsUploading(true);
-      setUploadProgress(0);
+      setUploadProgress(10);
       setCompressionProgress(0);
       
       let fileToUpload = file;
       let url = '';
 
       if (mediaType === 'image') {
-        // Enforce safe high-quality compression to stay under Firestore document size limits (max 1MB, target 450KB)
-        // This ensures the custom Vercel build and standard builds never get broken links.
         toast.info('Mengompresi dan menyiapkan gambar berkualitas tinggi...', { duration: 2500 });
         const options = {
-          maxSizeMB: 0.45, 
-          maxWidthOrHeight: 1600, 
+          maxSizeMB: 0.35, 
+          maxWidthOrHeight: 1400, 
           useWebWorker: false, // prevent sandbox iframe worker freezes
           initialQuality: 0.85,
           onProgress: (p: number) => setCompressionProgress(p)
@@ -125,9 +123,9 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
           console.warn('Compression failed, using original file', compressionError);
         }
 
-        setUploadProgress(30);
+        setUploadProgress(40);
 
-        // Convert compressed file to Base64
+        // Convert compressed file to Base64 (always calculated, acts as flawless fallback on Vercel)
         const reader = new FileReader();
         const base64Data = await new Promise<string>((resolve, reject) => {
           reader.onload = () => resolve(reader.result as string);
@@ -135,20 +133,39 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
           reader.readAsDataURL(fileToUpload);
         });
 
-        if (base64Data.length > 1040000) {
-          throw new Error('Berkas gambar terlampau besar secara visual. Mohon gunakan gambar dengan resolusi lebih rendah.');
+        // Try direct uploading to Firebase Cloud Storage first
+        try {
+          toast.info('Mengunggah berkas ke Firebase Cloud Storage...', { duration: 1500 });
+          const storageRef = ref(storage, `gallery/${Date.now()}_${fileToUpload.name}`);
+          
+          // Use standard uploadBytes instead of resumable to avoid sandboxed iframe promise delays
+          const uploadResult = await uploadBytes(storageRef, fileToUpload);
+          setUploadProgress(80);
+          url = await getDownloadURL(uploadResult.ref);
+          console.log('Firebase Storage upload success:', url);
+        } catch (storageError) {
+          console.warn('Firebase Storage offline, using high-compatibility Base64 Storage fallback', storageError);
+          // Fallback to storing Base64 directly (extremely reliable on Vercel!)
+          if (base64Data.length > 1040000) {
+            throw new Error('Ukuran gambar terlampau besar setelah kompresi. Silakan gunakan format gambar yang dipotong atau beresolusi lebih rendah.');
+          }
+          url = base64Data;
+          setUploadProgress(80);
         }
 
-        setUploadProgress(75);
-        url = base64Data;
-
       } else {
-        // Fallback for short video clips or other media via storage
+        // Video upload fallback via storage bucket
         setUploadProgress(20);
-        const storageRef = ref(storage, `gallery/${Date.now()}_${fileToUpload.name}`);
-        const uploadResult = await uploadBytes(storageRef, fileToUpload);
-        setUploadProgress(70);
-        url = await getDownloadURL(uploadResult.ref);
+        try {
+          toast.info('Mengunggah video ke Firebase Storage...', { duration: 2500 });
+          const storageRef = ref(storage, `gallery/${Date.now()}_${fileToUpload.name}`);
+          const uploadResult = await uploadBytes(storageRef, fileToUpload);
+          setUploadProgress(80);
+          url = await getDownloadURL(uploadResult.ref);
+        } catch (videoError: any) {
+          console.error('Video upload failed:', videoError);
+          throw new Error('Gagal mengunggah video: Penyimpanan Firebase Storage tidak tersedia.');
+        }
       }
 
       setUploadProgress(90);
@@ -164,12 +181,12 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
       await addDoc(collection(db, 'dashboard_gallery'), galleryData);
       setUploadProgress(100);
 
-      toast.success('Media berhasil disimpan');
+      toast.success('Media berhasil disimpan!');
       setShowUploadModal(false);
       resetForm();
     } catch (error: any) {
       console.error('Upload process failed:', error);
-      toast.error(`Gagal: ${error.message || 'Terjadi kesalahan'}`);
+      toast.error(`Gagal Menyimpan: ${error.message || 'Terjadi kesalahan pada Firebase'}`);
       setUploadProgress(0);
     } finally {
       setIsUploading(false);
@@ -430,19 +447,29 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
                     onClick={() => setSelectedPreviewItem(item)}
                   >
                     {item.type === 'image' ? (
-                      <img 
-                        src={item.url} 
-                        alt={item.title} 
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                        referrerPolicy="no-referrer"
-                      />
+                      <div className="relative w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
+                        {/* Blurred backdrop layers to guarantee beautiful backgrounds without black letterboxes */}
+                        <img 
+                          src={item.url} 
+                          alt="" 
+                          className="absolute inset-0 w-full h-full object-cover blur-xl opacity-35 scale-110 pointer-events-none"
+                          referrerPolicy="no-referrer"
+                        />
+                        {/* Sharp contain layer on top showing the true, uncut original file contents */}
+                        <img 
+                          src={item.url} 
+                          alt={item.title} 
+                          className="relative z-10 max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-[1.02]"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
                     ) : (
-                      <div className="relative w-full h-full">
+                      <div className="relative w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
                         <video 
                           src={item.url} 
-                          className="w-full h-full object-cover opacity-90 transition-opacity"
+                          className="relative z-10 max-w-full max-h-full object-contain opacity-95"
                         />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/25 transition-colors">
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/25 transition-colors z-20">
                           <div className="h-14 w-14 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 group-hover:scale-110 transition-transform shadow-lg">
                             <Play size={22} fill="currentColor" className="ml-1" />
                           </div>
