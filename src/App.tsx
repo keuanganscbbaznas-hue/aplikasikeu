@@ -116,7 +116,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { resizeImage } from './lib/utils';
+import { resizeImage, getApiUrl } from './lib/utils';
 import { Phone } from 'lucide-react';
 
 const formatWhatsAppMessage = (submission: Submission) => {
@@ -732,7 +732,7 @@ export default function App() {
     const toastId = toast.loading('Mensinkronkan ke Google Sheets...');
     
     try {
-      const statusRes = await fetch('/api/system/sync/status');
+      const statusRes = await fetch(getApiUrl('/api/system/sync/status'));
       const statusData = await statusRes.json();
       
       if (!statusData.ready) {
@@ -779,7 +779,7 @@ export default function App() {
 
       const data = [headers, ...rows];
 
-      const response = await fetch('/api/sheets/sync', {
+      const response = await fetch(getApiUrl('/api/sheets/sync'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -828,7 +828,7 @@ export default function App() {
     ];
 
     toast.promise(
-      fetch('/api/sheets/append', {
+      fetch(getApiUrl('/api/sheets/append'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

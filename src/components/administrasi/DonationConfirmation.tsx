@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../../firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getApiUrl } from '../../lib/utils';
 
 const SHEET_ID = '1VmjYCnvWO0vrX5PinazbqR3jSIDnEoVAVfyMdvDs4VM';
 
@@ -68,7 +69,7 @@ export const DonationConfirmation = () => {
           const extension = mimeType.split('/')[1] || 'png';
           const filename = `bukti_donasi_${formData.donaturName.replace(/\s+/g, '_')}_${Date.now()}.${extension}`;
           
-          const localRes = await fetch('/api/gallery/upload', {
+          const localRes = await fetch(getApiUrl('/api/gallery/upload'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -95,7 +96,7 @@ export const DonationConfirmation = () => {
           const extension = mimeType.split('/')[1] || 'png';
           const filename = `bukti_donasi_${formData.donaturName.replace(/\s+/g, '_')}_${Date.now()}.${extension}`;
           
-          const uploadRes = await fetch('/api/drive/upload', {
+          const uploadRes = await fetch(getApiUrl('/api/drive/upload'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -148,7 +149,7 @@ export const DonationConfirmation = () => {
         driveLink || (formData.evidenceUrl ? "[Internal Image]" : "Tidak Ada Bukti")
       ]];
 
-      const sheetRes = await fetch('/api/sheets/append', {
+      const sheetRes = await fetch(getApiUrl('/api/sheets/append'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

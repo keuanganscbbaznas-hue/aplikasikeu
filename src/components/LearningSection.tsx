@@ -37,6 +37,7 @@ import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
+import { getApiUrl } from '../lib/utils';
 import { 
   Dialog, 
   DialogContent, 
@@ -137,7 +138,7 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
         setUploadProgress(60);
         toast.info('Mengunggah gambar ke server...', { duration: 1500 });
 
-        const uploadRes = await fetch('/api/gallery/upload', {
+        const uploadRes = await fetch(getApiUrl('/api/gallery/upload'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

@@ -40,3 +40,21 @@ export async function resizeImage(file: File, maxWidth = 200, maxHeight = 200): 
     reader.onerror = reject;
   });
 }
+
+/**
+ * Returns the correct API URL depending on where the app is being hosted.
+ * If running on Vercel or other static hosting, routes requests to the deployed Cloud Run agent.
+ */
+export function getApiUrl(path: string): string {
+  const origin = window.location.origin;
+  if (
+    origin.includes('localhost') || 
+    origin.includes('127.0.0.1') || 
+    origin.includes('run.app')
+  ) {
+    return path;
+  }
+  // The official preview URL of this app on Cloud Run:
+  const backendBase = 'https://ais-pre-rge4zik6fjg47xle5dw4di-640128737071.asia-southeast1.run.app';
+  return `${backendBase}${path}`;
+}
