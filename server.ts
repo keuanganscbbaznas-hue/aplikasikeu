@@ -117,7 +117,27 @@ async function startServer() {
       const sheets = google.sheets({ version: "v4", auth });
       const { spreadsheetId, range, data } = req.body;
 
-      await sheets.spreadsheets.values.append({
+      if (!Array.isArray(data) || data.length === 0) {
+        return res.status(400).json({ error: "Data must be a non-empty array of rows" });
+      }
+
+      let hasPlaceholder = false;
+      let placeholderColIndex = -1;
+
+      // Scan rows to find and replace __ROW_FORMULA__ with empty string, preserving position
+      for (let r = 0; r < data.length; r++) {
+        if (Array.isArray(data[r])) {
+          for (let c = 0; c < data[r].length; c++) {
+            if (data[r][c] === "__ROW_FORMULA__") {
+              hasPlaceholder = true;
+              placeholderColIndex = c;
+              data[r][c] = ""; // Set block empty for initial append
+            }
+          }
+        }
+      }
+
+      const appendResponse = await sheets.spreadsheets.values.append({
         spreadsheetId,
         range: range || 'A1',
         valueInputOption: 'USER_ENTERED',
@@ -125,6 +145,36 @@ async function startServer() {
           values: data
         }
       });
+
+      // If we found a placeholder and got an updated range, overwrite with the relative formula
+      if (hasPlaceholder && appendResponse.data.updates?.updatedRange) {
+        const updatedRange = appendResponse.data.updates.updatedRange; // e.g., "'Kas Tunai SMP'!A314:I314"
+        const regex = /(?:'([^']+)'|([^!]+))!([A-Z]+)(\d+):([A-Z]+)(\d+)/;
+        const match = updatedRange.match(regex);
+
+        if (match) {
+          const sheetName = match[1] || match[2];
+          const startRow = parseInt(match[4], 10);
+          const endRow = parseInt(match[6], 10);
+          const colLetter = String.fromCharCode(65 + placeholderColIndex); // e.g. 8 -> 'I'
+
+          for (let row = startRow; row <= endRow; row++) {
+            const prevRow = row - 1;
+            // Native Excel/Sheets relative formula: Balance = PrevBalance (I) + Debet (G) - Kredit (H)
+            const formula = `=${colLetter}${prevRow}+G${row}-H${row}`;
+            const cellRange = `'${sheetName}'!${colLetter}${row}`;
+
+            await sheets.spreadsheets.values.update({
+              spreadsheetId,
+              range: cellRange,
+              valueInputOption: 'USER_ENTERED',
+              requestBody: {
+                values: [[formula]]
+              }
+            });
+          }
+        }
+      }
 
       res.json({ success: true });
     } catch (error: any) {

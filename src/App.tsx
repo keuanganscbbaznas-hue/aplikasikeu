@@ -823,7 +823,7 @@ export default function App() {
          submission.title || '',                                 // Col F: KETERANGAN
          '',                                                     // Col G: DEBET (Blank for expense)
          submission.amount,                                      // Col H: KREDIT (Nominal)
-         '=INDIRECT("I"&(ROW()-1)) + INDIRECT("G"&ROW()) - INDIRECT("H"&ROW())' // Col I: SALDO AKHIR formula (high reliability!)
+         '__ROW_FORMULA__'                                       // Col I: SALDO AKHIR formula (auto-calculated on server to work across all locales!)
        ]
     ];
 
