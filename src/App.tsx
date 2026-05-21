@@ -391,6 +391,12 @@ function SubmissionCard({
             </span>
           </div>
           <WorkflowProgressBar stages={stages} currentIdx={submission.currentStageIndex} />
+          {submission.isBooked && (
+            <div className="flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-50/70 border border-blue-100 px-2 py-0.5 rounded-md w-max tracking-wider">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+              DIBUKUKAN ({submission.bookedAtSheet?.replace('Kas ', '')})
+            </div>
+          )}
         </div>
       </td>
       <td className="px-6 py-4">
@@ -807,14 +813,15 @@ export default function App() {
 
     const rowData = [
        [
-         formattedDate,                        // Col B: TGL
-         submission.noDokumen || '',           // Col C: NO. DOC
-         typeAbbr,                             // Col D: JJ
-         submission.kodeBudget || '',          // Col E: KODE ANGGARAN
-         submission.picName || submission.submittedByName || '', // Col F: PIC
-         submission.title,                     // Col G: KETERANGAN
-         '',                                   // Col H: DEBET (Blank for expense)
-         submission.amount                     // Col I: KREDIT (Nominal)
+         formattedDate,                                          // Col A: TGL
+         submission.noDokumen || '',                             // Col B: NO. DOC
+         typeAbbr,                                               // Col C: JJ
+         submission.kodeBudget || '',                            // Col D: KODE ANGGARAN
+         submission.picName || submission.submittedByName || '',  // Col E: PIC
+         submission.title || '',                                 // Col F: KETERANGAN
+         '',                                                     // Col G: DEBET (Blank for expense)
+         submission.amount,                                      // Col H: KREDIT (Nominal)
+         '=INDIRECT("I"&(ROW()-1)) + INDIRECT("G"&ROW()) - INDIRECT("H"&ROW())' // Col I: SALDO AKHIR formula (high reliability!)
        ]
     ];
 
@@ -824,7 +831,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           spreadsheetId,
-          range: `'${sheetType}'!B11:I`,
+          range: `'${sheetType}'!A11:I`,
           data: rowData
         })
       }).then(async res => {
@@ -833,9 +840,26 @@ export default function App() {
           throw new Error(err.message || err.error || 'Gagal menambah ke Google Sheets');
         }
         return res.json();
-      }).then((data) => {
-        // Automatically open the spreadsheet after success
-        window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`, '_blank');
+      }).then(async (data) => {
+        // Update Firestore status to keep record syncing and avoid duplicates
+        try {
+          if (submission.id) {
+            await updateDoc(doc(db, 'submissions', submission.id), {
+              isBooked: true,
+              bookedAtSheet: sheetType,
+              bookedAt: serverTimestamp()
+            });
+          }
+        } catch (dbErr) {
+          console.error("Gagal memperbarui status pembukuan di database:", dbErr);
+        }
+
+        // Open spreadsheet under iframe-safe try-catch wrapper
+        try {
+          window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`, '_blank');
+        } catch (popupErr) {
+          console.warn("Iframe blocked window.open popup:", popupErr);
+        }
         return data;
       }),
       {
@@ -3532,10 +3556,14 @@ function SubmissionDetailView({
           <div className="relative">
             <Button 
               onClick={() => setIsBukukanMenuOpen(!isBukukanMenuOpen)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-black text-[9px] px-4 h-8 rounded-lg transition-all tracking-widest gap-2"
+              className={`${
+                submission.isBooked 
+                  ? "bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700" 
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
+              } font-black text-[9px] px-4 h-8 rounded-lg transition-all tracking-widest gap-2`}
             >
               <BookOpen size={14} />
-              BUKUKAN
+              {submission.isBooked ? `✓ BUKUKAN ULANG` : 'BUKUKAN'}
             </Button>
             
             {isBukukanMenuOpen && (

@@ -107,10 +107,11 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
       let url = '';
 
       if (mediaType === 'image') {
-        toast.info('Mengompresi dan menyiapkan gambar berkualitas tinggi...', { duration: 2500 });
+        toast.info('Menyiapkan gambar berkualitas tinggi...', { duration: 2000 });
+        const maxCompressedSize = optimizeImage ? 0.18 : 0.40;
         const options = {
-          maxSizeMB: 0.35, 
-          maxWidthOrHeight: 1400, 
+          maxSizeMB: maxCompressedSize, 
+          maxWidthOrHeight: optimizeImage ? 1280 : 1600, 
           useWebWorker: false, // prevent sandbox iframe worker freezes
           initialQuality: 0.85,
           onProgress: (p: number) => setCompressionProgress(p)
@@ -123,9 +124,9 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
           console.warn('Compression failed, using original file', compressionError);
         }
 
-        setUploadProgress(40);
+        setUploadProgress(50);
 
-        // Convert compressed file to Base64 (always calculated, acts as flawless fallback on Vercel)
+        // Convert compressed file directly to Base64 for instant upload and zero storage hang issues!
         const reader = new FileReader();
         const base64Data = await new Promise<string>((resolve, reject) => {
           reader.onload = () => resolve(reader.result as string);
@@ -133,25 +134,28 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
           reader.readAsDataURL(fileToUpload);
         });
 
-        // Try direct uploading to Firebase Cloud Storage first
-        try {
-          toast.info('Mengunggah berkas ke Firebase Cloud Storage...', { duration: 1500 });
-          const storageRef = ref(storage, `gallery/${Date.now()}_${fileToUpload.name}`);
-          
-          // Use standard uploadBytes instead of resumable to avoid sandboxed iframe promise delays
-          const uploadResult = await uploadBytes(storageRef, fileToUpload);
-          setUploadProgress(80);
-          url = await getDownloadURL(uploadResult.ref);
-          console.log('Firebase Storage upload success:', url);
-        } catch (storageError) {
-          console.warn('Firebase Storage offline, using high-compatibility Base64 Storage fallback', storageError);
-          // Fallback to storing Base64 directly (extremely reliable on Vercel!)
-          if (base64Data.length > 1040000) {
-            throw new Error('Ukuran gambar terlampau besar setelah kompresi. Silakan gunakan format gambar yang dipotong atau beresolusi lebih rendah.');
-          }
+        if (base64Data.length > 1040000) {
+          // If it still exceeds 1MB, let's compress it even more aggressively to fit inside Firestore
+          toast.info('Mengompresi ulang agar sesuai dengan kapasitas server...', { duration: 1500 });
+          const retryOptions = {
+            maxSizeMB: 0.12,
+            maxWidthOrHeight: 1024,
+            useWebWorker: false,
+            initialQuality: 0.75
+          };
+          const compressedRetry = await imageCompression(fileToUpload, retryOptions);
+          const retryBase64 = await new Promise<string>((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(r.result as string);
+            r.onerror = (err) => reject(err);
+            r.readAsDataURL(compressedRetry);
+          });
+          url = retryBase64;
+        } else {
           url = base64Data;
-          setUploadProgress(80);
         }
+        
+        setUploadProgress(85);
 
       } else {
         // Video upload fallback via storage bucket

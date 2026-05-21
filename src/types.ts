@@ -111,6 +111,9 @@ export interface Submission {
     roni?: SignatureData;
     kamal?: SignatureData;
   };
+  isBooked?: boolean;
+  bookedAtSheet?: string;
+  bookedAt?: any;
 }
 
 export interface DonationConfirmation {
