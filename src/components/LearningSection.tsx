@@ -126,7 +126,7 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
 
         setUploadProgress(50);
 
-        // Convert compressed file directly to Base64 for instant upload and zero storage hang issues!
+        // Convert compressed file directly to Base64 and upload to reliable local server endpoint
         const reader = new FileReader();
         const base64Data = await new Promise<string>((resolve, reject) => {
           reader.onload = () => resolve(reader.result as string);
@@ -134,27 +134,31 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
           reader.readAsDataURL(fileToUpload);
         });
 
-        if (base64Data.length > 1040000) {
-          // If it still exceeds 1MB, let's compress it even more aggressively to fit inside Firestore
-          toast.info('Mengompresi ulang agar sesuai dengan kapasitas server...', { duration: 1500 });
-          const retryOptions = {
-            maxSizeMB: 0.12,
-            maxWidthOrHeight: 1024,
-            useWebWorker: false,
-            initialQuality: 0.75
-          };
-          const compressedRetry = await imageCompression(fileToUpload, retryOptions);
-          const retryBase64 = await new Promise<string>((resolve, reject) => {
-            const r = new FileReader();
-            r.onload = () => resolve(r.result as string);
-            r.onerror = (err) => reject(err);
-            r.readAsDataURL(compressedRetry);
-          });
-          url = retryBase64;
-        } else {
-          url = base64Data;
+        setUploadProgress(60);
+        toast.info('Mengunggah gambar ke server...', { duration: 1500 });
+
+        const uploadRes = await fetch('/api/gallery/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            filename: fileToUpload.name,
+            base64Data,
+            mimeType: fileToUpload.type
+          })
+        });
+
+        if (!uploadRes.ok) {
+          throw new Error('Gagal mengunggah gambar ke backend server.');
         }
-        
+
+        const uploadData = await uploadRes.json();
+        if (!uploadData.success || !uploadData.url) {
+          throw new Error(uploadData.error || 'Gagal menyimpan gambar di server.');
+        }
+
+        url = uploadData.url;
         setUploadProgress(85);
 
       } else {

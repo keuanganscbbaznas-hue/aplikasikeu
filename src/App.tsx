@@ -18,7 +18,8 @@ import {
   deleteDoc,
   orderBy,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  limit
 } from 'firebase/firestore';
 import { auth, db, googleProvider } from './firebase';
 import { 
@@ -506,6 +507,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [submissionLimit, setSubmissionLimit] = useState<number>(150);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [logoURL, setLogoURL] = useState<string>('/logo.png');
   const [loading, setLoading] = useState(true);
@@ -671,7 +673,7 @@ export default function App() {
   useEffect(() => {
     if (!isAuthReady || !user) return;
 
-    const q = query(collection(db, 'submissions'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'submissions'), orderBy('createdAt', 'desc'), limit(submissionLimit));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
       setSubmissions(docs);
@@ -680,7 +682,7 @@ export default function App() {
     });
 
     return () => unsubscribe();
-  }, [isAuthReady, user]);
+  }, [isAuthReady, user, submissionLimit]);
 
   useEffect(() => {
     if (!isAuthReady || !user || !isAdmin) return;
@@ -1669,7 +1671,25 @@ export default function App() {
                           <TabsTrigger value="completed" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white uppercase tracking-tight">Settled</TabsTrigger>
                         </TabsList>
                         
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-500 bg-white border border-slate-100 px-3 h-10 rounded-xl shadow-lg shadow-slate-200/40">
+                            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Limit Muat:</span>
+                            <select 
+                              value={submissionLimit} 
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setSubmissionLimit(val);
+                                toast.success(`Limit dimodifikasi ke ${val === 10000 ? "Semua" : val} transaksi terbaru`);
+                              }}
+                              className="bg-transparent border-none text-[10px] font-black text-slate-700 focus:outline-none cursor-pointer"
+                            >
+                              <option value={100}>100 Terbaru (Sangat Cepat)</option>
+                              <option value={200}>200 Terbaru (Direkomendasikan)</option>
+                              <option value={500}>500 Terbaru</option>
+                              <option value={10000}>Tampilkan Semua (Lebih Lambat)</option>
+                            </select>
+                          </div>
+
                           {isAdmin && (
                             <Button 
                               onClick={syncSubmissionsToSheets}

@@ -61,7 +61,34 @@ export const DonationConfirmation = () => {
       let finalEvidenceUrl = formData.evidenceUrl;
       let driveLink = "";
 
-      // Upload to Google Drive if evidence exists
+      // 1. Upload to local server FIRST to get a high-performance, non-base64 fallback
+      if (formData.evidenceUrl && formData.evidenceUrl.startsWith('data:')) {
+        try {
+          const mimeType = formData.evidenceUrl.split(';')[0].split(':')[1];
+          const extension = mimeType.split('/')[1] || 'png';
+          const filename = `bukti_donasi_${formData.donaturName.replace(/\s+/g, '_')}_${Date.now()}.${extension}`;
+          
+          const localRes = await fetch('/api/gallery/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filename,
+              base64Data: formData.evidenceUrl,
+              mimeType
+            })
+          });
+          if (localRes.ok) {
+            const localData = await localRes.json();
+            if (localData.success) {
+              finalEvidenceUrl = localData.url; // Fast relative URL (e.g., /uploads/...) instead of 1MB base64
+            }
+          }
+        } catch (localErr) {
+          console.error("Gagal backup lokal:", localErr);
+        }
+      }
+
+      // 2. Upload to Google Drive if evidence exists (use the original base64 to ensure full quality transfer)
       if (formData.evidenceUrl) {
         try {
           const mimeType = formData.evidenceUrl.split(';')[0].split(':')[1];
@@ -85,7 +112,6 @@ export const DonationConfirmation = () => {
               finalEvidenceUrl = driveLink; // Update Firestore link with Drive link
             } else if (uploadData.error === "Drive Quota Error") {
               console.warn("Drive sync skipped:", uploadData.message);
-              // Store as base64 internally but warn the user about Drive sync
               toast.warning("Bukti tersimpan secara internal, namun gagal sinkron ke Drive karena kuota storage Service Account habis. Mohon bagikan folder Drive ke: " + uploadData.serviceAccount, {
                 duration: 10000
               });
@@ -100,7 +126,7 @@ export const DonationConfirmation = () => {
         }
       }
 
-      // 1. Save to Firestore (Internal App Database)
+      // 3. Save to Firestore (Internal App Database)
       const donationRef = await addDoc(collection(db, 'donations'), {
         ...formData,
         evidenceUrl: finalEvidenceUrl,
