@@ -46,6 +46,9 @@ export async function resizeImage(file: File, maxWidth = 200, maxHeight = 200): 
  * If running on Vercel or other static hosting, routes requests to the deployed Cloud Run agent.
  */
 export function getApiUrl(path: string): string {
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
   const origin = window.location.origin;
   if (
     origin.includes('localhost') || 

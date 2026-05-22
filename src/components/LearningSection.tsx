@@ -459,14 +459,14 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
                       <div className="relative w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
                         {/* Blurred backdrop layers to guarantee beautiful backgrounds without black letterboxes */}
                         <img 
-                          src={item.url} 
+                          src={getApiUrl(item.url)} 
                           alt="" 
                           className="absolute inset-0 w-full h-full object-cover blur-xl opacity-35 scale-110 pointer-events-none"
                           referrerPolicy="no-referrer"
                         />
                         {/* Sharp contain layer on top showing the true, uncut original file contents */}
                         <img 
-                          src={item.url} 
+                          src={getApiUrl(item.url)} 
                           alt={item.title} 
                           className="relative z-10 max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-[1.02]"
                           referrerPolicy="no-referrer"
@@ -475,7 +475,7 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
                     ) : (
                       <div className="relative w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
                         <video 
-                          src={item.url} 
+                          src={getApiUrl(item.url)} 
                           className="relative z-10 max-w-full max-h-full object-contain opacity-95"
                         />
                         <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/25 transition-colors z-20">
@@ -569,14 +569,14 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
               <div className="flex-1 flex items-center justify-center p-4 md:p-8 bg-slate-900/40 min-h-[40vh] max-h-[60vh]">
                 {selectedPreviewItem.type === 'image' ? (
                   <img 
-                    src={selectedPreviewItem.url} 
+                    src={getApiUrl(selectedPreviewItem.url)} 
                     alt={selectedPreviewItem.title} 
                     className="max-h-[50vh] max-w-full object-contain rounded-2xl shadow-xl border border-white/5"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
                   <video 
-                    src={selectedPreviewItem.url} 
+                    src={getApiUrl(selectedPreviewItem.url)} 
                     controls 
                     autoPlay
                     className="max-h-[50vh] max-w-full object-contain rounded-2xl shadow-xl"
