@@ -51,6 +51,7 @@ import { AdministrasiManager } from './components/administrasi/AdministrasiManag
 import { AnalisisManager } from './components/AnalisisManager';
 import { BerkasDigitalManager } from './components/BerkasDigitalManager';
 import { LearningSection } from './components/LearningSection';
+import { InfoKeuanganSection } from './components/InfoKeuanganSection';
 import SignaturePad from 'signature_pad';
 import { jsPDF } from 'jspdf';
 import { DonationConfirmation } from './components/administrasi/DonationConfirmation';
@@ -1506,6 +1507,9 @@ export default function App() {
                           </div>
                       </div>
                     )}
+
+                    {/* Info Seputar Keuangan SCB */}
+                    <InfoKeuanganSection />
 
                     {/* Learning & Collaborating Section */}
                     <LearningSection isOwner={isOwner} />
