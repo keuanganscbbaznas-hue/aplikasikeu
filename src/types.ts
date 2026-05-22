@@ -8,6 +8,7 @@ export interface UserProfile {
   role: UserRole;
   whatsapp?: string;
   createdAt: any;
+  allowedMenus?: string[];
 }
 
 export type SubmissionType = 'uang_muka' | 'reimburse' | 'pembiayaan';

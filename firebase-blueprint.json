@@ -48,6 +48,10 @@
         "displayName": { "type": "string" },
         "photoURL": { "type": "string" },
         "role": { "type": "string", "enum": ["staff", "finance", "accountant", "management", "admin"] },
+        "allowedMenus": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "role"]

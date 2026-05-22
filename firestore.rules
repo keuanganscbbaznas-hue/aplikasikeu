@@ -55,7 +55,8 @@ service cloud.firestore {
              data.uid is string &&
              data.email is string &&
              data.role in ['staff', 'finance', 'accountant', 'management', 'admin'] &&
-             (!('photoURL' in data) || data.photoURL is string);
+             (!('photoURL' in data) || data.photoURL is string) &&
+             (!('allowedMenus' in data) || data.allowedMenus is list);
     }
 
     function isValidSubmission(data) {

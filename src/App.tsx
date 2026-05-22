@@ -885,6 +885,19 @@ export default function App() {
     }
   };
 
+  const updateUserAllowedMenus = async (uid: string, allowedMenus: string[] | null) => {
+    if (!isSuperAdmin) {
+      toast.error("Hanya Super Admin yang dapat mengubah pilihan menu user");
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'users', uid), { allowedMenus: allowedMenus });
+      toast.success("Pilihan menu user berhasil diperbarui");
+    } catch (error) {
+      toast.error("Gagal memperbarui pilihan menu user");
+    }
+  };
+
   const handleApprove = async (submission: Submission, comment: string = '') => {
     if (!profile || !TRACKING_ADMIN_EMAILS.includes(profile.email)) {
       toast.error("Anda tidak memiliki akses untuk menyetujui pengajuan ini");
@@ -1177,6 +1190,21 @@ export default function App() {
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const deferredFilterPIC = useDeferredValue(filterPIC);
 
+  const checkMenuAccess = (itemId: string, itemAccess: string = 'all') => {
+    if (profile?.allowedMenus && Array.isArray(profile.allowedMenus)) {
+      if (itemId === 'settings' && profile.email === OWNER_EMAIL) return true;
+      return profile.allowedMenus.includes(itemId);
+    }
+
+    return (
+      itemAccess === 'all' || 
+      (itemAccess === 'admin' && (isAdmin || (['laporan'].includes(itemId) && (isKamal || isKeuanganSCB)))) || 
+      (itemAccess === 'superadmin' && isSuperAdmin) ||
+      (itemAccess === 'owner' && (profile?.email === OWNER_EMAIL || (['anggaran'].includes(itemId) && (isKamal || isKeuanganSCB)))) ||
+      (itemAccess === 'owner_only' && profile?.email === OWNER_EMAIL)
+    );
+  };
+
   const sidebarItems = [
     { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, access: 'all' },
     { id: 'tracking', label: 'Tracking Transaksi', icon: MessageSquare, access: 'all' },
@@ -1302,12 +1330,7 @@ export default function App() {
           <nav className="flex-1 px-3 space-y-1 overflow-y-auto custom-scrollbar">
             <p className="px-4 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4 opacity-50">Menu Utama</p>
             {sidebarItems.map((item) => {
-              const hasAccess = 
-                item.access === 'all' || 
-                (item.access === 'admin' && (isAdmin || (['laporan'].includes(item.id) && (isKamal || isKeuanganSCB)))) || 
-                (item.access === 'superadmin' && isSuperAdmin) ||
-                (item.access === 'owner' && (profile?.email === OWNER_EMAIL || (['anggaran'].includes(item.id) && (isKamal || isKeuanganSCB)))) ||
-                (item.access === 'owner_only' && profile?.email === OWNER_EMAIL);
+              const hasAccess = checkMenuAccess(item.id, item.access);
 
               if (!hasAccess) return null;
 
@@ -1757,7 +1780,7 @@ export default function App() {
                   </div>
                 )}
 
-                {activeTab === 'buku_kas' && (isAdmin || profile?.email === OWNER_EMAIL) && (
+                {activeTab === 'buku_kas' && checkMenuAccess('buku_kas', 'admin') && (
                   <div className="space-y-6">
                     <div className="flex items-center justify-between mb-2">
                        <h3 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-3">
@@ -1787,8 +1810,8 @@ export default function App() {
                     <Tabs defaultValue="tunai">
                       <div className="flex items-center justify-start mb-6">
                         <TabsList className="bg-slate-50 p-1 shadow-inner rounded-xl border border-slate-100">
-                          <TabsTrigger value="tunai" className="px-6 rounded-lg font-black text-xs py-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white uppercase tracking-tight">KAS TUNAI</TabsTrigger>
-                          <TabsTrigger value="bank" className="px-6 rounded-lg font-black text-xs py-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white uppercase tracking-tight">KAS BANK</TabsTrigger>
+                           <TabsTrigger value="tunai" className="px-6 rounded-lg font-black text-xs py-2 data-[state=active]:bg-emerald-600 data-[state=active]:text-white uppercase tracking-tight">KAS TUNAI</TabsTrigger>
+                           <TabsTrigger value="bank" className="px-6 rounded-lg font-black text-xs py-2 data-[state=active]:bg-blue-600 data-[state=active]:text-white uppercase tracking-tight">KAS BANK</TabsTrigger>
                         </TabsList>
                       </div>
                       
@@ -1811,25 +1834,30 @@ export default function App() {
                   </div>
                 )}
 
-                {activeTab === 'anggaran' && (profile?.email === OWNER_EMAIL || isKamal || isKeuanganSCB) && (
+                {activeTab === 'anggaran' && checkMenuAccess('anggaran', 'owner') && (
                   <BaznasBudgetManager profile={profile} userUid={user?.uid || ''} isReadOnly={isKeuanganSCB} />
                 )}
 
-                {activeTab === 'laporan' && (isAdmin || isKamal || isKeuanganSCB) && (
+                {activeTab === 'laporan' && checkMenuAccess('laporan', 'admin') && (
                   <LaporanManager userUid={user?.uid || ''} isReadOnly={isKeuanganSCB} />
                 )}
 
-                {activeTab === 'berkas' && (
+                {activeTab === 'berkas' && checkMenuAccess('berkas', 'admin') && (
                   <BerkasDigitalManager />
                 )}
 
-                {activeTab === 'administrasi' && (
-                  <AdministrasiManager isAdmin={isAdmin || profile?.email === OWNER_EMAIL} />
+                {activeTab === 'administrasi' && checkMenuAccess('administrasi', 'admin') && (
+                  <AdministrasiManager isAdmin={isAdmin || profile?.email === OWNER_EMAIL || (profile?.allowedMenus && profile.allowedMenus.includes('administrasi'))} />
                 )}
 
                 {activeTab === 'settings' && isSuperAdmin && (
                   <div className="space-y-8">
-                    <AdminSection users={allUsers} onUpdateRole={updateUserRole} isSuperAdmin={isSuperAdmin} />
+                    <AdminSection 
+                      users={allUsers} 
+                      onUpdateRole={updateUserRole} 
+                      onUpdateAllowedMenus={updateUserAllowedMenus}
+                      isSuperAdmin={isSuperAdmin} 
+                    />
                     
                     {user?.email === 'keuanganscbbaznas@gmail.com' && (
                       <AppConfigSection user={user} profile={profile} />
@@ -3872,61 +3900,213 @@ const GitHubInfo = () => (
   </Card>
 );
 
-const AdminSection = ({ users, onUpdateRole, isSuperAdmin }: { users: UserProfile[], onUpdateRole: (uid: string, role: UserRole) => void, isSuperAdmin: boolean }) => (
-  <div className="space-y-6">
-    <Card className="border-slate-200 shadow-sm overflow-hidden rounded-2xl">
-      <CardHeader className="py-3 px-4 bg-slate-50 border-b">
-        <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-500">Pengaturan Admin</CardTitle>
-        <CardDescription className="text-xs">Kelola hak akses pengguna aplikasi</CardDescription>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="divide-y border-t">
-          {users.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 text-sm">Tidak ada data pengguna</div>
-          ) : (
-            users.map((u) => (
-              <div key={u.uid} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 flex items-center justify-center rounded-full bg-slate-100 text-slate-500">
-                    <UserIcon size={20} />
+const ALL_MENU_ITEMS = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'tracking', label: 'Tracking Transaksi' },
+  { id: 'buku_kas', label: 'Buku Kas' },
+  { id: 'anggaran', label: 'Pengajuan Anggaran' },
+  { id: 'laporan', label: 'Laporan PertUM' },
+  { id: 'berkas', label: 'Berkas Digital' },
+  { id: 'administrasi', label: 'Laporan Donasi' },
+  { id: 'settings', label: 'Settingan' },
+];
+
+const getDefaultMenusForUser = (p: UserProfile): string[] => {
+  const defaults: string[] = ['dashboard', 'tracking'];
+  const pEmail = p.email.toLowerCase();
+  
+  if (
+    p.role === 'admin' || 
+    pEmail === 'keuangan.scb@gmail.com' || 
+    pEmail === 'tatausahascba@gmail.com' || 
+    pEmail === 'kamal2015go@gmail.com' || 
+    pEmail === 'operasional.scb@gmail.com' || 
+    pEmail === 'keuanganscbbaznas@gmail.com'
+  ) {
+    defaults.push('buku_kas', 'laporan', 'berkas', 'administrasi');
+  }
+  
+  if (pEmail === 'keuanganscbbaznas@gmail.com' || pEmail === 'kamal2015go@gmail.com') {
+    defaults.push('settings');
+  }
+  
+  if (
+    pEmail === 'keuanganscbbaznas@gmail.com' || 
+    pEmail === 'kamal2015go@gmail.com' || 
+    pEmail === 'tatausahascba@gmail.com' || 
+    pEmail === 'keuangan.scb@gmail.com'
+  ) {
+    if (!defaults.includes('anggaran')) {
+      defaults.push('anggaran');
+    }
+  }
+
+  return defaults;
+};
+
+const AdminSection = ({ 
+  users, 
+  onUpdateRole, 
+  onUpdateAllowedMenus,
+  isSuperAdmin 
+}: { 
+  users: UserProfile[], 
+  onUpdateRole: (uid: string, role: UserRole) => void, 
+  onUpdateAllowedMenus: (uid: string, allowedMenus: string[] | null) => void,
+  isSuperAdmin: boolean 
+}) => {
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-6">
+      <Card className="border-slate-200 shadow-sm overflow-hidden rounded-2xl">
+        <CardHeader className="py-3 px-4 bg-slate-50 border-b">
+          <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-500">Pengaturan Admin & Hak Akses</CardTitle>
+          <CardDescription className="text-xs">Kelola role dan pilihan menu yang bisa dilihat oleh masing-masing user</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="divide-y border-t">
+            {users.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 text-sm">Tidak ada data pengguna</div>
+            ) : (
+              users.map((u) => (
+                <div key={u.uid} className="p-4 hover:bg-slate-50/50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 flex items-center justify-center rounded-full bg-slate-100 text-slate-500">
+                        <UserIcon size={20} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{u.displayName}</p>
+                        <p className="text-xs text-slate-500">{u.email}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Badge variant={u.role === 'admin' ? 'default' : 'secondary'} className="capitalize h-6 px-3">
+                        {u.role}
+                      </Badge>
+                      
+                      {isSuperAdmin && u.email !== OWNER_EMAIL && (
+                        <Select 
+                          value={u.role} 
+                          onValueChange={(val) => onUpdateRole(u.uid, val as UserRole)}
+                        >
+                          <SelectTrigger className="w-[120px] h-8 text-xs">
+                            <SelectValue placeholder="Ubah Role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="staff">Staff</SelectItem>
+                            <SelectItem value="finance">Finance</SelectItem>
+                            <SelectItem value="accountant">Accountant</SelectItem>
+                            <SelectItem value="management">Management</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setExpandedUser(expandedUser === u.uid ? null : u.uid)}
+                        className={`h-8 font-bold text-xs gap-1.5 ${expandedUser === u.uid ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : ''}`}
+                      >
+                        <Lock size={12} />
+                        Kelola Menu
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{u.displayName}</p>
-                    <p className="text-xs text-slate-500">{u.email}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Badge variant={u.role === 'admin' ? 'default' : 'secondary'} className="capitalize h-6 px-3">
-                    {u.role}
-                  </Badge>
-                  {isSuperAdmin && u.email !== OWNER_EMAIL && (
-                    <Select 
-                      value={u.role} 
-                      onValueChange={(val) => onUpdateRole(u.uid, val as UserRole)}
+
+                  {/* Expandable Custom Menu Config */}
+                  {expandedUser === u.uid && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-4 p-4 border border-slate-100 rounded-2xl bg-slate-50/50 space-y-4"
                     >
-                      <SelectTrigger className="w-[120px] h-8 text-xs">
-                        <SelectValue placeholder="Ubah Role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="staff">Staff</SelectItem>
-                        <SelectItem value="finance">Finance</SelectItem>
-                        <SelectItem value="accountant">Accountant</SelectItem>
-                        <SelectItem value="management">Management</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h5 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                            <Lock size={12} className="text-emerald-600" />
+                            Pilihan Menu Yang Bisa Dilihat
+                          </h5>
+                          <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
+                            Centang menu yang ingin Anda ijinkan untuk dilihat oleh user ini
+                          </p>
+                        </div>
+                        
+                        {u.allowedMenus && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => onUpdateAllowedMenus(u.uid, null)}
+                            className="h-7 text-[10px] text-red-500 hover:text-red-600 hover:bg-red-50 font-black tracking-wider uppercase flex items-center gap-1"
+                          >
+                            <RefreshCw size={10} />
+                            Reset ke Default
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Badge variant={u.allowedMenus ? "default" : "outline"} className={`text-[10px] py-0.5 px-2 ${u.allowedMenus ? 'bg-indigo-50 text-indigo-600 border-indigo-100 font-black' : 'text-slate-500 font-medium'}`}>
+                          {u.allowedMenus ? 'Menu Kustom Aktif' : 'Menggunakan Hak Akses Default (Sesuai Role)'}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
+                        {ALL_MENU_ITEMS.map((menu) => {
+                          const isChecked = u.allowedMenus 
+                            ? u.allowedMenus.includes(menu.id)
+                            : getDefaultMenusForUser(u).includes(menu.id);
+
+                          return (
+                            <label 
+                              key={menu.id} 
+                              className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                                isChecked 
+                                  ? 'bg-emerald-50/60 border-emerald-200 text-slate-800 shadow-sm' 
+                                  : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300'
+                              }`}
+                            >
+                              <input 
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const currentAllowed = u.allowedMenus 
+                                    ? [...u.allowedMenus]
+                                    : getDefaultMenusForUser(u);
+                                  
+                                  let nextAllowed: string[];
+                                  if (e.target.checked) {
+                                    nextAllowed = [...currentAllowed, menu.id];
+                                  } else {
+                                    nextAllowed = currentAllowed.filter(id => id !== menu.id);
+                                  }
+                                  onUpdateAllowedMenus(u.uid, nextAllowed);
+                                }}
+                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                              />
+                              <div className="flex flex-col">
+                                <span className={`text-xs font-bold tracking-tight ${isChecked ? 'text-slate-900' : 'text-slate-500'}`}>{menu.label}</span>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
                   )}
                 </div>
-              </div>
-            ))
-          )}
-        </div>
-      </CardContent>
-    </Card>
-    
-    {isSuperAdmin && <GitHubInfo />}
-  </div>
-);
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+      
+      {isSuperAdmin && <GitHubInfo />}
+    </div>
+  );
+};
 
 function AppConfigSection({ user, profile }: { user: User | null, profile: UserProfile | null }) {
   return (
