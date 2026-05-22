@@ -11,7 +11,8 @@ import {
   Presentation,
   Users2,
   Sparkles,
-  Edit2
+  Edit2,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -78,6 +79,7 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPreviewItem, setSelectedPreviewItem] = useState<GalleryItem | null>(null);
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const q = query(collection(db, 'dashboard_gallery'), orderBy('createdAt', 'desc'));
@@ -127,7 +129,7 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
 
         setUploadProgress(50);
 
-        // Convert compressed file directly to Base64 and upload to reliable local server endpoint
+        // Convert compressed file directly to Base64 and store directly in Firestore for persistent availability (including Vercel deployment)
         const reader = new FileReader();
         const base64Data = await new Promise<string>((resolve, reject) => {
           reader.onload = () => resolve(reader.result as string);
@@ -135,31 +137,7 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
           reader.readAsDataURL(fileToUpload);
         });
 
-        setUploadProgress(60);
-        toast.info('Mengunggah gambar ke server...', { duration: 1500 });
-
-        const uploadRes = await fetch(getApiUrl('/api/gallery/upload'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            filename: fileToUpload.name,
-            base64Data,
-            mimeType: fileToUpload.type
-          })
-        });
-
-        if (!uploadRes.ok) {
-          throw new Error('Gagal mengunggah gambar ke backend server.');
-        }
-
-        const uploadData = await uploadRes.json();
-        if (!uploadData.success || !uploadData.url) {
-          throw new Error(uploadData.error || 'Gagal menyimpan gambar di server.');
-        }
-
-        url = uploadData.url;
+        url = base64Data;
         setUploadProgress(85);
 
       } else {
@@ -457,20 +435,33 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
                   >
                     {item.type === 'image' ? (
                       <div className="relative w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
-                        {/* Blurred backdrop layers to guarantee beautiful backgrounds without black letterboxes */}
-                        <img 
-                          src={getApiUrl(item.url)} 
-                          alt="" 
-                          className="absolute inset-0 w-full h-full object-cover blur-xl opacity-35 scale-110 pointer-events-none"
-                          referrerPolicy="no-referrer"
-                        />
-                        {/* Sharp contain layer on top showing the true, uncut original file contents */}
-                        <img 
-                          src={getApiUrl(item.url)} 
-                          alt={item.title} 
-                          className="relative z-10 max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-[1.02]"
-                          referrerPolicy="no-referrer"
-                        />
+                        {brokenImages[item.id] ? (
+                          <div className="flex flex-col items-center justify-center p-4 text-center bg-slate-900 absolute inset-0 z-20">
+                            <AlertTriangle className="text-amber-500 mb-1.5 h-6 w-6" />
+                            <p className="text-[10px] font-black uppercase text-white tracking-wider">Gambar Kedaluwarsa</p>
+                            <p className="text-[9px] text-slate-400 mt-0.5 max-w-[85%] font-semibold leading-relaxed">
+                              File di server sandbox temporer telah terhapus. Silakan unggah ulang gambar ini.
+                            </p>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Blurred backdrop layers to guarantee beautiful backgrounds without black letterboxes */}
+                            <img 
+                              src={getApiUrl(item.url)} 
+                              alt="" 
+                              className="absolute inset-0 w-full h-full object-cover blur-xl opacity-35 scale-110 pointer-events-none"
+                              referrerPolicy="no-referrer"
+                            />
+                            {/* Sharp contain layer on top showing the true, uncut original file contents */}
+                            <img 
+                              src={getApiUrl(item.url)} 
+                              alt={item.title} 
+                              className="relative z-10 max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-[1.02]"
+                              referrerPolicy="no-referrer"
+                              onError={() => setBrokenImages(prev => ({ ...prev, [item.id]: true }))}
+                            />
+                          </>
+                        )}
                       </div>
                     ) : (
                       <div className="relative w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
