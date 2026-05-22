@@ -41,7 +41,7 @@ import { Button } from './ui/button';
 
 export const InfoKeuanganSection = () => {
   const [activeTab, setActiveTab] = useState<'alur' | 'sop' | 'faq' | 'kontak'>('alur');
-  const [activeSubTab, setActiveSubTab] = useState<'fase' | 'detail'>('fase');
+  const [activeSubTab, setActiveSubTab] = useState<'fase' | 'detail' | 'prosedur_um'>('fase');
 
   // 4 FASE UTAMA (Upper row in the mock image)
   const faseUtama = [
@@ -199,6 +199,117 @@ export const InfoKeuanganSection = () => {
     }
   ];
 
+  const prosedurUmSteps = [
+    {
+      step: '1',
+      title: 'PIC MENGISI FORM FUND REQUEST',
+      actor: 'PIC (Project In Charge)',
+      actorColor: 'bg-indigo-50 border-indigo-100/60 text-indigo-700',
+      badgeColor: 'bg-indigo-600',
+      icon: FileText,
+      desc: 'PIC mengisi form Fund Request secara lengkap, didukung oleh rincian program kerja yang rasional.',
+      details: [
+        'Wajib melampirkan berkas perencanaan Program.',
+        'Wajib melampirkan berkas Penawaran Harga resmi dari penyedia jasa / vendor.'
+      ]
+    },
+    {
+      step: '2',
+      title: 'PIC MEMINTA OTORISASI HEAD DEPT',
+      actor: 'PIC (Project In Charge)',
+      actorColor: 'bg-indigo-50 border-indigo-100/60 text-indigo-700',
+      badgeColor: 'bg-indigo-550',
+      icon: Users,
+      desc: 'PIC menyerahkan draf form Fund Request beserta dokumen kelengkapan pendukung kepada Kepala Departemen (Head Dept).',
+      details: [
+        'Memastikan seluruh isian nominal kebutuhan sinkron dengan target kegiatan.',
+        'Serah terima dokumen dapat dilakukan secara fisik atau melalui koordinasi tatap muka.'
+      ]
+    },
+    {
+      step: '3',
+      title: 'HEAD DEPT MEMBERIKAN MATA ANGGARAN & OTORISASI',
+      actor: 'Head Dept (Kepala Departemen)',
+      actorColor: 'bg-amber-50 border-amber-100/60 text-amber-700',
+      badgeColor: 'bg-amber-605',
+      icon: PenTool,
+      desc: 'Head Dept meninjau permohonan, memberikan Kode Anggaran, dan menandatangani persetujuan.',
+      details: [
+        'Memetakan pos pengeluaran program ke dalam Kode Anggaran / Mata Anggaran yang sesuai.',
+        'Membubuhkan tanda tangan persetujuan otorisasi awal (Status: DISETUJUI).'
+      ]
+    },
+    {
+      step: '4',
+      title: 'AKUNTAN MEMERIKSA KESESUAIAN ANGGARAN & VERIFIKASI',
+      actor: 'Akuntan SCB',
+      actorColor: 'bg-sky-50 border-sky-100/60 text-sky-700',
+      badgeColor: 'bg-sky-600',
+      icon: Search,
+      desc: 'Akuntan menerima dokumen dan melakukan pemeriksaan kesiapan anggaran serta keabsahan berkas.',
+      details: [
+        'Memverifikasi kelayakan lampiran penawaran harga & keabsahan hitungan pengajuan.',
+        'Melakukan pencocokan ketersediaan dana sisa dari alokasi pos pagu anggaran sekolah.'
+      ]
+    },
+    {
+      step: '5',
+      title: 'AKUNTAN MENGEMBALIKAN JIKA TIDAK SESUAI',
+      actor: 'Akuntan SCB - Cabang Revisi (KEMBALI KE PIC)',
+      actorColor: 'bg-rose-50 border-rose-100/60 text-rose-700',
+      badgeColor: 'bg-rose-600',
+      icon: AlertTriangle,
+      desc: 'Apabila ada ketidaksesuaian anggaran atau dokumen penunjang kurang, berkas ditolak sementara.',
+      details: [
+        'Akuntan memberikan catatan alasan penolakan atau instruksi revisi secara tertulis.',
+        'Berkas dikembalikan ke PIC untuk diperbaiki dan wajib diulang dari Tahap 1.'
+      ],
+      isBranch: true,
+      branchType: 'error'
+    },
+    {
+      step: '6',
+      title: 'AKUNTAN MENERUSKAN OTORISASI JIKA ANGGARAN SESUAI & LOLOS VERIFIKASI',
+      actor: 'Akuntan SCB - Cabang Lolos Verifikasi',
+      actorColor: 'bg-emerald-50 border-emerald-100/60 text-emerald-700',
+      badgeColor: 'bg-emerald-600',
+      icon: CheckCircle,
+      desc: 'Jika pengajuan aman, lolos verifikasi anggaran & dokumen lengkap, proses diteruskan.',
+      details: [
+        'Membubuhkan paraf tanda lolos audit akuntansi internal.',
+        'Meneruskan berkas fisik ke pimpinan (Wakasek No. Ops & Kepala Sekolah) untuk review kebijakan.'
+      ],
+      isBranch: true,
+      branchType: 'success'
+    },
+    {
+      step: '7',
+      title: 'REVIEW & OTORISASI PIMPINAN (WAKASEK & KEPALA SEKOLAH)',
+      actor: 'Wakasek Ops. & Kepala Sekolah',
+      actorColor: 'bg-purple-50 border-purple-100/60 text-purple-700',
+      badgeColor: 'bg-purple-600',
+      icon: ShieldCheck,
+      desc: 'Wakasek Bidang Operasional & Kepala Sekolah melakukan peninjauan akhir dan memberikan persetujuan final.',
+      details: [
+        'Wakasek & Kepala Sekolah meninjau keselarasan program kerja dengan operasional rutin.',
+        'Membubuhkan tanda tangan berskala otorisasi penuh pada lembar Fund Request.'
+      ]
+    },
+    {
+      step: '8',
+      title: 'KEUANGAN MELAKUKAN PEMBAYARAN',
+      actor: 'Keuangan SCB',
+      actorColor: 'bg-teal-50 border-teal-100/60 text-teal-700',
+      badgeColor: 'bg-teal-600',
+      icon: Coins,
+      desc: 'Staf Keuangan mencairkan dana uang muka kepada PIC sesuai nominal yang disetujui.',
+      details: [
+        'TRANSFER BANK (PRIORITAS): Pembayaran wajib diutamakan secara transfer bank non-tunai agar terlacak sempurna.',
+        'TUNAI (PILIHAN TERAKHIR): Pembayaran tunai fisik kas kecil hanya digunakan apabila mendesak dan mendasar.'
+      ]
+    }
+  ];
+
   const sopBukti = [
     {
       title: 'Ketentuan Nota & Kuitansi Pembelian',
@@ -344,26 +455,34 @@ export const InfoKeuanganSection = () => {
                 transition={{ duration: 0.2 }}
                 className="space-y-8"
               >
-                {/* Visual Segment Controls within Alur */}
-                <div className="flex border-b border-slate-100 pb-3 gap-4">
+                 {/* Visual Segment Controls within Alur */}
+                <div className="flex flex-wrap border-b border-slate-100 pb-3 gap-x-6 gap-y-2">
                   <button 
                     onClick={() => setActiveSubTab('fase')}
-                    className={`text-sm font-black tracking-tight pb-3 relative uppercase transition-colors ${activeSubTab === 'fase' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`text-xs md:text-sm font-black tracking-tight pb-3 relative uppercase transition-colors ${activeSubTab === 'fase' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                   >
                     1. FASE MANAJEMEN UTAMA
                     {activeSubTab === 'fase' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />}
                   </button>
                   <button 
                     onClick={() => setActiveSubTab('detail')}
-                    className={`text-sm font-black tracking-tight pb-3 relative uppercase transition-colors flex items-center gap-2 ${activeSubTab === 'detail' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`text-xs md:text-sm font-black tracking-tight pb-3 relative uppercase transition-colors flex items-center gap-2 ${activeSubTab === 'detail' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                   >
-                    2. DETAIL ALUR PELAPORAN (14 LANGKAH)
-                    <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white font-mono scale-90 px-1.5 font-bold">1-14</Badge>
+                    2. DETAIL ALUR PELAPORAN
+                    <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white font-mono scale-90 px-1.5 font-bold">14 LANGKAH</Badge>
                     {activeSubTab === 'detail' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />}
+                  </button>
+                  <button 
+                    onClick={() => setActiveSubTab('prosedur_um')}
+                    className={`text-xs md:text-sm font-black tracking-tight pb-3 relative uppercase transition-colors flex items-center gap-2 ${activeSubTab === 'prosedur_um' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    3. PROSEDUR PENGAJUAN UANG MUKA
+                    <Badge className="bg-amber-500 hover:bg-amber-600 text-white font-mono scale-90 px-1.5 font-bold">8 LANGKAH</Badge>
+                    {activeSubTab === 'prosedur_um' && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />}
                   </button>
                 </div>
 
-                {activeSubTab === 'fase' ? (
+                {activeSubTab === 'fase' && (
                   <div className="space-y-6">
                     <div className="text-center max-w-2xl mx-auto space-y-2">
                       <h4 className="text-lg font-black text-slate-800 tracking-tight uppercase">4 FASE BESAR SIKLUS KEUANGAN</h4>
@@ -403,7 +522,9 @@ export const InfoKeuanganSection = () => {
                       })}
                     </div>
                   </div>
-                ) : (
+                )}
+
+                {activeSubTab === 'detail' && (
                   <div className="space-y-8">
                     <div className="text-center max-w-2xl mx-auto space-y-2">
                       <h4 className="text-lg font-black text-slate-800 tracking-tight uppercase">ALUR PELAPORAN (DARI SCB KE BAZNAS RI)</h4>
@@ -508,6 +629,144 @@ export const InfoKeuanganSection = () => {
                               <p className="text-[9px] text-slate-400 leading-snug">{p.desc}</p>
                             </div>
                           ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeSubTab === 'prosedur_um' && (
+                  <div className="space-y-8 animate-fadeIn">
+                    <div className="text-center max-w-2xl mx-auto space-y-2">
+                      <span className="px-2.5 py-1 rounded-full bg-amber-50 text-[10px] font-black text-amber-600 uppercase tracking-wider border border-amber-200">
+                        DIAGRAM ALUR OTORISASI
+                      </span>
+                      <h4 className="text-lg font-black text-slate-800 tracking-tight uppercase mt-1">PROSEDUR PENGAJUAN UANG MUKA (UM)</h4>
+                      <p className="text-xs text-slate-400 font-semibold leading-relaxed">
+                        SOP 8 Langkah dari pengisian form Fund Request oleh PIC sampai dengan pembayaran oleh Keuangan
+                      </p>
+                    </div>
+
+                    {/* Step Cards Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-2">
+                       {prosedurUmSteps.map((step, idx) => {
+                         const StepIcon = step.icon;
+                         return (
+                           <div 
+                             key={idx}
+                             className={`relative flex flex-col justify-between border-2 rounded-3xl p-5 bg-white transition-all transform hover:-translate-y-1 hover:shadow-lg ${
+                               step.isBranch 
+                                 ? step.branchType === 'success'
+                                   ? 'border-emerald-300 shadow-md bg-emerald-50/5'
+                                   : 'border-rose-300 shadow-md bg-rose-50/5'
+                                 : 'border-slate-100 hover:border-slate-200'
+                             }`}
+                           >
+                             <div className="space-y-4">
+                               {/* Badge and Step Actor Header */}
+                               <div className="flex items-center justify-between">
+                                 <span className={`h-8 w-8 rounded-full ${step.badgeColor} text-white flex items-center justify-center font-black text-xs shadow-sm`}>
+                                   {step.step}
+                                 </span>
+                                 <div className={`px-2.5 py-1 text-[9px] font-black uppercase rounded-lg tracking-wider border ${step.actorColor}`}>
+                                   {step.actor}
+                                 </div>
+                               </div>
+
+                               {/* Title and Icon */}
+                               <div className="flex items-start gap-3">
+                                 <div className={`p-2 rounded-xl shrink-0 ${
+                                   step.isBranch ? step.branchType === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'
+                                 }`}>
+                                   <StepIcon size={16} />
+                                 </div>
+                                 <h5 className="text-xs font-black text-slate-900 leading-snug tracking-tight uppercase">
+                                   {step.title}
+                                 </h5>
+                               </div>
+
+                               {/* Short Description */}
+                               <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+                                 {step.desc}
+                               </p>
+
+                               {/* Detail bullet points with high visual priority */}
+                               <div className="space-y-1.5 pt-1 border-t border-slate-50">
+                                 {step.details.map((detail, dIdx) => (
+                                   <div key={dIdx} className="flex items-start gap-1.5">
+                                     <div className={`h-1.5 w-1.5 rounded-full shrink-0 mt-1.5 ${
+                                       step.isBranch 
+                                         ? step.branchType === 'success' ? 'bg-emerald-500' : 'bg-rose-500'
+                                         : 'bg-indigo-500'
+                                     }`} />
+                                     <p className="text-[10px] font-semibold text-slate-400 leading-relaxed">
+                                       {detail}
+                                     </p>
+                                   </div>
+                                 ))}
+                               </div>
+                             </div>
+
+                             {/* Step Indicator Arrow / Branch Labels */}
+                             <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                               <div className="flex items-center gap-1.5 border-t-0">
+                                 {step.isBranch ? (
+                                   <Badge className={step.branchType === 'success' ? 'bg-emerald-600 text-[8px] font-black tracking-widest' : 'bg-rose-600 text-[8px] font-black tracking-widest'}>
+                                     {step.branchType === 'success' ? 'DISETUJUI' : 'DITOLAK'}
+                                   </Badge>
+                                 ) : (
+                                   <Badge className="bg-slate-900 text-[8px] font-black tracking-widest text-white">
+                                     SOP RESMI
+                                   </Badge>
+                                 )}
+                               </div>
+                             </div>
+                           </div>
+                         );
+                       })}
+                    </div>
+
+                    {/* Flowchart connectors or guidelines banner */}
+                    <div className="p-6 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 border border-indigo-100 rounded-3xl space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-md">
+                          <CheckCircle size={18} />
+                        </div>
+                        <div>
+                          <h5 className="text-xs font-black text-indigo-950 uppercase tracking-tight">INFORMASI TAMBAHAN PERSYARATAN UANG MUKA</h5>
+                          <p className="text-[10px] text-indigo-600 font-black uppercase mt-0.5">Ketentuan mutlak agar program dapat terlaksana dengan lancar</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                        <div className="p-4 bg-white/70 border border-white/60 rounded-2xl space-y-1">
+                          <div className="flex items-center gap-2 text-indigo-950 font-bold text-xs uppercase">
+                            <span className="h-5 w-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-mono text-[10px]">A</span>
+                            Penyusunan Anggaran Terlebih Dahulu
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-relaxed font-semibold">
+                            Sebelum melakukan pengajuan Fund Request (Tahap 1), PIC diwajibkan menyusun Rencana Anggaran Biaya (RAB) dan berkoordinasi dengan Admin Keuangan.
+                          </p>
+                        </div>
+
+                        <div className="p-4 bg-white/70 border border-white/60 rounded-2xl space-y-1">
+                          <div className="flex items-center gap-2 text-indigo-950 font-bold text-xs uppercase">
+                            <span className="h-5 w-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-mono text-[10px]">B</span>
+                            Batas Pengajuan (Hari Kerja)
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-relaxed font-semibold">
+                            Pengajuan Uang Muka wajib diselesaikan maksimal 5 (lima) hari kerja sebelum kegiatan demi menghindari hambatan proses transfer perbankan.
+                          </p>
+                        </div>
+
+                        <div className="p-4 bg-white/70 border border-white/60 rounded-2xl space-y-1 md:col-span-2 lg:col-span-1">
+                          <div className="flex items-center gap-2 text-emerald-700 font-bold text-xs uppercase">
+                            <span className="h-5 w-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-mono text-[10px]">C</span>
+                            Prioritas Rekening Transfer
+                          </div>
+                          <p className="text-[10px] text-slate-400 leading-relaxed font-semibold">
+                            Seluruh pembayaran uang muka atau pencairan dana diprioritaskan melalui transfer bank untuk akuntabilitas tinggi dan kepatuhan penuh standar BAZNAS RI.
+                          </p>
                         </div>
                       </div>
                     </div>
