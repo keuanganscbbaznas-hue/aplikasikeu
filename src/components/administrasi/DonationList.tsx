@@ -73,12 +73,31 @@ export const DonationList = () => {
     return () => unsubscribe();
   }, []);
 
-  const getFullEvidenceUrl = (url: string) => {
+  const getSheetsFormulaForEvidence = (url: string) => {
     if (!url) return 'Tidak Ada Bukti';
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
+    if (url.startsWith('data:') || url.length > 2000) {
+      return 'Bukti Gambar (Format Base64)';
     }
-    return window.location.origin + url;
+    
+    const absoluteUrl = (url.startsWith('http://') || url.startsWith('https://')) 
+      ? url 
+      : window.location.origin + url;
+      
+    const isPdf = absoluteUrl.toLowerCase().endsWith('.pdf') || absoluteUrl.includes('.pdf');
+    
+    if (isPdf) {
+      return `=HYPERLINK("${absoluteUrl}", "BUKTI PDF (KLIK UNTUK BUKA)")`;
+    }
+    
+    let imageUrl = absoluteUrl;
+    if (absoluteUrl.includes('drive.google.com')) {
+      const match = absoluteUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || absoluteUrl.match(/id=([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        imageUrl = `https://lh3.googleusercontent.com/d/${match[1]}`;
+      }
+    }
+    
+    return `=HYPERLINK("${absoluteUrl}", IMAGE("${imageUrl}", 1))`;
   };
 
   const syncToSheetsWithData = async (dataToSync: any[], silent = false) => {
@@ -110,7 +129,7 @@ export const DonationList = () => {
           d.donaturName || 'Donatur Tanpa Nama',
           d.amount || 0,
           d.targetAccount === 'smp' ? 'SMP' : d.targetAccount === 'sma' ? 'SMA' : (d.targetAccount || '-'),
-          getFullEvidenceUrl(d.evidenceUrl),
+          getSheetsFormulaForEvidence(d.evidenceUrl),
           d.status || 'pending'
         ];
       });
