@@ -70,7 +70,7 @@ service cloud.firestore {
              data.amount is number &&
              data.targetAccount is string &&
              data.status in ['pending', 'verified', 'rejected'] &&
-             data.createdAt == request.time;
+             data.createdAt is timestamp;
     }
 
     function isValidAppConfig(data) {
@@ -146,8 +146,10 @@ service cloud.firestore {
 
     match /donations/{donationId} {
       allow read: if isAdmin() || getRole() in ['finance', 'accountant', 'management'];
-      allow create: if isValidDonation(incoming());
-      allow update: if (isAdmin() || getRole() in ['finance', 'accountant', 'management']) && isValidDonation(incoming());
+      allow create: if isValidDonation(incoming()) && incoming().createdAt == request.time;
+      allow update: if (isAdmin() || getRole() in ['finance', 'accountant', 'management']) && 
+                       isValidDonation(incoming()) && 
+                       incoming().createdAt == existing().createdAt;
       allow delete: if isAdmin();
     }
 
