@@ -46,6 +46,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   // Filter states
   const [filterMonth, setFilterMonth] = useState('all');
   const [filterYear, setFilterYear] = useState('all');
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
 
   useEffect(() => {
     if (!userUid) return;
@@ -217,8 +219,29 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   const filteredData = data.filter(d => {
     const passMonth = filterMonth === 'all' || d.month === filterMonth;
     const passYear = filterYear === 'all' || d.year === filterYear;
-    return passMonth && passYear;
+    
+    // Filter berdasarkan Tanggal Laporan
+    let passDate = true;
+    if (d.date) {
+      if (filterStartDate) {
+        passDate = passDate && d.date >= filterStartDate;
+      }
+      if (filterEndDate) {
+        passDate = passDate && d.date <= filterEndDate;
+      }
+    } else if (filterStartDate || filterEndDate) {
+      passDate = false;
+    }
+    
+    return passMonth && passYear && passDate;
   }).sort((a, b) => {
+    const dateA = a.date ? new Date(a.date).getTime() : 0;
+    const dateB = b.date ? new Date(b.date).getTime() : 0;
+    
+    if (dateB !== dateA) {
+      return dateB - dateA;
+    }
+    
     const yearDiff = parseInt(b.year) - parseInt(a.year);
     if (yearDiff !== 0) return yearDiff;
     return MONTHS.indexOf(b.month) - MONTHS.indexOf(a.month);
@@ -433,41 +456,73 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
 
       {/* Table */}
       {!isExportingPDF && (
-        <div className="flex flex-col md:flex-row gap-4 mb-4 items-end" id="laporan-filters">
-          <div className="w-full md:w-48">
-          <Label className="text-xs font-bold text-slate-500 mb-1 block">Filter Bulan</Label>
-          <Select value={filterMonth} onValueChange={setFilterMonth}>
-            <SelectTrigger className="rounded-xl bg-white border-slate-200 shadow-sm font-medium">
-              <SelectValue placeholder="Filter Bulan" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Bulan</SelectItem>
-              {MONTHS.map(m => (
-                <SelectItem key={m} value={m}>{m}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-4 items-end" id="laporan-filters">
+          <div className="w-full md:w-40">
+            <Label className="text-xs font-bold text-slate-500 mb-1 block">Filter Bulan</Label>
+            <Select value={filterMonth} onValueChange={setFilterMonth}>
+              <SelectTrigger className="rounded-xl bg-white border-slate-200 shadow-sm font-medium h-10">
+                <SelectValue placeholder="Filter Bulan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Bulan</SelectItem>
+                {MONTHS.map(m => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full md:w-40">
+            <Label className="text-xs font-bold text-slate-500 mb-1 block">Filter Tahun</Label>
+            <Select value={filterYear} onValueChange={setFilterYear}>
+              <SelectTrigger className="rounded-xl bg-white border-slate-200 shadow-sm font-medium h-10">
+                <SelectValue placeholder="Filter Tahun" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Tahun</SelectItem>
+                <SelectItem value="2024">2024</SelectItem>
+                <SelectItem value="2025">2025</SelectItem>
+                <SelectItem value="2026">2026</SelectItem>
+                <SelectItem value="2027">2027</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="w-full md:w-40">
+            <Label className="text-xs font-bold text-slate-500 mb-1 block">Mulai Tanggal</Label>
+            <Input 
+              type="date" 
+              value={filterStartDate} 
+              onChange={e => setFilterStartDate(e.target.value)} 
+              className="rounded-xl bg-white border-slate-200 shadow-sm h-10 text-xs" 
+            />
+          </div>
+          <div className="w-full md:w-40">
+            <Label className="text-xs font-bold text-slate-500 mb-1 block">Sampai Tanggal</Label>
+            <Input 
+              type="date" 
+              value={filterEndDate} 
+              onChange={e => setFilterEndDate(e.target.value)} 
+              className="rounded-xl bg-white border-slate-200 shadow-sm h-10 text-xs" 
+            />
+          </div>
+          {(filterMonth !== 'all' || filterYear !== 'all' || filterStartDate || filterEndDate) && (
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setFilterMonth('all');
+                setFilterYear('all');
+                setFilterStartDate('');
+                setFilterEndDate('');
+              }}
+              className="h-10 text-xs font-bold text-rose-650 hover:text-rose-800 hover:bg-rose-50 border-rose-200 rounded-xl px-4"
+            >
+              Reset Filter
+            </Button>
+          )}
+          <div className="w-full md:w-48 bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex flex-col justify-between h-20 md:h-[68px] self-stretch md:self-auto min-w-[180px]">
+            <span className="text-xs font-bold text-emerald-500 uppercase">Total Laporan</span>
+            <span className="text-sm md:text-base font-black text-emerald-950">Rp {totalFilteredReport.toLocaleString('id-ID')}</span>
+          </div>
         </div>
-        <div className="w-full md:w-48">
-          <Label className="text-xs font-bold text-slate-500 mb-1 block">Filter Tahun</Label>
-          <Select value={filterYear} onValueChange={setFilterYear}>
-            <SelectTrigger className="rounded-xl bg-white border-slate-200 shadow-sm font-medium">
-              <SelectValue placeholder="Filter Tahun" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Tahun</SelectItem>
-              <SelectItem value="2024">2024</SelectItem>
-              <SelectItem value="2025">2025</SelectItem>
-              <SelectItem value="2026">2026</SelectItem>
-              <SelectItem value="2027">2027</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="w-full md:w-64 bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex flex-col justify-between">
-          <span className="text-xs font-bold text-emerald-500 uppercase">Total Laporan</span>
-          <span className="text-xl font-black text-emerald-900">Rp {totalFilteredReport.toLocaleString('id-ID')}</span>
-        </div>
-      </div>
       )}
       
       <Card className="rounded-3xl border-slate-100 shadow-sm bg-white">
