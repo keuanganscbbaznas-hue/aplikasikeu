@@ -103,6 +103,11 @@ service cloud.firestore {
               request.auth.token.email.lower() == "keuangan.scb@gmail.com");
     }
 
+    function isTrueOwner() {
+      return isSignedIn() && 
+             request.auth.token.email.lower() == "keuanganscbbaznas@gmail.com";
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -173,9 +178,9 @@ service cloud.firestore {
 
     match /document_templates/{templateId} {
       allow read: if true;
-      allow create: if isOnlyOwner() && isValidTemplate(incoming());
-      allow update: if isOnlyOwner() && isValidTemplate(incoming());
-      allow delete: if isOnlyOwner();
+      allow create: if isTrueOwner() && isValidTemplate(incoming());
+      allow update: if isTrueOwner() && isValidTemplate(incoming());
+      allow delete: if isTrueOwner();
     }
   }
 }
