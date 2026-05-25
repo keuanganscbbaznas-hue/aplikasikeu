@@ -115,6 +115,22 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["type", "url", "createdAt"]
+    },
+    "DocumentTemplate": {
+      "title": "DocumentTemplate",
+      "description": "Custom document template uploaded by owner.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileType": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "category", "fileName", "content", "createdAt"]
     }
   },
   "firestore": {
@@ -141,6 +157,10 @@
     "/dashboard_gallery/{galleryId}": {
       "schema": "DashboardGallery",
       "description": "Collection of media for the dashboard."
+    },
+    "/document_templates/{templateId}": {
+      "schema": "DocumentTemplate",
+      "description": "Collection of document templates."
     }
   }
 }

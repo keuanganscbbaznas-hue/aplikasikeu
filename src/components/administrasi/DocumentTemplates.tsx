@@ -1,8 +1,62 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Download, Search } from 'lucide-react';
+import { FileText, Download, Search, Plus, Trash2, Upload, FileCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { db, auth } from '../../firebase';
+import { collection, query, orderBy, onSnapshot, doc, addDoc, deleteDoc } from 'firebase/firestore';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from 'sonner';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 const TEMPLATES = [
   { 
@@ -160,8 +214,36 @@ const TEMPLATES = [
   },
 ];
 
-export const DocumentTemplates = () => {
-  const [search, setSearch] = React.useState('');
+export const DocumentTemplates = ({ isOwner = false }: { isOwner?: boolean }) => {
+  const [search, setSearch] = useState('');
+  const [customTemplates, setCustomTemplates] = useState<any[]>([]);
+  const [loadingCustom, setLoadingCustom] = useState(true);
+
+  // Form states for new template upload
+  const [isOpenDocDialog, setIsOpenDocDialog] = useState(false);
+  const [uploadName, setUploadName] = useState('');
+  const [uploadCategory, setUploadCategory] = useState('Logistik');
+  const [uploadDescription, setUploadDescription] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    const q = query(collection(db, 'document_templates'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs: any[] = [];
+      snapshot.forEach((doc) => {
+        docs.push({ id: doc.id, ...doc.data() });
+      });
+      setCustomTemplates(docs);
+      setLoadingCustom(false);
+    }, (error) => {
+      console.error("Error fetching custom templates:", error);
+      setLoadingCustom(false);
+      handleFirestoreError(error, OperationType.LIST, 'document_templates');
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const handleDownload = (template: typeof TEMPLATES[0]) => {
     const element = document.createElement("a");
@@ -174,7 +256,148 @@ export const DocumentTemplates = () => {
     document.body.removeChild(element);
   };
 
-  const filteredTemplates = TEMPLATES.filter(t => 
+  const handleDownloadCustom = (template: any) => {
+    try {
+      const base64Content = template.content;
+      let mimeType = template.fileType || 'application/octet-stream';
+      let base64Data = base64Content;
+      
+      if (base64Content.includes(';base64,')) {
+        const parts = base64Content.split(';base64,');
+        mimeType = parts[0].split(':')[1] || mimeType;
+        base64Data = parts[1];
+      }
+      
+      const raw = window.atob(base64Data);
+      const rawLength = raw.length;
+      const uInt8Array = new Uint8Array(rawLength);
+      for (let i = 0; i < rawLength; ++i) {
+        uInt8Array[i] = raw.charCodeAt(i);
+      }
+      
+      const file = new Blob([uInt8Array], { type: mimeType });
+      const element = document.createElement("a");
+      element.href = URL.createObjectURL(file);
+      element.download = template.fileName;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+      toast.success(`Berhasil mengunduh ${template.fileName}`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Gagal mengunduh berkas: " + err.message);
+    }
+  };
+
+  const handleDeleteTemplate = async (id: string, name: string) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus template "${name}"?`)) {
+      return;
+    }
+    
+    const toastId = toast.loading("Menghapus template...");
+    try {
+      await deleteDoc(doc(db, 'document_templates', id));
+      toast.success(`Berhasil menghapus template "${name}"`, { id: toastId });
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      toast.error(`Gagal menghapus template: ${err.message}`, { id: toastId });
+      handleFirestoreError(err, OperationType.DELETE, `document_templates/${id}`);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 1 * 1024 * 1024) { // 1MB limit for Firestore
+      toast.error("Ukuran berkas melebihi 1MB. Silakan pilih berkas yang lebih kecil.");
+      e.target.value = '';
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
+  const handleUploadTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!uploadName || !uploadCategory || !selectedFile) {
+      toast.error("Nama, kategori, dan berkas template wajib diisi.");
+      return;
+    }
+
+    setIsUploading(true);
+    const toastId = toast.loading("Mengunggah template...");
+    
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64Content = event.target?.result as string;
+        
+        try {
+          await addDoc(collection(db, 'document_templates'), {
+            name: uploadName,
+            category: uploadCategory,
+            description: uploadDescription || 'Tidak ada deskripsi',
+            fileName: selectedFile.name,
+            fileType: selectedFile.type || 'application/octet-stream',
+            content: base64Content,
+            createdAt: new Date().toISOString()
+          });
+
+          toast.success("Template berhasil ditambahkan!", { id: toastId });
+          setIsUploading(false);
+          setIsOpenDocDialog(false);
+          
+          // Reset states
+          setUploadName('');
+          setUploadCategory('Logistik');
+          setUploadDescription('');
+          setSelectedFile(null);
+        } catch (dbErr: any) {
+          console.error("Firestore Upload Error:", dbErr);
+          toast.error("Gagal menyimpan template ke basis data: " + dbErr.message, { id: toastId });
+          setIsUploading(false);
+          handleFirestoreError(dbErr, OperationType.CREATE, 'document_templates');
+        }
+      };
+
+      reader.onerror = () => {
+        throw new Error("Gagal membaca berkas.");
+      };
+
+      reader.readAsDataURL(selectedFile);
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      toast.error("Gagal mengunggah template: " + error.message, { id: toastId });
+      setIsUploading(false);
+    }
+  };
+
+  // Merge static templates and custom templates nicely
+  const formattedStatics = TEMPLATES.map(t => ({
+    id: `static-${t.id}`,
+    isStatic: true,
+    name: t.name,
+    category: t.category,
+    description: t.description,
+    fileName: t.fileName,
+    content: t.content
+  }));
+
+  const formattedCustoms = customTemplates.map(t => ({
+    id: t.id,
+    isStatic: false,
+    name: t.name,
+    category: t.category,
+    description: t.description,
+    fileName: t.fileName,
+    fileType: t.fileType,
+    content: t.content
+  }));
+
+  const allTemplates = [...formattedCustoms, ...formattedStatics];
+
+  const filteredTemplates = allTemplates.filter(t => 
     t.name.toLowerCase().includes(search.toLowerCase()) || 
     t.category.toLowerCase().includes(search.toLowerCase())
   );
@@ -186,43 +409,178 @@ export const DocumentTemplates = () => {
           <h2 className="text-2xl font-black text-slate-800 tracking-tight">Template Dokumen Keuangan</h2>
           <p className="text-sm text-slate-500 font-medium">Download template surat dan dokumen standar keuangan.</p>
         </div>
-        <div className="relative w-full md:w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <Input 
-            placeholder="Cari template..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 rounded-xl"
-          />
+        
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+          {isOwner && (
+            <Dialog open={isOpenDocDialog} onOpenChange={setIsOpenDocDialog}>
+              <DialogTrigger 
+                render={
+                  <Button className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl h-10 font-bold text-xs shadow-md shadow-emerald-950/10 transition-all uppercase tracking-wider flex items-center justify-center gap-2">
+                    <Plus size={16} />
+                    Unggah Template
+                  </Button>
+                }
+              />
+              <DialogContent className="sm:max-w-[500px] rounded-[2rem] p-6 bg-white shadow-2xl border-none">
+                <DialogHeader className="mb-4">
+                  <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-2">
+                    <Upload className="text-emerald-600" size={20} />
+                    Unggah Template Dokumen
+                  </DialogTitle>
+                </DialogHeader>
+                
+                <form onSubmit={handleUploadTemplate} className="space-y-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-600">Nama Template</Label>
+                    <Input 
+                      placeholder="Contoh: Surat Penugasan BAZNAS"
+                      value={uploadName}
+                      onChange={(e) => setUploadName(e.target.value)}
+                      required
+                      className="rounded-xl border-slate-200 h-10 text-sm focus-visible:ring-emerald-500"
+                    />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-600">Kategori</Label>
+                    <Select value={uploadCategory} onValueChange={setUploadCategory}>
+                      <SelectTrigger className="rounded-xl border-slate-200 h-10 text-sm focus-visible:ring-emerald-500">
+                        <SelectValue placeholder="Pilih Kategori" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white border-slate-150 rounded-xl shadow-lg">
+                        <SelectItem value="Logistik">Logistik</SelectItem>
+                        <SelectItem value="Kontrak">Kontrak</SelectItem>
+                        <SelectItem value="Pelaporan">Pelaporan</SelectItem>
+                        <SelectItem value="HR">HR & Kepegawaian</SelectItem>
+                        <SelectItem value="Kesiswaan">Kesiswaan</SelectItem>
+                        <SelectItem value="Lainnya">Lainnya</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <Label className="text-xs font-bold text-slate-600">Deskripsi Singkat</Label>
+                    <Textarea 
+                      placeholder="Jelaskan kegunaan template dokumen ini secara singkat..."
+                      value={uploadDescription}
+                      onChange={(e) => setUploadDescription(e.target.value)}
+                      rows={3}
+                      className="rounded-xl border-slate-200 text-sm focus-visible:ring-emerald-500"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-slate-600">Pilih Berkas (.doc, .docx, .xlsx, .pdf, dll.)</Label>
+                    <div 
+                      onClick={() => document.getElementById('template-file-input')?.click()}
+                      className="border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-2xl p-6 text-center cursor-pointer hover:bg-emerald-50/20 transition-all group"
+                    >
+                      <Input 
+                        id="template-file-input"
+                        type="file"
+                        onChange={handleFileChange}
+                        accept=".doc,.docx,.xls,.xlsx,.pdf,.txt,.rtf,.html,.xml,.csv,.png,.jpg,.jpeg"
+                        className="hidden"
+                      />
+                      <Upload className="mx-auto mb-2 text-slate-400 group-hover:text-emerald-500" size={24} />
+                      {selectedFile ? (
+                        <div className="space-y-1">
+                          <p className="text-xs font-bold text-emerald-750 truncate max-w-full px-2">{selectedFile.name}</p>
+                          <p className="text-[10px] text-slate-500">{(selectedFile.size / 1024).toFixed(1)} KB</p>
+                        </div>
+                      ) : (
+                        <div>
+                          <p className="text-xs font-black text-slate-700">Pilih berkas template</p>
+                          <p className="text-[10px] text-slate-400 mt-1">Ukuran maksimal 1MB per berkas</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-2 justify-end pt-4">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      disabled={isUploading}
+                      onClick={() => setIsOpenDocDialog(false)}
+                      className="rounded-xl text-xs h-10 font-bold"
+                    >
+                      Batal
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={isUploading || !selectedFile}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl h-10 text-xs font-bold px-6 flex items-center gap-2"
+                    >
+                      {isUploading ? 'Sedang Menyimpan...' : 'Simpan Template'}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
+          
+          <div className="relative w-full md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Input 
+              placeholder="Cari template..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 rounded-xl w-full"
+            />
+          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredTemplates.map((template) => (
-          <Card key={template.id} className="rounded-2xl border-slate-100 shadow-sm hover:shadow-md transition-all group">
+          <Card key={template.id} className="rounded-2xl border-slate-100 shadow-sm hover:shadow-md transition-all group overflow-hidden relative bg-white">
             <CardContent className="p-5">
               <div className="flex items-start gap-4">
                 <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-white transition-colors">
                   <FileText size={24} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center justify-between gap-2 mb-1">
                     <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full uppercase tracking-widest leading-none">
                       {template.category}
                     </span>
+                    {!template.isStatic && isOwner && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDeleteTemplate(template.id, template.name)}
+                        className="h-7 w-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg shrink-0 transition-all opacity-0 group-hover:opacity-100"
+                        title="Hapus custom template"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
+                    )}
                   </div>
-                  <h3 className="font-bold text-slate-800 truncate leading-tight">{template.name}</h3>
-                  <p className="text-xs text-slate-500 mt-1 line-clamp-2">{template.description}</p>
+                  <h3 className="font-bold text-slate-800 truncate leading-tight" title={template.name}>{template.name}</h3>
+                  <p className="text-xs text-slate-500 mt-1 line-clamp-2" title={template.description}>{template.description}</p>
                   
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleDownload(template)}
-                    className="w-full mt-4 rounded-xl gap-2 border-slate-200 group-hover:border-primary group-hover:bg-primary/5 transition-all text-[10px] font-black uppercase tracking-widest"
-                  >
-                    <Download size={14} />
-                    Download Template
-                  </Button>
+                  {template.isStatic ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleDownload(template as any)}
+                      className="w-full mt-4 rounded-xl gap-2 border-slate-200 group-hover:border-primary group-hover:bg-primary/5 transition-all text-[10px] font-black uppercase tracking-widest"
+                    >
+                      <Download size={14} />
+                      Download Template
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleDownloadCustom(template)}
+                      className="w-full mt-4 rounded-xl gap-2 border-emerald-250 hover:bg-emerald-50 text-emerald-700 font-bold hover:border-emerald-500 transition-all text-[10px] font-black uppercase tracking-widest"
+                    >
+                      <Download size={14} title={template.fileName} />
+                      Download Template Custom
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>

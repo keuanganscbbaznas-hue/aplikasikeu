@@ -86,6 +86,17 @@ service cloud.firestore {
              (!('description' in data) || data.description is string);
     }
 
+    function isValidTemplate(data) {
+      return data.keys().hasAll(['name', 'category', 'fileName', 'content', 'createdAt']) &&
+             data.name is string && data.name.size() <= 256 &&
+             data.category is string && data.category.size() <= 128 &&
+             data.fileName is string && data.fileName.size() <= 256 &&
+             data.content is string && data.content.size() <= 2000000 &&
+             data.createdAt is string &&
+             (!('description' in data) || (data.description is string && data.description.size() <= 1024)) &&
+             (!('fileType' in data) || (data.fileType is string && data.fileType.size() <= 128));
+    }
+
     function isOnlyOwner() {
       return isSignedIn() && 
              (request.auth.token.email.lower() == "keuanganscbbaznas@gmail.com" || 
@@ -157,6 +168,13 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isOnlyOwner() && isValidGallery(incoming());
       allow update: if isOnlyOwner() && isValidGallery(incoming());
+      allow delete: if isOnlyOwner();
+    }
+
+    match /document_templates/{templateId} {
+      allow read: if true;
+      allow create: if isOnlyOwner() && isValidTemplate(incoming());
+      allow update: if isOnlyOwner() && isValidTemplate(incoming());
       allow delete: if isOnlyOwner();
     }
   }

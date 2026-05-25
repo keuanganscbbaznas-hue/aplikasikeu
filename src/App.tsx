@@ -1437,7 +1437,7 @@ export default function App() {
                               <DialogContent className="max-w-6xl sm:max-w-6xl w-[95vw] h-[90vh] max-h-[90vh] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white flex flex-col">
                                  <ScrollArea className="flex-1 w-full h-full">
                                    <div className="p-6 md:p-12 lg:p-16">
-                                     <DocumentTemplates />
+                                     <DocumentTemplates isOwner={user?.email === OWNER_EMAIL || profile?.email === OWNER_EMAIL} />
                                    </div>
                                  </ScrollArea>
                               </DialogContent>
