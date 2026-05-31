@@ -121,14 +121,20 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
       doc.setFontSize(7.5);
       doc.setTextColor(30, 41, 59); // slate-800
       
-      // Compute the exact vertical center of the sidebar box
       const centerY = startY + (height / 2);
+      const textWidth = doc.getTextWidth(text);
+      const textHeight = doc.getFontSize() * 0.352778; // font size to mm approx
       
-      // X = 21.0 is the exact horizontal center of the sidebar column (which spans from X=15 to X=27)
-      // Angle 90 rotates the text to run vertically bottom-to-top
-      // align: 'center' centers the text along its own line length
-      // baseline: 'middle' centers the character heights horizontally inside the 12mm-wide column
-      doc.text(text, 21.0, centerY, { angle: 90, align: 'center', baseline: 'middle' });
+      // X = 21 is the horizontal center of the sidebar column (15 to 27)
+      // angle: 270 (read top to bottom). Text is drawn to the right of the baseline.
+      // So to center it horizontally, we start slightly left of the center by half the text height.
+      const startX = 21 - (textHeight / 2) + 0.8; // +0.8 mm slight visual adjustment for 'bold' font
+      
+      // Since it reads top to bottom, the text advances downwards.
+      // To center it vertically, start drawing from: centerY - half width
+      const startYText = centerY - (textWidth / 2);
+      
+      doc.text(text, startX, startYText, { angle: 270 });
       doc.restoreGraphicsState();
     };
 
