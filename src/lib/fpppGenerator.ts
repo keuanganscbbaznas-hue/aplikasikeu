@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 // Helper to convert date
@@ -105,11 +106,11 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     const drawSidebarText = (text: string, startY: number, height: number) => {
       doc.saveGraphicsState();
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
+      doc.setFontSize(7.5);
       doc.setTextColor(30, 41, 59); // slate-800
       // We compute the center of the box for the vertical text
       const centerY = startY + (height / 2);
-      doc.text(text, 21, centerY, { angle: 270, align: 'center' });
+      doc.text(text, 22.2, centerY, { angle: 270, align: 'center' });
       doc.restoreGraphicsState();
     };
 
@@ -121,13 +122,19 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     
     // Load & draw SCB Logo (left)
     try {
-      const scbLogo = await loadImage("https://cendekiabaznas.sch.id/wp-content/uploads/2021/04/Logo-SCB-New.png");
+      const scbLogo = await loadImage("/api/logo/scb");
       doc.addImage(scbLogo, 'PNG', 18, 11.5, 14, 13);
     } catch (e) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(16, 124, 65); // emerald green
-      doc.text("SCB", 25, 19, { align: "center" });
+      console.warn("Retrying main SCB Logo URL direct load:", e);
+      try {
+        const scbLogo = await loadImage("https://cendekiabaznas.sch.id/wp-content/uploads/2021/04/Logo-SCB-New.png");
+        doc.addImage(scbLogo, 'PNG', 18, 11.5, 14, 13);
+      } catch (err2) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(16, 124, 65); // emerald green
+        doc.text("SCB", 25, 19, { align: "center" });
+      }
     }
     
     // Center Title
@@ -138,13 +145,19 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     
     // Load & draw BAZNAS Logo (right)
     try {
-      const baznasLogo = await loadImage("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Logo_BAZNAS.png/800px-Logo_BAZNAS.png");
+      const baznasLogo = await loadImage("/api/logo/baznas");
       doc.addImage(baznasLogo, 'PNG', 177, 11, 16, 14);
     } catch (e) {
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(180, 140, 20); // gold
-      doc.text("BAZNAS", 185, 19, { align: "center" });
+      console.warn("Retrying main BAZNAS Logo URL direct load:", e);
+      try {
+        const baznasLogo = await loadImage("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Logo_BAZNAS.png/800px-Logo_BAZNAS.png");
+        doc.addImage(baznasLogo, 'PNG', 177, 11, 16, 14);
+      } catch (err2) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(180, 140, 20); // gold
+        doc.text("BAZNAS", 185, 19, { align: "center" });
+      }
     }
 
     // Restore drawing text color
@@ -169,7 +182,7 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     doc.rect(47, 39, 55, 6);
     
     const submitDateStr = (!isEmpty && submission?.createdAt) 
-      ? safeFormatDate(submission.createdAt, 'dd MMMM yyyy', { locale: { code: 'id' } as any })
+      ? safeFormatDate(submission.createdAt, 'dd MMMM yyyy', { locale: id })
       : '';
     const submitDivisiStr = (!isEmpty && submission?.sumberRekening) ? `Divisi Keuangan ${submission.sumberRekening}` : '';
     
@@ -487,7 +500,7 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
 
     const documentNo = (!isEmpty && submission?.noDokumen) ? submission.noDokumen : "";
     const payDateStr = (!isEmpty && submission?.bookedAt) 
-      ? safeFormatDate(submission.bookedAt, 'dd MMMM yyyy', { locale: { code: 'id' } as any })
+      ? safeFormatDate(submission.bookedAt, 'dd MMMM yyyy', { locale: id })
       : "";
 
     doc.setFont("helvetica", "bold");

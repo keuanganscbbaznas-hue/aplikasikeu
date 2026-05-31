@@ -50,6 +50,55 @@ async function startServer() {
     res.json({ ready: hasCreds, serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || null });
   });
 
+  let scbLogoCache: Buffer | null = null;
+  let baznasLogoCache: Buffer | null = null;
+
+  app.get("/api/logo/scb", async (req, res) => {
+    try {
+      if (scbLogoCache) {
+        res.setHeader("Content-Type", "image/png");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        return res.send(scbLogoCache);
+      }
+      const response = await fetch("https://cendekiabaznas.sch.id/wp-content/uploads/2021/04/Logo-SCB-New.png");
+      if (response.ok) {
+        const arrayBuffer = await response.arrayBuffer();
+        scbLogoCache = Buffer.from(arrayBuffer);
+        res.setHeader("Content-Type", "image/png");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        return res.send(scbLogoCache);
+      } else {
+        throw new Error(`SCB Logo remote fetch failed with status ${response.status}`);
+      }
+    } catch (e: any) {
+      console.error("Error proxying SCB Logo:", e);
+      res.status(500).send("Error fetching SCB Logo: " + e.message);
+    }
+  });
+
+  app.get("/api/logo/baznas", async (req, res) => {
+    try {
+      if (baznasLogoCache) {
+        res.setHeader("Content-Type", "image/png");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        return res.send(baznasLogoCache);
+      }
+      const response = await fetch("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Logo_BAZNAS.png/800px-Logo_BAZNAS.png");
+      if (response.ok) {
+        const arrayBuffer = await response.arrayBuffer();
+        baznasLogoCache = Buffer.from(arrayBuffer);
+        res.setHeader("Content-Type", "image/png");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        return res.send(baznasLogoCache);
+      } else {
+        throw new Error(`BAZNAS Logo remote fetch failed with status ${response.status}`);
+      }
+    } catch (e: any) {
+      console.error("Error proxying BAZNAS Logo:", e);
+      res.status(500).send("Error fetching BAZNAS Logo: " + e.message);
+    }
+  });
+
   app.post("/api/drive/upload", async (req, res) => {
     try {
       const auth = getAuthClient();
