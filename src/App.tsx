@@ -55,6 +55,7 @@ import { InfoKeuanganSection } from './components/InfoKeuanganSection';
 import SignaturePad from 'signature_pad';
 import { jsPDF } from 'jspdf';
 import { generateFPPP } from './lib/fpppGenerator';
+import { FPPPGeneratorSettings } from './components/FPPPGeneratorSettings';
 import { DonationConfirmation } from './components/administrasi/DonationConfirmation';
 import { DocumentTemplates } from './components/administrasi/DocumentTemplates';
 import { 
@@ -512,6 +513,7 @@ export default function App() {
   const [submissionLimit, setSubmissionLimit] = useState<number>(150);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [logoURL, setLogoURL] = useState<string>('/logo.png');
+  const [fpppConfig, setFpppConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
 
@@ -702,6 +704,30 @@ export default function App() {
     const unsub = onSnapshot(doc(db, 'config', 'app'), (doc) => {
       if (doc.exists()) {
         setLogoURL(doc.data().logoURL);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'config', 'fppp'), (docSnap) => {
+      if (docSnap.exists()) {
+        setFpppConfig(docSnap.data());
+      } else {
+        setFpppConfig({
+          verifikatorName: "M. Roni",
+          managerName: "M. Roni",
+          kepalaName: "Ahmad Kamal",
+          bankName: "BANK SYARIAH INDONESIA (BSI)",
+          budgetName: "Anggaran SCB BAZNAS",
+          budgetSaldo: "Sesuai RKAT",
+          useDefaultRoniSign: false,
+          useDefaultKamalSign: false,
+          useDefaultKasirSign: false,
+          roniDefaultSign: "",
+          kamalDefaultSign: "",
+          kasirDefaultSign: "",
+        });
       }
     });
     return () => unsub();
@@ -1865,7 +1891,7 @@ export default function App() {
                     />
                     
                     {user?.email === 'keuanganscbbaznas@gmail.com' && (
-                      <AppConfigSection user={user} profile={profile} />
+                      <AppConfigSection user={user} profile={profile} fpppConfig={fpppConfig} />
                     )}
                   </div>
                 )}
@@ -3221,7 +3247,8 @@ function SubmissionDetailView({
   onEdit, 
   onBukukan,
   userRole,
-  currentUser
+  currentUser,
+  fpppConfig
 }: {
   submission: Submission,
   stages: readonly string[],
@@ -3232,7 +3259,8 @@ function SubmissionDetailView({
   onEdit: (s: Submission) => void,
   onBukukan?: (s: Submission, unit: 'Kas Tunai SMP' | 'Kas Tunai SMA' | 'Kas Bank SMP' | 'Kas Bank SMA') => void,
   userRole: UserRole,
-  currentUser: User | null
+  currentUser: User | null,
+  fpppConfig?: any
 }) {
   const isOwner = currentUser?.email === OWNER_EMAIL;
   const isAdmin = userRole === 'admin' || (currentUser?.email ? ADMIN_EMAILS.includes(currentUser.email) : false);
@@ -3246,6 +3274,33 @@ function SubmissionDetailView({
   const [activeSigner, setActiveSigner] = useState<'roni' | 'kamal' | null>(null);
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
   const [isBukukanMenuOpen, setIsBukukanMenuOpen] = useState(false);
+  const [fpppConfigLocal, setFpppConfigLocal] = useState<any>(null);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'config', 'fppp'), (docSnap) => {
+      if (docSnap.exists()) {
+        setFpppConfigLocal(docSnap.data());
+      } else {
+        setFpppConfigLocal({
+          verifikatorName: "M. Roni",
+          managerName: "M. Roni",
+          kepalaName: "Ahmad Kamal",
+          bankName: "BANK SYARIAH INDONESIA (BSI)",
+          budgetName: "Anggaran SCB BAZNAS",
+          budgetSaldo: "Sesuai RKAT",
+          useDefaultRoniSign: false,
+          useDefaultKamalSign: false,
+          useDefaultKasirSign: false,
+          roniDefaultSign: "",
+          kamalDefaultSign: "",
+          kasirDefaultSign: "",
+        });
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const resolvedFpppConfig = fpppConfig || fpppConfigLocal;
 
   // Generate a full chronology from stage 0 up to current stage index
   const fullChronology = useMemo(() => {
@@ -3328,7 +3383,7 @@ function SubmissionDetailView({
   const isTransferred = transferredIndex !== -1 && submission.currentStageIndex >= transferredIndex;
 
   const downloadPDF = () => {
-    generateFPPP(submission, false);
+    generateFPPP(submission, false, resolvedFpppConfig);
   };
 
   return (
@@ -3402,14 +3457,14 @@ function SubmissionDetailView({
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                     <Button 
-                      onClick={() => generateFPPP(submission, false)}
+                      onClick={() => generateFPPP(submission, false, resolvedFpppConfig)}
                       className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl h-11 text-[11px] font-black uppercase tracking-wider transition-all shadow-lg shadow-emerald-600/10"
                     >
                       <FileText size={16} />
                       Cetak FPPP (Signed)
                     </Button>
                     <Button 
-                      onClick={() => generateFPPP(null, true)}
+                      onClick={() => generateFPPP(null, true, resolvedFpppConfig)}
                       variant="outline"
                       className="flex items-center justify-center gap-2 border-slate-200 hover:bg-slate-50 text-slate-700 rounded-2xl h-11 text-[10px] font-black uppercase tracking-wider transition-all"
                     >
@@ -4094,7 +4149,7 @@ const AdminSection = ({
   );
 };
 
-function AppConfigSection({ user, profile }: { user: User | null, profile: UserProfile | null }) {
+function AppConfigSection({ user, profile, fpppConfig }: { user: User | null, profile: UserProfile | null, fpppConfig: any }) {
   return (
     <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm mt-8">
       <div className="flex items-center gap-4 mb-6">
@@ -4112,6 +4167,7 @@ function AppConfigSection({ user, profile }: { user: User | null, profile: UserP
           <TabsTrigger value="tampilan" className="flex-1 rounded-lg text-xs font-bold gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm"><Palette size={14}/> Background</TabsTrigger>
           <TabsTrigger value="database" className="flex-1 rounded-lg text-xs font-bold gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm"><Database size={14}/> Database</TabsTrigger>
           <TabsTrigger value="akses" className="flex-1 rounded-lg text-xs font-bold gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm"><Lock size={14}/> Hak Akses</TabsTrigger>
+          <TabsTrigger value="fppp" className="flex-1 rounded-lg text-xs font-bold gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm"><FileText size={14}/> FPPP Generator</TabsTrigger>
           <TabsTrigger value="lainnya" className="flex-1 rounded-lg text-xs font-bold gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm"><Settings size={14}/> Lainnya</TabsTrigger>
         </TabsList>
 
@@ -4194,6 +4250,10 @@ function AppConfigSection({ user, profile }: { user: User | null, profile: UserP
            </div>
         </TabsContent>
         
+        <TabsContent value="fppp">
+          <FPPPGeneratorSettings fpppConfig={fpppConfig} />
+        </TabsContent>
+
         <TabsContent value="lainnya">
            <div className="space-y-4 flex flex-col items-start gap-2">
                <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pengaturan Lainnya</Label>

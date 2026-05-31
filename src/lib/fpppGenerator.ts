@@ -90,7 +90,7 @@ const loadImage = (url: string): Promise<HTMLImageElement> => {
   });
 };
 
-export async function generateFPPP(submission: any | null, isEmpty: boolean = false) {
+export async function generateFPPP(submission: any | null, isEmpty: boolean = false, config?: any) {
   const toastId = toast.loading(isEmpty ? "Menyiapkan template FPPP kosong..." : "Menyiapkan formulir FPPP signed...");
   
   try {
@@ -266,7 +266,7 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
       doc.setFont("helvetica", "bold");
       
       // Parse Bank account info if found or default to "Transfer Bank" if transfer
-      let bankName = "BANK SYARIAH INDONESIA (BSI)";
+      let bankName = config?.bankName || "BANK SYARIAH INDONESIA (BSI)";
       let norek = "-";
       let atasNama = submission.picName || "Bendahara SCB";
       
@@ -361,8 +361,8 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     if (!isEmpty && submission) {
       doc.setFont("helvetica", "bold");
       doc.text(submission.kodeBudget || "-", 171, 127);
-      doc.text("Anggaran SCB BAZNAS", 171, 134);
-      doc.text("Sesuai RKAT", 171, 141);
+      doc.text(config?.budgetName || "Anggaran SCB BAZNAS", 171, 134);
+      doc.text(config?.budgetSaldo || "Sesuai RKAT", 171, 141);
       doc.setFont("helvetica", "normal");
     }
 
@@ -438,50 +438,59 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     doc.setFont("helvetica", "normal");
 
     // Signatures injection
-    if (!isEmpty && submission?.signatures) {
-      // If roni signed (Verifikator / Manager Operasional)
-      if (submission.signatures.roni) {
+    if (!isEmpty) {
+      // 1. Verifikator & Manager Operasional signature
+      const roniSignData = (submission?.signatures?.roni?.signature) || (config?.useDefaultRoniSign ? config?.roniDefaultSign : null);
+      if (roniSignData) {
+        // Draw Verifikator signature
         try {
-          doc.addImage(submission.signatures.roni.signature, 'PNG', 75, 192, 32, 11);
+          doc.addImage(roniSignData, 'PNG', 75, 192, 32, 11);
           doc.setFontSize(7.5);
           doc.setFont("helvetica", "bold");
-          doc.text("Ttd digital: M. Roni", 115, 196);
+          doc.text(`Ttd digital: ${config?.verifikatorName || "M. Roni"}`, 115, 196);
           doc.setFont("helvetica", "normal");
-          const roniDate = safeFormatDate(submission.signatures.roni.timestamp, 'dd/MM/yyyy HH:mm');
+          const roniDate = (submission?.signatures?.roni?.timestamp)
+            ? safeFormatDate(submission.signatures.roni.timestamp, 'dd/MM/yyyy HH:mm')
+            : safeFormatDate(new Date(), 'dd/MM/yyyy HH:mm');
           doc.text(`Waktu: ${roniDate}`, 115, 200);
         } catch (err) {
           console.error("Error drawing Roni verifikator signature:", err);
-          doc.text("Verified (M. Roni)", 75, 198);
+          doc.text(`Verified (${config?.verifikatorName || "M. Roni"})`, 75, 198);
         }
 
-        // Also copy to Manager Operasional as Roni is commonly verifier + manager
+        // Draw Manager Operasional signature
         try {
-          doc.addImage(submission.signatures.roni.signature, 'PNG', 75, 207, 32, 11);
+          doc.addImage(roniSignData, 'PNG', 75, 207, 32, 11);
           doc.setFontSize(7.5);
           doc.setFont("helvetica", "bold");
-          doc.text("Otorisasi digital: M. Roni", 115, 212);
+          doc.text(`Otorisasi digital: ${config?.managerName || "M. Roni"}`, 115, 212);
           doc.setFont("helvetica", "normal");
-          const roniDate = safeFormatDate(submission.signatures.roni.timestamp, 'dd/MM/yyyy HH:mm');
+          const roniDate = (submission?.signatures?.roni?.timestamp)
+            ? safeFormatDate(submission.signatures.roni.timestamp, 'dd/MM/yyyy HH:mm')
+            : safeFormatDate(new Date(), 'dd/MM/yyyy HH:mm');
           doc.text(`Waktu: ${roniDate}`, 115, 216);
         } catch (err) {
           console.error("Error drawing Roni manager signature:", err);
-          doc.text("Approved (M. Roni)", 75, 214);
+          doc.text(`Approved (${config?.managerName || "M. Roni"})`, 75, 214);
         }
       }
 
-      // If kamal signed (Kepala SCB / Kepala Sekolah)
-      if (submission.signatures.kamal) {
+      // 2. Kepala SCB signature
+      const kamalSignData = (submission?.signatures?.kamal?.signature) || (config?.useDefaultKamalSign ? config?.kamalDefaultSign : null);
+      if (kamalSignData) {
         try {
-          doc.addImage(submission.signatures.kamal.signature, 'PNG', 75, 222, 32, 11);
+          doc.addImage(kamalSignData, 'PNG', 75, 222, 32, 11);
           doc.setFontSize(7.5);
           doc.setFont("helvetica", "bold");
-          doc.text("Disetujui: Ahmad Kamal (Kepala)", 115, 227);
+          doc.text(`Disetujui: ${config?.kepalaName || "Ahmad Kamal"} (Kepala)`, 115, 227);
           doc.setFont("helvetica", "normal");
-          const kamalDate = safeFormatDate(submission.signatures.kamal.timestamp, 'dd/MM/yyyy HH:mm');
+          const kamalDate = (submission?.signatures?.kamal?.timestamp)
+            ? safeFormatDate(submission.signatures.kamal.timestamp, 'dd/MM/yyyy HH:mm')
+            : safeFormatDate(new Date(), 'dd/MM/yyyy HH:mm');
           doc.text(`Waktu: ${kamalDate}`, 115, 231);
         } catch (err) {
           console.error("Error drawing Kamal signature:", err);
-          doc.text("Approved (Ahmad Kamal)", 75, 229);
+          doc.text(`Approved (${config?.kepalaName || "Ahmad Kamal"})`, 75, 229);
         }
       }
     }
@@ -518,13 +527,32 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     doc.line(105, 245, 195, 245); // Line separating Kasir header from sign block
     doc.text("Kasir", 150, 243, { align: 'center' });
     
+    const kasirSignData = config?.kasirDefaultSign;
     if (!isEmpty && submission?.isBooked) {
+      if (kasirSignData && config?.useDefaultKasirSign) {
+        try {
+          doc.addImage(kasirSignData, 'PNG', 135, 246, 30, 9);
+        } catch (err) {
+          console.error("Error drawing Kasir signature:", err);
+        }
+      }
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
-      doc.text("LUNAS & DIBUKUKAN", 150, 251, { align: 'center' });
+      doc.text("LUNAS & DIBUKUKAN", 150, 248, { align: 'center' });
       doc.setFont("helvetica", "normal");
       const bookDate = submission.bookedAt ? safeFormatDate(submission.bookedAt, 'dd/MM/yy') : "";
-      doc.text(`Tgl: ${bookDate}`, 150, 255, { align: 'center' });
+      doc.text(`Tgl: ${bookDate}`, 150, 256, { align: 'center' });
+    } else if (kasirSignData && config?.useDefaultKasirSign && !isEmpty) {
+      // Draw kasir signature anyway since configured to always generate
+      try {
+        doc.addImage(kasirSignData, 'PNG', 135, 246, 30, 9);
+      } catch (err) {
+        console.error("Error drawing Kasir signature:", err);
+      }
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.text("TERBAYARKAN LUNAS", 150, 255, { align: 'center' });
+      doc.setFont("helvetica", "normal");
     } else {
       doc.setFontSize(7);
       doc.text("(Tanda tangan Kasir di sini)", 150, 253, { align: 'center' });
