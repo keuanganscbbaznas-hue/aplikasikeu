@@ -1246,11 +1246,11 @@ export default function App() {
 
   const filteredSubmissions = useMemo(() => {
     return submissions.filter(sub => {
-      const matchesTitle = sub.title.toLowerCase().includes(deferredSearchQuery.toLowerCase());
+      const matchesTitle = (sub.title || '').toLowerCase().includes(deferredSearchQuery.toLowerCase());
       const matchesPIC = deferredFilterPIC ? (sub.picName && sub.picName.toLowerCase().includes(deferredFilterPIC.toLowerCase())) : true;
       const matchesType = filterType === 'all' ? true : sub.type === filterType;
       
-      const amount = sub.amount;
+      const amount = sub.amount || 0;
       const matchesMin = minAmount ? amount >= Number(minAmount) : true;
       const matchesMax = maxAmount ? amount <= Number(maxAmount) : true;
 

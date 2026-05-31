@@ -385,14 +385,16 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     doc.text("Catatan :", 107, 156);
     doc.setFont("helvetica", "normal");
 
-    const creatorName = (!isEmpty && submission?.submittedByName) ? submission.submittedByName : "";
-    const picNameVal = (!isEmpty && submission?.picName) ? submission.picName : "Ka. Divisi / Keuangan";
-
     doc.setFontSize(8);
+    
+    // Left side: PIC Name
+    const creatorName = (!isEmpty && submission?.picName) ? submission.picName : "Nama PIC";
     doc.text(creatorName, 46.5, 178, { align: 'center' });
     if (creatorName) doc.line(32, 179, 61, 179);
     
-    doc.text(picNameVal, 85.5, 178, { align: 'center' });
+    // Right side: Head Dept
+    const headDeptVal = (!isEmpty && config?.headDeptName) ? config.headDeptName : "Ust Siswadi";
+    doc.text(headDeptVal, 85.5, 178, { align: 'center' });
     doc.line(71, 179, 100, 179);
 
     // Fill in the notes/description in Notes section
@@ -447,7 +449,7 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
           doc.addImage(roniSignData, 'PNG', 75, 192, 32, 11);
           doc.setFontSize(7.5);
           doc.setFont("helvetica", "bold");
-          doc.text(`Ttd digital: ${config?.verifikatorName || "M. Roni"}`, 115, 196);
+          doc.text(`Ttd digital: ${config?.verifikatorName || "Akuntan SCB"}`, 115, 196);
           doc.setFont("helvetica", "normal");
           const roniDate = (submission?.signatures?.roni?.timestamp)
             ? safeFormatDate(submission.signatures.roni.timestamp, 'dd/MM/yyyy HH:mm')
@@ -455,7 +457,7 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
           doc.text(`Waktu: ${roniDate}`, 115, 200);
         } catch (err) {
           console.error("Error drawing Roni verifikator signature:", err);
-          doc.text(`Verified (${config?.verifikatorName || "M. Roni"})`, 75, 198);
+          doc.text(`Verified (${config?.verifikatorName || "Akuntan SCB"})`, 75, 198);
         }
 
         // Draw Manager Operasional signature
@@ -514,9 +516,18 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     doc.rect(54, 250.5, 47, 5);
 
     const documentNo = (!isEmpty && submission?.noDokumen) ? submission.noDokumen : "";
-    const payDateStr = (!isEmpty && submission?.bookedAt) 
-      ? safeFormatDate(submission.bookedAt, 'dd MMMM yyyy', { locale: id })
-      : "";
+    
+    // Find the date of the "Sudah di transfer" stage for Tanggal Transaksi
+    const docTferStage = (!isEmpty && submission?.history) ? submission.history.find((h: any) => h.stage && h.stage.toLowerCase().includes("sudah di transfer")) : null;
+    
+    let payDateStr = "";
+    if (docTferStage && docTferStage.timestamp) {
+        payDateStr = safeFormatDate(docTferStage.timestamp, 'dd MMMM yyyy', { locale: id });
+    } else if (!isEmpty && submission?.bookedAt) {
+        payDateStr = safeFormatDate(submission.bookedAt, 'dd MMMM yyyy', { locale: id });
+    } else if (!isEmpty && submission?.updatedAt) {
+        payDateStr = safeFormatDate(submission.updatedAt, 'dd MMMM yyyy', { locale: id });
+    }
 
     doc.setFont("helvetica", "bold");
     doc.text(documentNo, 56, 246);
@@ -527,32 +538,35 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     doc.line(105, 245, 195, 245); // Line separating Kasir header from sign block
     doc.text("Kasir", 150, 243, { align: 'center' });
     
+    // Custom logic to always stamp Kasir section if it's already transferred or booked
     const kasirSignData = config?.kasirDefaultSign;
-    if (!isEmpty && submission?.isBooked) {
-      if (kasirSignData && config?.useDefaultKasirSign) {
-        try {
-          doc.addImage(kasirSignData, 'PNG', 135, 246, 30, 9);
-        } catch (err) {
-          console.error("Error drawing Kasir signature:", err);
+    const hasBeenTransferred = docTferStage || submission?.isBooked || (!isEmpty && config?.useDefaultKasirSign);
+    
+    if (hasBeenTransferred) {
+        if (kasirSignData && config?.useDefaultKasirSign && !isEmpty) {
+            try {
+              doc.addImage(kasirSignData, 'PNG', 135, 246, 30, 9);
+            } catch (err) {
+              console.error("Error drawing Kasir signature:", err);
+            }
         }
-      }
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.text("LUNAS & DIBUKUKAN", 150, 248, { align: 'center' });
-      doc.setFont("helvetica", "normal");
-      const bookDate = submission.bookedAt ? safeFormatDate(submission.bookedAt, 'dd/MM/yy') : "";
-      doc.text(`Tgl: ${bookDate}`, 150, 256, { align: 'center' });
-    } else if (kasirSignData && config?.useDefaultKasirSign && !isEmpty) {
-      // Draw kasir signature anyway since configured to always generate
-      try {
-        doc.addImage(kasirSignData, 'PNG', 135, 246, 30, 9);
-      } catch (err) {
-        console.error("Error drawing Kasir signature:", err);
-      }
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "bold");
-      doc.text("TERBAYARKAN LUNAS", 150, 255, { align: 'center' });
-      doc.setFont("helvetica", "normal");
+        
+        // Red color for stamp
+        doc.saveGraphicsState();
+        doc.setDrawColor(220, 38, 38);
+        doc.setTextColor(220, 38, 38);
+        doc.setLineWidth(0.5);
+        doc.rect(135, 246, 30, 8);
+        doc.setFontSize(10);
+        doc.setFont("courier", "bold");
+        doc.text("LUNAS", 150, 251.5, { align: "center" });
+        doc.restoreGraphicsState();
+
+        // Print name underneath
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "bold");
+        doc.text("Nur Asiah", 150, 258, { align: 'center' });
+        doc.setFont("helvetica", "normal");
     } else {
       doc.setFontSize(7);
       doc.text("(Tanda tangan Kasir di sini)", 150, 253, { align: 'center' });

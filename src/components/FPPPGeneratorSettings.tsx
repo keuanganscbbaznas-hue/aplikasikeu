@@ -30,6 +30,7 @@ interface FPPPConfig {
   bankName: string;
   budgetName: string;
   budgetSaldo: string;
+  headDeptName?: string;
   useDefaultRoniSign: boolean;
   useDefaultKamalSign: boolean;
   useDefaultKasirSign: boolean;
@@ -45,12 +46,13 @@ interface FPPPGeneratorSettingsProps {
 
 export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGeneratorSettingsProps) {
   // Config state
-  const [verifikatorName, setVerifikatorName] = useState('M. Roni');
+  const [verifikatorName, setVerifikatorName] = useState('Akuntan SCB');
   const [managerName, setManagerName] = useState('M. Roni');
   const [kepalaName, setKepalaName] = useState('Ahmad Kamal');
   const [bankName, setBankName] = useState('BANK SYARIAH INDONESIA (BSI)');
   const [budgetName, setBudgetName] = useState('Anggaran SCB BAZNAS');
   const [budgetSaldo, setBudgetSaldo] = useState('Sesuai RKAT');
+  const [headDeptName, setHeadDeptName] = useState('Ust Siswadi');
   
   const [useDefaultRoniSign, setUseDefaultRoniSign] = useState(false);
   const [useDefaultKamalSign, setUseDefaultKamalSign] = useState(false);
@@ -73,12 +75,13 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
   // Sync state whenever fpppConfig from parent loads/re-reads
   useEffect(() => {
     if (fpppConfig) {
-      setVerifikatorName(fpppConfig.verifikatorName || 'M. Roni');
+      setVerifikatorName(fpppConfig.verifikatorName || 'Akuntan SCB');
       setManagerName(fpppConfig.managerName || 'M. Roni');
       setKepalaName(fpppConfig.kepalaName || 'Ahmad Kamal');
       setBankName(fpppConfig.bankName || 'BANK SYARIAH INDONESIA (BSI)');
       setBudgetName(fpppConfig.budgetName || 'Anggaran SCB BAZNAS');
       setBudgetSaldo(fpppConfig.budgetSaldo || 'Sesuai RKAT');
+      setHeadDeptName(fpppConfig.headDeptName || 'Ust Siswadi');
       
       setUseDefaultRoniSign(!!fpppConfig.useDefaultRoniSign);
       setUseDefaultKamalSign(!!fpppConfig.useDefaultKamalSign);
@@ -102,6 +105,7 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
         bankName,
         budgetName,
         budgetSaldo,
+        headDeptName,
         useDefaultRoniSign,
         useDefaultKamalSign,
         useDefaultKasirSign,
@@ -344,6 +348,20 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
               </div>
 
               <Separator className="my-2" />
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-500">Nama Head Dept Default</Label>
+                <Select value={headDeptName} onValueChange={setHeadDeptName}>
+                  <SelectTrigger className="w-full text-xs h-9 rounded-xl font-medium">
+                    <SelectValue placeholder="Pilih Head Dept" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Ust Siswadi" className="text-xs">Ust Siswadi</SelectItem>
+                    <SelectItem value="Ust Helmi" className="text-xs">Ust Helmi</SelectItem>
+                    <SelectItem value="Ust Roni" className="text-xs">Ust Roni</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-500">Nama Bank Tujuan Default</Label>
