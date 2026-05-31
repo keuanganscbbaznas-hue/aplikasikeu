@@ -60,7 +60,11 @@ async function startServer() {
         res.setHeader("Cache-Control", "public, max-age=86400");
         return res.send(scbLogoCache);
       }
-      const response = await fetch("https://cendekiabaznas.sch.id/wp-content/uploads/2021/04/Logo-SCB-New.png");
+      const response = await fetch("https://neoschool.oss-ap-southeast-5.aliyuncs.com/scb/core/organizations/scb-logo-1710220971.png", {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+        }
+      });
       if (response.ok) {
         const arrayBuffer = await response.arrayBuffer();
         scbLogoCache = Buffer.from(arrayBuffer);
@@ -83,7 +87,11 @@ async function startServer() {
         res.setHeader("Cache-Control", "public, max-age=86400");
         return res.send(baznasLogoCache);
       }
-      const response = await fetch("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Logo_BAZNAS.png/800px-Logo_BAZNAS.png");
+      const response = await fetch("https://baznas.go.id/assets/images/logo_baznas_mobile.png", {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36'
+        }
+      });
       if (response.ok) {
         const arrayBuffer = await response.arrayBuffer();
         baznasLogoCache = Buffer.from(arrayBuffer);

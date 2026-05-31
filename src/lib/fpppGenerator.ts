@@ -110,7 +110,7 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
       doc.setTextColor(30, 41, 59); // slate-800
       // We compute the center of the box for the vertical text
       const centerY = startY + (height / 2);
-      doc.text(text, 22.2, centerY, { angle: 270, align: 'center' });
+      doc.text(text, 21.0, centerY, { angle: 270, align: 'center', baseline: 'middle' });
       doc.restoreGraphicsState();
     };
 
@@ -127,7 +127,7 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     } catch (e) {
       console.warn("Retrying main SCB Logo URL direct load:", e);
       try {
-        const scbLogo = await loadImage("https://cendekiabaznas.sch.id/wp-content/uploads/2021/04/Logo-SCB-New.png");
+        const scbLogo = await loadImage("https://neoschool.oss-ap-southeast-5.aliyuncs.com/scb/core/organizations/scb-logo-1710220971.png");
         doc.addImage(scbLogo, 'PNG', 18, 11.5, 14, 13);
       } catch (err2) {
         doc.setFont("helvetica", "bold");
@@ -150,7 +150,7 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     } catch (e) {
       console.warn("Retrying main BAZNAS Logo URL direct load:", e);
       try {
-        const baznasLogo = await loadImage("https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Logo_BAZNAS.png/800px-Logo_BAZNAS.png");
+        const baznasLogo = await loadImage("https://baznas.go.id/assets/images/logo_baznas_mobile.png");
         doc.addImage(baznasLogo, 'PNG', 177, 11, 16, 14);
       } catch (err2) {
         doc.setFont("helvetica", "bold");
