@@ -73,10 +73,10 @@ const loadImage = (url: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    // 1.5 seconds load timeout for extreme resilience
+    // 5 seconds load timeout for extreme resilience
     const timer = setTimeout(() => {
       reject(new Error("Image load timeout"));
-    }, 1500);
+    }, 5000);
 
     img.onload = () => {
       clearTimeout(timer);
@@ -87,6 +87,18 @@ const loadImage = (url: string): Promise<HTMLImageElement> => {
       reject(e);
     };
     img.src = url;
+  });
+};
+
+const loadBase64Image = async (url: string): Promise<string> => {
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) throw new Error("Network response was not ok");
+  const blob = await response.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
   });
 };
 
@@ -128,13 +140,13 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     
     // Load & draw SCB Logo (left)
     try {
-      const scbLogo = await loadImage("/api/logo/scb");
-      doc.addImage(scbLogo, 'PNG', 18, 11.5, 14, 13);
+      const scbBase64 = await loadBase64Image("/api/logo/scb");
+      doc.addImage(scbBase64, 'PNG', 18, 11.5, 14, 13);
     } catch (e) {
       console.warn("Retrying main SCB Logo URL direct load:", e);
       try {
-        const scbLogo = await loadImage("https://neoschool.oss-ap-southeast-5.aliyuncs.com/scb/core/organizations/scb-logo-1710220971.png");
-        doc.addImage(scbLogo, 'PNG', 18, 11.5, 14, 13);
+        const scbBase64 = await loadBase64Image("https://neoschool.oss-ap-southeast-5.aliyuncs.com/scb/core/organizations/scb-logo-1710220971.png");
+        doc.addImage(scbBase64, 'PNG', 18, 11.5, 14, 13);
       } catch (err2) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
@@ -151,13 +163,13 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     
     // Load & draw BAZNAS Logo (right)
     try {
-      const baznasLogo = await loadImage("/api/logo/baznas");
-      doc.addImage(baznasLogo, 'PNG', 177, 11, 16, 14);
+      const baznasBase64 = await loadBase64Image("/api/logo/baznas");
+      doc.addImage(baznasBase64, 'PNG', 177, 11, 16, 14);
     } catch (e) {
       console.warn("Retrying main BAZNAS Logo URL direct load:", e);
       try {
-        const baznasLogo = await loadImage("https://baznas.go.id/assets/images/logo_baznas_mobile.png");
-        doc.addImage(baznasLogo, 'PNG', 177, 11, 16, 14);
+        const baznasBase64 = await loadBase64Image("https://baznas.go.id/assets/images/logo_baznas_mobile.png");
+        doc.addImage(baznasBase64, 'PNG', 177, 11, 16, 14);
       } catch (err2) {
         doc.setFont("helvetica", "bold");
         doc.setFontSize(8);
@@ -441,26 +453,26 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
 
     // Signatures injection
     if (!isEmpty) {
-      // 1. Verifikator & Manager Operasional signature
-      const roniSignData = (submission?.signatures?.roni?.signature) || (config?.useDefaultRoniSign ? config?.roniDefaultSign : null);
-      if (roniSignData) {
-        // Draw Verifikator signature
+      // 1A. Verifikator (Akuntan SCB) signature
+      const akuntanSignData = config?.useDefaultAkuntanSign ? config?.akuntanDefaultSign : null;
+      if (akuntanSignData) {
         try {
-          doc.addImage(roniSignData, 'PNG', 75, 192, 32, 11);
+          doc.addImage(akuntanSignData, 'PNG', 75, 192, 32, 11);
           doc.setFontSize(7.5);
           doc.setFont("helvetica", "bold");
           doc.text(`Ttd digital: ${config?.verifikatorName || "Akuntan SCB"}`, 115, 196);
           doc.setFont("helvetica", "normal");
-          const roniDate = (submission?.signatures?.roni?.timestamp)
-            ? safeFormatDate(submission.signatures.roni.timestamp, 'dd/MM/yyyy HH:mm')
-            : safeFormatDate(new Date(), 'dd/MM/yyyy HH:mm');
-          doc.text(`Waktu: ${roniDate}`, 115, 200);
+          const signDate = safeFormatDate(new Date(), 'dd/MM/yyyy HH:mm');
+          doc.text(`Waktu: ${signDate}`, 115, 200);
         } catch (err) {
-          console.error("Error drawing Roni verifikator signature:", err);
+          console.error("Error drawing Akuntan verifikator signature:", err);
           doc.text(`Verified (${config?.verifikatorName || "Akuntan SCB"})`, 75, 198);
         }
+      }
 
-        // Draw Manager Operasional signature
+      // 1B. Manager Operasional signature
+      const roniSignData = (submission?.signatures?.roni?.signature) || (config?.useDefaultRoniSign ? config?.roniDefaultSign : null);
+      if (roniSignData) {
         try {
           doc.addImage(roniSignData, 'PNG', 75, 207, 32, 11);
           doc.setFontSize(7.5);

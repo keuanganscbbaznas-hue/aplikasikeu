@@ -31,9 +31,11 @@ interface FPPPConfig {
   budgetName: string;
   budgetSaldo: string;
   headDeptName?: string;
+  useDefaultAkuntanSign: boolean;
   useDefaultRoniSign: boolean;
   useDefaultKamalSign: boolean;
   useDefaultKasirSign: boolean;
+  akuntanDefaultSign: string;
   roniDefaultSign: string;
   kamalDefaultSign: string;
   kasirDefaultSign: string;
@@ -54,17 +56,19 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
   const [budgetSaldo, setBudgetSaldo] = useState('Sesuai RKAT');
   const [headDeptName, setHeadDeptName] = useState('Ust Siswadi');
   
+  const [useDefaultAkuntanSign, setUseDefaultAkuntanSign] = useState(false);
   const [useDefaultRoniSign, setUseDefaultRoniSign] = useState(false);
   const [useDefaultKamalSign, setUseDefaultKamalSign] = useState(false);
   const [useDefaultKasirSign, setUseDefaultKasirSign] = useState(false);
 
   // Stored signatures (base64)
+  const [akuntanSign, setAkuntanSign] = useState('');
   const [roniSign, setRoniSign] = useState('');
   const [kamalSign, setKamalSign] = useState('');
   const [kasirSign, setKasirSign] = useState('');
 
   // UI state
-  const [selectedSlot, setSelectedSlot] = useState<'roni' | 'kamal' | 'kasir'>('roni');
+  const [selectedSlot, setSelectedSlot] = useState<'akuntan' | 'roni' | 'kamal' | 'kasir'>('akuntan');
   const [sigText, setSigText] = useState('');
   const [selectedFont, setSelectedFont] = useState<'brush' | 'calligraphy' | 'classic' | 'playful'>('brush');
   
@@ -83,10 +87,12 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
       setBudgetSaldo(fpppConfig.budgetSaldo || 'Sesuai RKAT');
       setHeadDeptName(fpppConfig.headDeptName || 'Ust Siswadi');
       
+      setUseDefaultAkuntanSign(!!fpppConfig.useDefaultAkuntanSign);
       setUseDefaultRoniSign(!!fpppConfig.useDefaultRoniSign);
       setUseDefaultKamalSign(!!fpppConfig.useDefaultKamalSign);
       setUseDefaultKasirSign(!!fpppConfig.useDefaultKasirSign);
 
+      setAkuntanSign(fpppConfig.akuntanDefaultSign || '');
       setRoniSign(fpppConfig.roniDefaultSign || '');
       setKamalSign(fpppConfig.kamalDefaultSign || '');
       setKasirSign(fpppConfig.kasirDefaultSign || '');
@@ -106,9 +112,11 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
         budgetName,
         budgetSaldo,
         headDeptName,
+        useDefaultAkuntanSign,
         useDefaultRoniSign,
         useDefaultKamalSign,
         useDefaultKasirSign,
+        akuntanDefaultSign: akuntanSign,
         roniDefaultSign: roniSign,
         kamalDefaultSign: kamalSign,
         kasirDefaultSign: kasirSign
@@ -248,6 +256,7 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
 
   const applySignatureToSlot = async (base64: string) => {
     const slotLabels = {
+      akuntan: 'Akuntan SCB',
       roni: 'Roni',
       kamal: 'Kamal',
       kasir: 'Kasir'
@@ -256,7 +265,9 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
     const toastId = toast.loading(`Menyimpan tanda tangan ${slotLabels[selectedSlot]}...`);
     
     try {
-      if (selectedSlot === 'roni') {
+      if (selectedSlot === 'akuntan') {
+        setAkuntanSign(base64);
+      } else if (selectedSlot === 'roni') {
         setRoniSign(base64);
       } else if (selectedSlot === 'kamal') {
         setKamalSign(base64);
@@ -282,11 +293,12 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
     }
   };
 
-  const deleteSignatureFromSlot = async (slot: 'roni' | 'kamal' | 'kasir') => {
+  const deleteSignatureFromSlot = async (slot: 'akuntan' | 'roni' | 'kamal' | 'kasir') => {
     if (confirm("Apakah Anda yakin ingin menghapus tanda tangan template ini?")) {
       const toastId = toast.loading("Menghapus...");
       try {
-        if (slot === 'roni') setRoniSign('');
+        if (slot === 'akuntan') setAkuntanSign('');
+        else if (slot === 'roni') setRoniSign('');
         else if (slot === 'kamal') setKamalSign('');
         else if (slot === 'kasir') setKasirSign('');
 
@@ -414,7 +426,23 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
                 Aktifkan opsi di bawah agar tanda tangan template yang disimpan di bawah langsung disisipkan secara otomatis saat Anda mengunduh dokumen FPPP, meskipun pengajuan tersebut belum ditandatangani secara manual di dashboard.
               </p>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none bg-white ${useDefaultAkuntanSign ? 'border-emerald-300 shadow-sm' : 'border-slate-100'}`}>
+                  <input 
+                    type="checkbox"
+                    checked={useDefaultAkuntanSign}
+                    onChange={(e) => {
+                      setUseDefaultAkuntanSign(e.target.checked);
+                      toast.info(e.target.checked ? "Ttd default Akuntan SCB diaktifkan" : "Ttd default Akuntan SCB dinonaktifkan");
+                    }}
+                    className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-slate-800">Ttd Auto Akuntan</span>
+                    <span className="text-[10px] text-slate-400">Verifikator</span>
+                  </div>
+                </label>
+
                 <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none bg-white ${useDefaultRoniSign ? 'border-emerald-300 shadow-sm' : 'border-slate-100'}`}>
                   <input 
                     type="checkbox"
@@ -427,7 +455,7 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
                   />
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-slate-800">Ttd Auto Roni</span>
-                    <span className="text-[10px] text-slate-400">Verifikator & Manager</span>
+                    <span className="text-[10px] text-slate-400">Manager Operasional</span>
                   </div>
                 </label>
 
@@ -498,7 +526,8 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
                   <SelectValue placeholder="Pilih Orang / Slot" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="roni" className="text-xs font-medium">Verifikator: {verifikatorName}</SelectItem>
+                  <SelectItem value="akuntan" className="text-xs font-medium">Verifikator: {verifikatorName}</SelectItem>
+                  <SelectItem value="roni" className="text-xs font-medium">Manager: {managerName}</SelectItem>
                   <SelectItem value="kamal" className="text-xs font-medium">Kepala SCB: {kepalaName}</SelectItem>
                   <SelectItem value="kasir" className="text-xs font-medium">Kasir / Bendahara Admin</SelectItem>
                 </SelectContent>
@@ -637,8 +666,33 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
               {/* LIST OF SAVED SIG PREVIEWS WITH DETAILS */}
               <div className="mt-8 pt-6 border-t border-slate-100">
                 <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-4">Galeri Tanda Tangan Template Saat Ini</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   
+                  {/* Slot Akuntan */}
+                  <div className="p-4 rounded-2xl border border-slate-100 bg-white relative flex flex-col items-center justify-between min-h-[160px]">
+                    <span className="absolute top-2 left-2 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Akuntan</span>
+                    <div className="flex-1 flex items-center justify-center py-4">
+                      {akuntanSign ? (
+                        <img src={akuntanSign} alt="Akuntan Sign" className="max-h-[70px] max-w-full object-contain filter drop-shadow-sm" />
+                      ) : (
+                        <div className="text-[10px] text-slate-400 font-medium italic">Belum diset (Menggunakan fallback teks biasa)</div>
+                      )}
+                    </div>
+                    <div className="w-full pt-2 border-t border-slate-50 flex items-center justify-between">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Verifikator</span>
+                      {akuntanSign && (
+                        <Button 
+                          onClick={() => deleteSignatureFromSlot('akuntan')}
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 size={11} />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Slot Roni */}
                   <div className="p-4 rounded-2xl border border-slate-100 bg-white relative flex flex-col items-center justify-between min-h-[160px]">
                     <span className="absolute top-2 left-2 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Roni</span>
