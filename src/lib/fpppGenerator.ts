@@ -108,8 +108,14 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
       doc.setFont("helvetica", "bold");
       doc.setFontSize(7.5);
       doc.setTextColor(30, 41, 59); // slate-800
-      // We compute the center of the box for the vertical text
+      
+      // Compute the exact vertical center of the sidebar box
       const centerY = startY + (height / 2);
+      
+      // X = 21.0 is the exact horizontal center of the sidebar column (which spans from X=15 to X=27)
+      // Angle 270 rotates the text to run vertically bottom-to-top
+      // align: 'center' centers the text along its own line length
+      // baseline: 'middle' centers the character heights horizontally inside the 12mm-wide column
       doc.text(text, 21.0, centerY, { angle: 270, align: 'center', baseline: 'middle' });
       doc.restoreGraphicsState();
     };
