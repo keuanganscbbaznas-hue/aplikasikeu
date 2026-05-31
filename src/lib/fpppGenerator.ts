@@ -136,19 +136,21 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     // X=15 to 195 (width=180), Y=10 to 26 (height=16)
     
     // Load & draw SCB Logo (left)
-    try {
-      const scbBase64 = await loadBase64Image("/api/logo/scb");
-      doc.addImage(scbBase64, 'PNG', 18, 11.5, 14, 13);
-    } catch (e) {
-      console.warn("Retrying main SCB Logo URL direct load:", e);
+    if (!config?.hideScbLogo) {
       try {
-        const scbBase64 = await loadBase64Image("https://neoschool.oss-ap-southeast-5.aliyuncs.com/scb/core/organizations/scb-logo-1710220971.png");
+        const scbBase64 = await loadBase64Image("/api/logo/scb");
         doc.addImage(scbBase64, 'PNG', 18, 11.5, 14, 13);
-      } catch (err2) {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
-        doc.setTextColor(16, 124, 65); // emerald green
-        doc.text("SCB", 25, 19, { align: "center" });
+      } catch (e) {
+        console.warn("Retrying main SCB Logo URL direct load:", e);
+        try {
+          const scbBase64 = await loadBase64Image("https://neoschool.oss-ap-southeast-5.aliyuncs.com/scb/core/organizations/scb-logo-1710220971.png");
+          doc.addImage(scbBase64, 'PNG', 18, 11.5, 14, 13);
+        } catch (err2) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(16, 124, 65); // emerald green
+          doc.text("SCB", 25, 19, { align: "center" });
+        }
       }
     }
     
@@ -156,22 +158,24 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
     doc.setTextColor(15, 23, 42); // slate-900
-    doc.text("FORMULIR PERMOHONAN PERSETUJUAN PEMBAYARAN", 105, 19.5, { align: "center" });
+    doc.text(config?.fpppTitleOverride || "FORMULIR PERMOHONAN PERSETUJUAN PEMBAYARAN", 105, 19.5, { align: "center" });
     
     // Load & draw BAZNAS Logo (right)
-    try {
-      const baznasBase64 = await loadBase64Image("/api/logo/baznas");
-      doc.addImage(baznasBase64, 'PNG', 177, 11, 16, 14);
-    } catch (e) {
-      console.warn("Retrying main BAZNAS Logo URL direct load:", e);
+    if (!config?.hideBaznasLogo) {
       try {
-        const baznasBase64 = await loadBase64Image("https://baznas.go.id/assets/images/logo_baznas_mobile.png");
+        const baznasBase64 = await loadBase64Image("/api/logo/baznas");
         doc.addImage(baznasBase64, 'PNG', 177, 11, 16, 14);
-      } catch (err2) {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
-        doc.setTextColor(180, 140, 20); // gold
-        doc.text("BAZNAS", 185, 19, { align: "center" });
+      } catch (e) {
+        console.warn("Retrying main BAZNAS Logo URL direct load:", e);
+        try {
+          const baznasBase64 = await loadBase64Image("https://baznas.go.id/assets/images/logo_baznas_mobile.png");
+          doc.addImage(baznasBase64, 'PNG', 177, 11, 16, 14);
+        } catch (err2) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(180, 140, 20); // gold
+          doc.text("BAZNAS", 185, 19, { align: "center" });
+        }
       }
     }
 

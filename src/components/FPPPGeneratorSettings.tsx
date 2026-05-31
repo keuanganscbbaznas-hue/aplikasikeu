@@ -39,6 +39,10 @@ interface FPPPConfig {
   roniDefaultSign: string;
   kamalDefaultSign: string;
   kasirDefaultSign: string;
+  // Custom Tampilan FPPP
+  fpppTitleOverride?: string;
+  hideScbLogo?: boolean;
+  hideBaznasLogo?: boolean;
 }
 
 interface FPPPGeneratorSettingsProps {
@@ -56,6 +60,11 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
   const [budgetSaldo, setBudgetSaldo] = useState('Sesuai RKAT');
   const [headDeptName, setHeadDeptName] = useState('Ust Siswadi');
   
+  // Layout states
+  const [fpppTitleOverride, setFpppTitleOverride] = useState('');
+  const [hideScbLogo, setHideScbLogo] = useState(false);
+  const [hideBaznasLogo, setHideBaznasLogo] = useState(false);
+
   const [useDefaultAkuntanSign, setUseDefaultAkuntanSign] = useState(false);
   const [useDefaultRoniSign, setUseDefaultRoniSign] = useState(false);
   const [useDefaultKamalSign, setUseDefaultKamalSign] = useState(false);
@@ -87,6 +96,10 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
       setBudgetSaldo(fpppConfig.budgetSaldo || 'Sesuai RKAT');
       setHeadDeptName(fpppConfig.headDeptName || 'Ust Siswadi');
       
+      setFpppTitleOverride(fpppConfig.fpppTitleOverride || '');
+      setHideScbLogo(!!fpppConfig.hideScbLogo);
+      setHideBaznasLogo(!!fpppConfig.hideBaznasLogo);
+
       setUseDefaultAkuntanSign(!!fpppConfig.useDefaultAkuntanSign);
       setUseDefaultRoniSign(!!fpppConfig.useDefaultRoniSign);
       setUseDefaultKamalSign(!!fpppConfig.useDefaultKamalSign);
@@ -112,6 +125,9 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
         budgetName,
         budgetSaldo,
         headDeptName,
+        fpppTitleOverride,
+        hideScbLogo,
+        hideBaznasLogo,
         useDefaultAkuntanSign,
         useDefaultRoniSign,
         useDefaultKamalSign,
@@ -400,6 +416,29 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
                   onChange={(e) => setBudgetSaldo(e.target.value)} 
                   className="text-xs h-9 rounded-xl font-medium"
                 />
+              </div>
+
+              <Separator className="my-2" />
+              
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-500">Judul Formulir FPPP (Opsional)</Label>
+                <Input 
+                  value={fpppTitleOverride} 
+                  onChange={(e) => setFpppTitleOverride(e.target.value)} 
+                  placeholder="FORMULIR PERMOHONAN PERSETUJUAN PEMBAYARAN"
+                  className="text-xs h-9 rounded-xl font-medium"
+                />
+              </div>
+
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer flex-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                  <input type="checkbox" checked={hideScbLogo} onChange={(e) => setHideScbLogo(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500 h-3 w-3" />
+                  <span className="text-[10px] font-bold text-slate-600">Sembunyikan Logo Kiri</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer flex-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                  <input type="checkbox" checked={hideBaznasLogo} onChange={(e) => setHideBaznasLogo(e.target.checked)} className="rounded text-indigo-600 focus:ring-indigo-500 h-3 w-3" />
+                  <span className="text-[10px] font-bold text-slate-600">Sembunyikan Logo Kanan</span>
+                </label>
               </div>
 
               <Button 
