@@ -54,6 +54,7 @@ import { LearningSection } from './components/LearningSection';
 import { InfoKeuanganSection } from './components/InfoKeuanganSection';
 import SignaturePad from 'signature_pad';
 import { jsPDF } from 'jspdf';
+import { generateFPPP } from './lib/fpppGenerator';
 import { DonationConfirmation } from './components/administrasi/DonationConfirmation';
 import { DocumentTemplates } from './components/administrasi/DocumentTemplates';
 import { 
@@ -3327,51 +3328,7 @@ function SubmissionDetailView({
   const isTransferred = transferredIndex !== -1 && submission.currentStageIndex >= transferredIndex;
 
   const downloadPDF = () => {
-    const doc = new jsPDF();
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text('DOKUMEN PENGAJUAN', 105, 20, { align: 'center' });
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`ID Transaksi`, 20, 40); doc.text(`: ${submission.id}`, 60, 40);
-    doc.text(`Judul Pengajuan`, 20, 50); doc.text(`: ${submission.title}`, 60, 50);
-    doc.text(`Jumlah Anggaran`, 20, 60); doc.text(`: Rp ${submission.amount.toLocaleString('id-ID')}`, 60, 60);
-    doc.text(`PIC Pengaju`, 20, 70); doc.text(`: ${submission.picName || submission.submittedByName}`, 60, 70);
-    doc.text(`Rekening`, 20, 80); doc.text(`: ${submission.sumberRekening || '-'}`, 60, 80);
-    doc.text(`Kode Budget`, 20, 90); doc.text(`: ${submission.kodeBudget || '-'}`, 60, 90);
-    doc.text(`No Dokumen`, 20, 100); doc.text(`: ${submission.noDokumen || '-'}`, 60, 100);
-    doc.text(`Tanggal Pengajuan`, 20, 110); doc.text(`: ${format(parseFirestoreDate(submission.createdAt), 'dd MMMM yyyy')}`, 60, 110);
-    
-    doc.setFont("helvetica", "bold");
-    doc.text('Deskripsi / Rincian:', 20, 130);
-    doc.setFont("helvetica", "normal");
-    const splitDesc = doc.splitTextToSize(submission.description || '-', 170);
-    doc.text(splitDesc, 20, 135);
-    
-    const nextY = 140 + (splitDesc.length * 5);
-    
-    if (submission.signatures) {
-      doc.setFont("helvetica", "bold");
-      doc.text('TANDA TANGAN MANAJEMEN:', 20, nextY + 10);
-      
-      doc.setFont("helvetica", "normal");
-      if (submission.signatures.roni) {
-        doc.text('Diverifikasi Oleh,', 40, nextY + 25);
-        doc.addImage(submission.signatures.roni.signature, 'PNG', 40, nextY + 30, 40, 20);
-        doc.setFont("helvetica", "bold");
-        doc.text('M. Roni', 40, nextY + 55);
-      }
-      
-      if (submission.signatures.kamal) {
-        doc.text('Disetujui Oleh,', 120, nextY + 25);
-        doc.addImage(submission.signatures.kamal.signature, 'PNG', 120, nextY + 30, 40, 20);
-        doc.setFont("helvetica", "bold");
-        doc.text('Ahmad Kamal', 120, nextY + 55);
-      }
-    }
-    
-    doc.save(`Pengajuan_${submission.title.replace(/\s+/g, '_')}.pdf`);
+    generateFPPP(submission, false);
   };
 
   return (
@@ -3436,6 +3393,31 @@ function SubmissionDetailView({
                     </a>
                   </div>
                 )}
+
+                <div className="pt-4 border-t border-slate-100 space-y-3">
+                  <Label className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider block">Dokumen Resmi BAZNAS (Format FPPP)</Label>
+                  <p className="text-[10px] text-slate-400 font-medium leading-relaxed italic">
+                    Unduh Formulir Permohonan Persetujuan Pembayaran (FPPP) resmi Cendekia BAZNAS yang sudah dilengkapi data transaksi dan tanda tangan pengesahan digital secara otomatis.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                    <Button 
+                      onClick={() => generateFPPP(submission, false)}
+                      className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl h-11 text-[11px] font-black uppercase tracking-wider transition-all shadow-lg shadow-emerald-600/10"
+                    >
+                      <FileText size={16} />
+                      Cetak FPPP (Signed)
+                    </Button>
+                    <Button 
+                      onClick={() => generateFPPP(null, true)}
+                      variant="outline"
+                      className="flex items-center justify-center gap-2 border-slate-200 hover:bg-slate-50 text-slate-700 rounded-2xl h-11 text-[10px] font-black uppercase tracking-wider transition-all"
+                    >
+                      <Download size={14} />
+                      Template Kosong
+                    </Button>
+                  </div>
+                </div>
              </div>
           </div>
 
@@ -3516,7 +3498,7 @@ function SubmissionDetailView({
                       onClick={downloadPDF}
                       className="w-full mt-4 bg-white/10 hover:bg-white text-white hover:text-slate-900 border-none transition-all rounded-xl h-10 font-bold text-xs flex items-center justify-center gap-2"
                     >
-                      <Download size={14} /> Download Dokumen Pengajuan
+                      <Download size={14} /> Unduh Formulir FPPP (Signed)
                     </Button>
                   )}
                 </div>
