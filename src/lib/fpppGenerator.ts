@@ -134,9 +134,6 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
 
     // 1. HEADER SECTION (with Logos and Form Name)
     // X=15 to 195 (width=180), Y=10 to 26 (height=16)
-    doc.rect(15, 10, 180, 16);
-    doc.line(35, 10, 35, 26);
-    doc.line(175, 10, 175, 26);
     
     // Load & draw SCB Logo (left)
     try {
@@ -182,10 +179,10 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     doc.setTextColor(15, 23, 42);
 
     // 2. PENGAJUAN SECTION
-    // Y = 28 to 48 (height=20)
-    doc.rect(15, 28, 180, 20);
-    doc.line(27, 28, 27, 48);
-    drawSidebarText("Pengajuan", 28, 20);
+    // Y = 28 to 50 (height=22)
+    doc.rect(15, 28, 180, 22);
+    doc.line(27, 28, 27, 50);
+    drawSidebarText("Pengajuan", 28, 22);
     
     // Inner rows for Pengajuan
     doc.setFont("helvetica", "normal");
@@ -235,10 +232,10 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     drawCheckbox(150, 39, isAset, "Pembelian Aset");
 
     // 3. INFORMASI FORM SECTION
-    // Y = 50 to 112 (height=62)
-    doc.rect(15, 50, 180, 62);
-    doc.line(27, 50, 27, 112);
-    drawSidebarText("Informasi Form", 50, 62);
+    // Y = 50 to 114 (height=64)
+    doc.rect(15, 50, 180, 64);
+    doc.line(27, 50, 27, 114);
+    drawSidebarText("Informasi Form", 50, 64);
     
     // Rows
     doc.text("Jenis Pembayaran", 29, 56);
@@ -311,10 +308,10 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     }
 
     // 4. DETAIL LAMPIRAN SECTION
-    // Y = 114 to 150 (height=36)
-    doc.rect(15, 114, 180, 36);
-    doc.line(27, 114, 27, 150);
-    drawSidebarText("Detail Lampiran", 114, 36);
+    // Y = 114 to 152 (height=38)
+    doc.rect(15, 114, 180, 38);
+    doc.line(27, 114, 27, 152);
+    drawSidebarText("Detail Lampiran", 114, 38);
     
     doc.setFontSize(8.5);
     doc.setFont("helvetica", "bold");
@@ -379,15 +376,15 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     }
 
     // 5. KOLOM PEMOHON SECTION
-    // Y = 152 to 182 (height=30)
-    doc.rect(15, 152, 180, 30);
-    doc.line(27, 152, 27, 182);
-    drawSidebarText("Kolom Pemohon", 152, 30);
+    // Y = 152 to 184 (height=32)
+    doc.rect(15, 152, 180, 32);
+    doc.line(27, 152, 27, 184);
+    drawSidebarText("Kolom Pemohon", 152, 32);
     
     // Table structure inside Kolom Pemohon
-    doc.line(105, 152, 105, 182); // Split Kolom Pemohon & Catatan
+    doc.line(105, 152, 105, 184); // Split Kolom Pemohon & Catatan
     doc.line(27, 158, 105, 158);  // Horizontal line under headers
-    doc.line(66, 152, 66, 182);   // Split Dibuat oleh & Disetujui oleh
+    doc.line(66, 152, 66, 184);   // Split Dibuat oleh & Disetujui oleh
     
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
@@ -426,13 +423,13 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     }
 
     // 6. PERSETUJUAN PROSES PEMBAYARAN SECTION
-    // Y = 184 to 236 (height=52)
-    doc.rect(15, 184, 180, 52);
-    doc.line(27, 184, 27, 236);
-    drawSidebarText("Persetujuan Proses Pembayaran", 184, 52);
+    // Y = 184 to 238 (height=54)
+    doc.rect(15, 184, 180, 54);
+    doc.line(27, 184, 27, 238);
+    drawSidebarText("Persetujuan Proses Pembayaran", 184, 54);
     
     // Structure
-    doc.line(66, 184, 66, 236); // Vertical divider
+    doc.line(66, 184, 66, 238); // Vertical divider
     doc.line(27, 190, 195, 190); // Headers divider
     
     doc.setFont("helvetica", "bold");
