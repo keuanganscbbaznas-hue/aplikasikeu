@@ -242,11 +242,11 @@ function SubmissionGrid({
                       />
                     )}
                   </th>
-                  <th className="px-2 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-16 text-center">Tipe</th>
-                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-72 max-w-[280px]">Judul & Keterangan</th>
-                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-32">Nominal</th>
-                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-72 text-center">Tahapan & Progress</th>
-                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-16">Aksi</th>
+                  <th className="px-2 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest w-16">Tipe</th>
+                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Judul & Keterangan</th>
+                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-36">Nominal</th>
+                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-80">Tahapan & Progress</th>
+                  <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest w-36">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -338,7 +338,7 @@ function SubmissionCard({
       exit={{ opacity: 0 }}
       className={`border-b border-slate-50 hover:bg-slate-50/50 transition-colors group ${isSelected ? 'bg-primary/5' : ''}`}
     >
-      <td className="px-4 py-4 text-center">
+      <td className="px-4 py-4 text-center w-12">
         <input 
           type="checkbox" 
           checked={isSelected}
@@ -346,13 +346,13 @@ function SubmissionCard({
           className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary/20 transition-all cursor-pointer"
         />
       </td>
-      <td className="px-2 py-4">
+      <td className="px-2 py-4 w-16">
         <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-[10px] font-black shadow-sm mx-auto ${typeStyles[submission.type] || typeStyles.pembiayaan}`}>
           {typeInitial[submission.type as keyof typeof typeInitial] || "PB"}
         </div>
       </td>
       <td className="px-6 py-4">
-        <div className="space-y-0.5 max-w-[260px]">
+        <div className="space-y-0.5 w-full">
           <h4 className="font-['Times_New_Roman'] font-black text-slate-800 text-[16px] tracking-tight leading-snug">
             {submission.title}
           </h4>
@@ -375,7 +375,7 @@ function SubmissionCard({
           </div>
         </div>
       </td>
-      <td className="px-6 py-4 font-['Times_New_Roman'] text-[13px]">
+      <td className="px-6 py-4 font-['Times_New_Roman'] text-[13px] w-36">
         <div className="flex items-baseline gap-1">
           <span className="text-[14px] bg-[#ffffff] font-bold text-slate-400">Rp</span>
           <span className="font-['Times_New_Roman'] font-black text-[16px] text-slate-800 tracking-tight tabular-nums">
@@ -383,8 +383,8 @@ function SubmissionCard({
           </span>
         </div>
       </td>
-      <td className="px-6 py-4">
-        <div className="space-y-2 max-w-[240px] mx-auto">
+      <td className="px-6 py-4 w-80">
+        <div className="space-y-2 w-full">
           <div className="flex items-center justify-between gap-2">
             <span className="font-['Times_New_Roman'] px-2 py-0.5 rounded-md text-[10px] bg-emerald-50 text-emerald-700 flex items-center font-black uppercase tracking-tighter line-clamp-1">
               {stages[submission.currentStageIndex]}
@@ -396,13 +396,13 @@ function SubmissionCard({
           <WorkflowProgressBar stages={stages} currentIdx={submission.currentStageIndex} />
           {submission.isBooked && (
             <div className="flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-50/70 border border-blue-100 px-2 py-0.5 rounded-md w-max tracking-wider">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-              DIBUKUKAN ({submission.bookedAtSheet?.replace('Kas ', '')})
+               <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
+               DIBUKUKAN ({submission.bookedAtSheet?.replace('Kas ', '')})
             </div>
           )}
         </div>
       </td>
-      <td className="px-6 py-4">
+      <td className="px-6 py-4 w-36">
          <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-2">
               <Dialog>
