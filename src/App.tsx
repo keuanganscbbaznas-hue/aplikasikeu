@@ -579,7 +579,14 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
-    if (isOwner && !localStorage.getItem('doc_injected_v5')) {
+    let isAlreadyInjected = false;
+    try {
+      isAlreadyInjected = localStorage.getItem('doc_injected_v5') === 'true';
+    } catch (storageErr) {
+      console.warn("Storage access denied:", storageErr);
+    }
+
+    if (isOwner && !isAlreadyInjected) {
       const injectDoc = async () => {
         try {
           const { collection, addDoc, serverTimestamp, getDocs, query, where, limit } = await import('firebase/firestore');
@@ -598,10 +605,18 @@ export default function App() {
               createdAt: serverTimestamp(),
             });
             
-            localStorage.setItem('doc_injected_v5', 'true');
+            try {
+              localStorage.setItem('doc_injected_v5', 'true');
+            } catch (storageErr) {
+              console.warn("Storage access denied:", storageErr);
+            }
             console.log('Documentation injected successfully');
           } else {
-            localStorage.setItem('doc_injected_v5', 'true');
+            try {
+              localStorage.setItem('doc_injected_v5', 'true');
+            } catch (storageErr) {
+              console.warn("Storage access denied:", storageErr);
+            }
           }
         } catch (e) {
           console.error('Injection failed:', e);
