@@ -2604,11 +2604,34 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
   const [newAmount, setNewAmount] = useState('');
   const [newPicName, setNewPicName] = useState('');
   const [newPicWhatsapp, setNewPicWhatsapp] = useState('');
+  const [newDivisi, setNewDivisi] = useState<'Asrama' | 'Akademik/Kesiswaan' | 'Operasional' | ''>('');
+  const [newNoRekeningPengaju, setNewNoRekeningPengaju] = useState('');
   const [newSumberRekening, setNewSumberRekening] = useState<'SMP' | 'SMA' | ''>('');
   const [newKodeBudget, setNewKodeBudget] = useState('');
   const [newNoDokumen, setNewNoDokumen] = useState('');
   const [newDescription, setNewDescription] = useState('');
   const [newEvidenceUrl, setNewEvidenceUrl] = useState('');
+  const [newEvidenceBase64, setNewEvidenceBase64] = useState('');
+  const [newEvidenceMimeType, setNewEvidenceMimeType] = useState('');
+
+  const handleNewEvidenceFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Ukuran file maksimal 5MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewEvidenceBase64(reader.result as string);
+        setNewEvidenceMimeType(file.type);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setNewEvidenceBase64('');
+      setNewEvidenceMimeType('');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2616,32 +2639,64 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
 
     try {
       const stages = getStagesByType(newType);
-      const newSubmission: Omit<Submission, 'id'> = {
-        type: newType,
-        title: newTitle,
-        amount: Number(newAmount),
-        description: newDescription,
-        status: stages[0],
-        currentStageIndex: 0,
-        submittedBy: user.uid,
-        submittedByName: profile.displayName,
-        submittedByEmail: profile.email,
-        picName: newPicName,
-        picWhatsapp: newPicWhatsapp || null,
-        sumberRekening: newSumberRekening || null,
-        kodeBudget: newKodeBudget || null,
-        noDokumen: newNoDokumen || null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        evidenceUrl: newEvidenceUrl,
-        history: [{
-          stage: stages[0],
-          status: 'submitted',
-          actor: user.uid,
-          actorName: profile.displayName,
-          timestamp: new Date(),
-          comment: 'Pengajuan awal'
-        }]
+      
+      const submitProcess = async () => {
+        let finalEvidenceUrl = newEvidenceUrl;
+        
+        if (newEvidenceBase64) {
+          const ext = newEvidenceMimeType.split('/')[1] || 'png';
+          try {
+            const localRes = await fetch(getApiUrl('/api/gallery/upload'), {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                filename: `bukti_pengajuan_${Date.now()}.${ext}`,
+                base64Data: newEvidenceBase64,
+                mimeType: newEvidenceMimeType
+              })
+            });
+            if (localRes.ok) {
+              const localData = await localRes.json();
+              if (localData.success) {
+                finalEvidenceUrl = localData.url;
+              }
+            }
+          } catch (uploadErr) {
+            console.error("Gagal upload lampiran:", uploadErr);
+          }
+        }
+
+        const newSubmission: Omit<Submission, 'id'> = {
+          type: newType,
+          title: newTitle,
+          amount: Number(newAmount),
+          description: newDescription,
+          status: stages[0],
+          currentStageIndex: 0,
+          submittedBy: user.uid,
+          submittedByName: profile.displayName,
+          submittedByEmail: profile.email,
+          picName: newPicName,
+          picWhatsapp: newPicWhatsapp || null,
+          divisi: newDivisi || null,
+          noRekeningPengaju: newNoRekeningPengaju || null,
+          sumberRekening: newSumberRekening || null,
+          kodeBudget: newKodeBudget || null,
+          noDokumen: newNoDokumen || null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          evidenceUrl: finalEvidenceUrl,
+          history: [{
+            stage: stages[0],
+            status: 'submitted',
+            actor: user.uid,
+            actorName: profile.displayName,
+            timestamp: new Date(),
+            comment: 'Pengajuan awal'
+          }]
+        };
+
+        await addDoc(collection(db, 'submissions'), newSubmission);
       };
 
       // Close and clear immediately
@@ -2650,15 +2705,19 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
       setNewAmount('');
       setNewDescription('');
       setNewEvidenceUrl('');
+      setNewEvidenceBase64('');
+      setNewEvidenceMimeType('');
       setNewPicName('');
       setNewPicWhatsapp('');
+      setNewDivisi('');
+      setNewNoRekeningPengaju('');
       setNewSumberRekening('');
       setNewKodeBudget('');
       setNewNoDokumen('');
 
       // Background process
       toast.promise(
-        addDoc(collection(db, 'submissions'), newSubmission),
+        submitProcess(),
         {
           loading: 'Mengirim pengajuan...',
           success: 'Pengajuan berhasil dikirim',
@@ -2756,41 +2815,32 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
                     className="h-10 rounded-xl border-slate-200"
                   />
                 </div>
-              </div>
-
-              <div className="space-y-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="new-sumber" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Sumber Rekening</Label>
-                  <Select value={newSumberRekening} onValueChange={(v: any) => setNewSumberRekening(v)}>
-                    <SelectTrigger id="new-sumber" className="h-10 rounded-xl border-slate-200">
-                      <SelectValue placeholder="Pilih unit" />
+                  <Label htmlFor="new-divisi" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Divisi (Optional)</Label>
+                  <Select value={newDivisi} onValueChange={(v: any) => setNewDivisi(v)}>
+                    <SelectTrigger id="new-divisi" className="h-10 rounded-xl border-slate-200">
+                      <SelectValue placeholder="Pilih divisi" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="SMP">SMP</SelectItem>
-                      <SelectItem value="SMA">SMA</SelectItem>
+                      <SelectItem value="Asrama">Asrama</SelectItem>
+                      <SelectItem value="Akademik/Kesiswaan">Akademik/Kesiswaan</SelectItem>
+                      <SelectItem value="Operasional">Operasional</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="new-kodebudget" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Kode Budget</Label>
+                  <Label htmlFor="new-norek" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">No Rekening Pengaju (Optional)</Label>
                   <Input 
-                    id="new-kodebudget" 
-                    placeholder="Contoh: 1.1.1" 
-                    value={newKodeBudget}
-                    onChange={(e) => setNewKodeBudget(e.target.value)}
+                    id="new-norek" 
+                    placeholder="Contoh: BSI 1234567890 an Ahmad" 
+                    value={newNoRekeningPengaju}
+                    onChange={(e) => setNewNoRekeningPengaju(e.target.value)}
                     className="h-10 rounded-xl border-slate-200"
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="new-nodokumen" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">No Dokumen</Label>
-                  <Input 
-                    id="new-nodokumen" 
-                    placeholder="Contoh: 001/SCB/V/2026" 
-                    value={newNoDokumen}
-                    onChange={(e) => setNewNoDokumen(e.target.value)}
-                    className="h-10 rounded-xl border-slate-200"
-                  />
-                </div>
+              </div>
+
+              <div className="space-y-4">
                 <div className="grid gap-2">
                   <Label htmlFor="description" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Keterangan</Label>
                   <Input 
@@ -2802,14 +2852,27 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="evidence" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Link Bukti Dokumen (Optional)</Label>
-                  <Input 
-                    id="evidence" 
-                    placeholder="https://drive.google.com/..." 
-                    value={newEvidenceUrl}
-                    onChange={(e) => setNewEvidenceUrl(e.target.value)}
-                    className="h-10 rounded-xl border-slate-200"
-                  />
+                  <Label htmlFor="evidence" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Dokumen Lampiran (Upload File atau Copas Link)</Label>
+                  <div className="flex gap-2 items-center">
+                    <Input 
+                      type="file" 
+                      id="evidence_file"
+                      onChange={handleNewEvidenceFile}
+                      className="h-10 rounded-xl border-slate-200 text-xs py-2 w-1/2 cursor-pointer bg-white"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,image/*"
+                    />
+                    <span className="text-[10px] font-black text-slate-400">ATAU</span>
+                    <Input 
+                      id="evidence" 
+                      placeholder="https://drive.google.com/..." 
+                      value={newEvidenceUrl}
+                      onChange={(e) => setNewEvidenceUrl(e.target.value)}
+                      className="h-10 rounded-xl border-slate-200 w-1/2"
+                    />
+                  </div>
+                  {newEvidenceBase64 && (
+                    <p className="text-[10px] text-emerald-600 font-bold ml-1 mt-1">✓ File siap diupload</p>
+                  )}
                 </div>
               </div>
             </div>

@@ -100,6 +100,8 @@ export interface Submission {
   submittedByEmail: string;
   picName?: string;
   picWhatsapp?: string;
+  divisi?: 'Asrama' | 'Akademik/Kesiswaan' | 'Operasional';
+  noRekeningPengaju?: string;
   sumberRekening?: 'SMP' | 'SMA';
   kodeBudget?: string;
   noDokumen?: string;

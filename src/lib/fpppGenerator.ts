@@ -565,7 +565,7 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     if (hasBeenTransferred) {
         if (kasirSignData && config?.useDefaultKasirSign && !isEmpty) {
             try {
-              doc.addImage(kasirSignData, 'PNG', 142, 246, 30, 9);
+              doc.addImage(kasirSignData, 'PNG', 132, 245, 34, 10);
             } catch (err) {
               console.error("Error drawing Kasir signature:", err);
             }
@@ -575,17 +575,17 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
         doc.saveGraphicsState();
         doc.setDrawColor(220, 38, 38);
         doc.setTextColor(220, 38, 38);
-        doc.setLineWidth(0.8);
-        doc.rect(143, 246, 38, 10);
-        doc.setFontSize(14);
+        doc.setLineWidth(1);
+        doc.rect(148, 246, 44, 10.5);
+        doc.setFontSize(22);
         doc.setFont("courier", "bold");
-        doc.text("LUNAS", 162, 253.2, { align: "center" });
+        doc.text("LUNAS", 170, 254.5, { align: "center" });
         doc.restoreGraphicsState();
 
         // Print name underneath
         doc.setFontSize(8);
         doc.setFont("helvetica", "bold");
-        doc.text("Nur Asiah", 162, 259, { align: 'center' });
+        doc.text("Nur Asiah", 150, 259, { align: 'center' });
         doc.setFont("helvetica", "normal");
     } else {
       doc.setFontSize(7);
