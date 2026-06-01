@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { getApiUrl } from './utils';
 
 // Helper to convert date
 const parseFirestoreDate = (dateField: any): Date => {
@@ -91,7 +92,7 @@ const loadImage = (url: string): Promise<HTMLImageElement> => {
 };
 
 const loadBase64Image = async (url: string): Promise<string> => {
-  const response = await fetch(url, { cache: 'no-store' });
+  const response = await fetch(getApiUrl(url), { cache: 'no-store' });
   if (!response.ok) throw new Error("Network response was not ok");
   const blob = await response.blob();
   return new Promise((resolve, reject) => {
