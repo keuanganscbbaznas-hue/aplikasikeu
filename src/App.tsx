@@ -650,6 +650,8 @@ export default function App() {
   const [editEvidenceUrl, setEditEvidenceUrl] = useState('');
   const [editEvidenceBase64, setEditEvidenceBase64] = useState('');
   const [editEvidenceMimeType, setEditEvidenceMimeType] = useState('');
+  const [isEditPicSignatureModalOpen, setIsEditPicSignatureModalOpen] = useState(false);
+  const [editPicSignature, setEditPicSignature] = useState('');
   const [editCreatedAt, setEditCreatedAt] = useState('');
   const [editHistory, setEditHistory] = useState<HistoryEntry[]>([]);
   const [editStageIndex, setEditStageIndex] = useState(0);
@@ -2709,6 +2711,8 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
   const [newEvidenceUrl, setNewEvidenceUrl] = useState('');
   const [newEvidenceBase64, setNewEvidenceBase64] = useState('');
   const [newEvidenceMimeType, setNewEvidenceMimeType] = useState('');
+  const [isNewPicSignatureModalOpen, setIsNewPicSignatureModalOpen] = useState(false);
+  const [newPicSignature, setNewPicSignature] = useState('');
 
   const handleNewEvidenceFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -2782,6 +2786,13 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           evidenceUrl: finalEvidenceUrl,
+          signatures: newPicSignature ? {
+            pic: {
+              name: newPicName,
+              signature: newPicSignature,
+              timestamp: new Date()
+            }
+          } : {},
           history: [{
             stage: stages[0],
             status: 'submitted',
@@ -2810,6 +2821,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
       setNewSumberRekening('');
       setNewKodeBudget('');
       setNewNoDokumen('');
+      setNewPicSignature('');
 
       // Background process
       toast.promise(
@@ -2970,6 +2982,28 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
                     <p className="text-[10px] text-emerald-600 font-bold ml-1 mt-1">✓ File siap diupload</p>
                   )}
                 </div>
+                <div className="grid gap-2">
+                  <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Tanda Tangan PIC (Opsional)</Label>
+                  {newPicSignature ? (
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-24 bg-white border border-slate-200 rounded-lg flex items-center justify-center p-1">
+                        <img src={newPicSignature} alt="Signature" className="max-h-full max-w-full object-contain" />
+                      </div>
+                      <Button variant="outline" type="button" size="sm" onClick={() => setNewPicSignature('')} className="h-8 text-[10px] text-red-500 hover:text-red-600 rounded-lg">
+                        Hapus
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsNewPicSignatureModalOpen(true)}
+                      className="h-10 rounded-xl border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 justify-start"
+                    >
+                      + Tambah Tanda Tangan
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
             </div>
@@ -2984,6 +3018,17 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
           </div>
         </form>
       </DialogContent>
+      {isNewPicSignatureModalOpen && (
+        <SignaturePadModal 
+          isOpen={isNewPicSignatureModalOpen}
+          onClose={() => setIsNewPicSignatureModalOpen(false)}
+          title="Tanda Tangan PIC Pengaju"
+          onSave={(sig) => {
+            setNewPicSignature(sig);
+            setIsNewPicSignatureModalOpen(false);
+          }}
+        />
+      )}
     </Dialog>
   );
 }
@@ -3209,12 +3254,61 @@ function ApprovalDialog({
 }) {
   const [comment, setComment] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const [isSignDeptOpen, setIsSignDeptOpen] = useState(false);
+  const [isSignVerifikatorOpen, setIsSignVerifikatorOpen] = useState(false);
+  
+  // Signatures specific to advancing first stage
+  const [headDeptSignature, setHeadDeptSignature] = useState('');
+  const [verifikatorSignature, setVerifikatorSignature] = useState('');
+  
+  const isFirstStageApprove = mode === 'approve' && submission.currentStageIndex === 0;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    if (isFirstStageApprove) {
+      if (!headDeptSignature) {
+        toast.error("Tanda tangan Kepala Divisi wajib diisi untuk tahap ini.");
+        return;
+      }
+      
+      // Update submission with the new signatures
+      const newSignatures = { ...submission.signatures } || {};
+      
+      let headDeptName = "Pegawai SCB";
+      if (submission.divisi === 'Asrama') headDeptName = "Helmi Nursirwan";
+      else if (submission.divisi === 'Akademik/Kesiswaan') headDeptName = "Siswadi Dinianto";
+      else if (submission.divisi === 'Operasional') headDeptName = "Mohamad Roni";
+      
+      newSignatures.headDept = {
+        name: headDeptName,
+        signature: headDeptSignature,
+        timestamp: new Date()
+      };
+      
+      if (verifikatorSignature) {
+        newSignatures.verifikator = {
+          name: "Akuntan SCB",
+          signature: verifikatorSignature,
+          timestamp: new Date()
+        };
+      }
+      
+      try {
+        await updateDoc(doc(db, 'submissions', submission.id), {
+          signatures: newSignatures
+        });
+      } catch (e) {
+        console.error("Error saving signatures:", e);
+      }
+    }
+
     if (mode === 'approve' && onApprove) onApprove(submission, comment);
     if (mode === 'reject' && onReject) onReject(submission, comment);
+    
+    // Clear
     setIsOpen(false);
     setComment('');
+    setHeadDeptSignature('');
+    setVerifikatorSignature('');
   };
 
   return (
@@ -3241,14 +3335,48 @@ function ApprovalDialog({
               : 'Berikan alasan penolakan agar pengaju dapat melakukan perbaikan.'}
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
-          <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Catatan / Alasan</Label>
-          <Input 
-            placeholder="Tulis pesan Anda di sini..." 
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className="rounded-xl border-slate-200 focus:ring-emerald-500"
-          />
+        <div className="py-4 space-y-4">
+          <div>
+            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Catatan / Alasan</Label>
+            <Input 
+              placeholder="Tulis pesan Anda di sini..." 
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="rounded-xl border-slate-200 focus:ring-emerald-500"
+            />
+          </div>
+          
+          {isFirstStageApprove && (
+            <div className="space-y-4 mt-4 p-4 border border-emerald-100 bg-emerald-50 rounded-2xl">
+              <div>
+                <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2 block text-center">Tanda Tangan Kepala Divisi <span className="text-red-500">*</span></Label>
+                {headDeptSignature ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <img src={headDeptSignature} alt="Head Dept Sign" className="h-16 object-contain bg-white rounded-lg border border-slate-200 p-1" />
+                    <Button variant="ghost" size="sm" onClick={() => setHeadDeptSignature('')} className="text-red-500 hover:text-red-600 h-6 text-[10px]">Hapus</Button>
+                  </div>
+                ) : (
+                  <Button type="button" onClick={() => setIsSignDeptOpen(true)} className="w-full bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl h-10 text-[10px] font-bold">
+                    Tanda Tangan Sekarang
+                  </Button>
+                )}
+              </div>
+              
+              <div className="pt-2 border-t border-emerald-200/50">
+                <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2 block text-center">Tanda Tangan Verifikator (Akuntan) <span className="font-normal normal-case italic text-emerald-600/70">(Opsional)</span></Label>
+                {verifikatorSignature ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <img src={verifikatorSignature} alt="Verifikator Sign" className="h-16 object-contain bg-white rounded-lg border border-slate-200 p-1" />
+                    <Button variant="ghost" size="sm" onClick={() => setVerifikatorSignature('')} className="text-red-500 hover:text-red-600 h-6 text-[10px]">Hapus</Button>
+                  </div>
+                ) : (
+                  <Button type="button" onClick={() => setIsSignVerifikatorOpen(true)} className="w-full bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl h-10 text-[10px] font-bold">
+                    Tanda Tangan Sekarang
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setIsOpen(false)} className="font-bold text-xs">Batal</Button>
@@ -3260,6 +3388,29 @@ function ApprovalDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {isFirstStageApprove && (
+        <>
+          <SignaturePadModal 
+            isOpen={isSignDeptOpen}
+            onClose={() => setIsSignDeptOpen(false)}
+            title="Tanda Tangan Kepala Divisi"
+            onSave={(sig) => {
+              setHeadDeptSignature(sig);
+              setIsSignDeptOpen(false);
+            }}
+          />
+          <SignaturePadModal 
+            isOpen={isSignVerifikatorOpen}
+            onClose={() => setIsSignVerifikatorOpen(false)}
+            title="Tanda Tangan Verifikator"
+            onSave={(sig) => {
+              setVerifikatorSignature(sig);
+              setIsSignVerifikatorOpen(false);
+            }}
+          />
+        </>
+      )}
     </Dialog>
   );
 }

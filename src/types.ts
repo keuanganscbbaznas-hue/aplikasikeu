@@ -111,8 +111,11 @@ export interface Submission {
   lpjUrl?: string;
   history: HistoryEntry[];
   signatures?: {
-    roni?: SignatureData;
-    kamal?: SignatureData;
+    roni?: SignatureData; // general manager/manager ops
+    kamal?: SignatureData; // kepala area
+    pic?: SignatureData; // pic
+    headDept?: SignatureData; // kepala divisi
+    verifikator?: SignatureData; // akuntan
   };
   isBooked?: boolean;
   bookedAtSheet?: string;

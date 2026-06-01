@@ -426,15 +426,29 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
       const splitNote = doc.splitTextToSize(submission.description || "Tidak ada catatan.", 84);
       doc.text(splitNote, 107, 161);
 
-      // Draw standard digital stamp for Created by
-      doc.saveGraphicsState();
-      doc.setFont("courier", "bolditalic");
-      doc.setFontSize(6.5);
-      doc.setTextColor(16, 185, 129); // emerald-500
-      doc.rect(34, 160, 26, 10);
-      doc.text("MONETA SYSTEM", 35, 164);
-      doc.text("DIGITALLY SIGNED", 35, 168);
-      doc.restoreGraphicsState();
+      if (submission.signatures?.pic) {
+        doc.addImage(submission.signatures.pic.signature, 'PNG', 32, 160, 24, 12);
+        const sigDate = parseFirestoreDate(submission.signatures.pic.timestamp);
+        doc.setFontSize(6);
+        doc.text(format(sigDate, 'dd/MM/yy HH:mm'), 46.5, 174, { align: 'center' });
+      } else {
+        // Draw standard digital stamp for Created by if no signature
+        doc.saveGraphicsState();
+        doc.setFont("courier", "bolditalic");
+        doc.setFontSize(6.5);
+        doc.setTextColor(16, 185, 129); // emerald-500
+        doc.rect(34, 160, 26, 10);
+        doc.text("MONETA SYSTEM", 35, 164);
+        doc.text("DIGITALLY SIGNED", 35, 168);
+        doc.restoreGraphicsState();
+      }
+      
+      if (submission.signatures?.headDept) {
+        doc.addImage(submission.signatures.headDept.signature, 'PNG', 71, 160, 24, 12);
+        const sigDate = parseFirestoreDate(submission.signatures.headDept.timestamp);
+        doc.setFontSize(6);
+        doc.text(format(sigDate, 'dd/MM/yy HH:mm'), 85.5, 174, { align: 'center' });
+      }
     }
 
     // 6. PERSETUJUAN PROSES PEMBAYARAN SECTION
@@ -466,19 +480,27 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     // Signatures injection
     if (!isEmpty) {
       // 1A. Verifikator (Akuntan SCB) signature
-      const akuntanSignData = config?.useDefaultAkuntanSign ? config?.akuntanDefaultSign : null;
+      let akuntanSignData = config?.useDefaultAkuntanSign ? config?.akuntanDefaultSign : null;
+      let akuntanSignName = config?.verifikatorName || "Akuntan SCB";
+      let akuntanSignTime = safeFormatDate(new Date(), 'dd/MM/yyyy HH:mm');
+      
+      if (submission?.signatures?.verifikator?.signature) {
+        akuntanSignData = submission.signatures.verifikator.signature;
+        akuntanSignName = submission.signatures.verifikator.name || akuntanSignName;
+        akuntanSignTime = format(parseFirestoreDate(submission.signatures.verifikator.timestamp), 'dd/MM/yyyy HH:mm');
+      }
+
       if (akuntanSignData) {
         try {
           doc.addImage(akuntanSignData, 'PNG', 75, 192, 32, 11);
           doc.setFontSize(7.5);
           doc.setFont("helvetica", "bold");
-          doc.text(`Ttd digital: ${config?.verifikatorName || "Akuntan SCB"}`, 115, 196);
+          doc.text(`Ttd digital: ${akuntanSignName}`, 115, 196);
           doc.setFont("helvetica", "normal");
-          const signDate = safeFormatDate(new Date(), 'dd/MM/yyyy HH:mm');
-          doc.text(`Waktu: ${signDate}`, 115, 200);
+          doc.text(`Waktu: ${akuntanSignTime}`, 115, 200);
         } catch (err) {
           console.error("Error drawing Akuntan verifikator signature:", err);
-          doc.text(`Verified (${config?.verifikatorName || "Akuntan SCB"})`, 75, 198);
+          doc.text(`Verified (${akuntanSignName})`, 75, 198);
         }
       }
 
