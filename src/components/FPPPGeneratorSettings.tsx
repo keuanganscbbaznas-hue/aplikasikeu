@@ -31,6 +31,9 @@ interface FPPPConfig {
   budgetName: string;
   budgetSaldo: string;
   headDeptName?: string;
+  approverAsrama?: string;
+  approverAkademik?: string;
+  approverOperasional?: string;
   useDefaultAkuntanSign: boolean;
   useDefaultRoniSign: boolean;
   useDefaultKamalSign: boolean;
@@ -59,6 +62,9 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
   const [budgetName, setBudgetName] = useState('Anggaran SCB BAZNAS');
   const [budgetSaldo, setBudgetSaldo] = useState('Sesuai RKAT');
   const [headDeptName, setHeadDeptName] = useState('Ust Siswadi');
+  const [approverAsrama, setApproverAsrama] = useState('Helmi Nursirwan');
+  const [approverAkademik, setApproverAkademik] = useState('Siswadi Dinianto');
+  const [approverOperasional, setApproverOperasional] = useState('Mohamad Roni');
   
   // Layout states
   const [fpppTitleOverride, setFpppTitleOverride] = useState('');
@@ -95,6 +101,9 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
       setBudgetName(fpppConfig.budgetName || 'Anggaran SCB BAZNAS');
       setBudgetSaldo(fpppConfig.budgetSaldo || 'Sesuai RKAT');
       setHeadDeptName(fpppConfig.headDeptName || 'Ust Siswadi');
+      setApproverAsrama(fpppConfig.approverAsrama || 'Helmi Nursirwan');
+      setApproverAkademik(fpppConfig.approverAkademik || 'Siswadi Dinianto');
+      setApproverOperasional(fpppConfig.approverOperasional || 'Mohamad Roni');
       
       setFpppTitleOverride(fpppConfig.fpppTitleOverride || '');
       setHideScbLogo(!!fpppConfig.hideScbLogo);
@@ -125,6 +134,9 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
         budgetName,
         budgetSaldo,
         headDeptName,
+        approverAsrama,
+        approverAkademik,
+        approverOperasional,
         fpppTitleOverride,
         hideScbLogo,
         hideBaznasLogo,
@@ -378,7 +390,7 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
               <Separator className="my-2" />
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-500">Nama Head Dept Default</Label>
+                <Label className="text-xs font-bold text-slate-500">Nama Head Dept Default (Tanpa Divisi)</Label>
                 <Select value={headDeptName} onValueChange={setHeadDeptName}>
                   <SelectTrigger className="w-full text-xs h-9 rounded-xl font-medium">
                     <SelectValue placeholder="Pilih Head Dept" />
@@ -389,6 +401,31 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
                     <SelectItem value="Ust Roni" className="text-xs">Ust Roni</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold text-emerald-600">Disetujui Oleh (Divisi Asrama)</Label>
+                <Input 
+                  value={approverAsrama} 
+                  onChange={(e) => setApproverAsrama(e.target.value)} 
+                  className="text-xs h-9 rounded-xl font-medium"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold text-emerald-600">Disetujui Oleh (Divisi Akademik/Kesiswaan)</Label>
+                <Input 
+                  value={approverAkademik} 
+                  onChange={(e) => setApproverAkademik(e.target.value)} 
+                  className="text-xs h-9 rounded-xl font-medium"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold text-emerald-600">Disetujui Oleh (Divisi Operasional)</Label>
+                <Input 
+                  value={approverOperasional} 
+                  onChange={(e) => setApproverOperasional(e.target.value)} 
+                  className="text-xs h-9 rounded-xl font-medium"
+                />
               </div>
 
               <div className="space-y-1.5">

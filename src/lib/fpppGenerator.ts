@@ -197,7 +197,15 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     const submitDateStr = (!isEmpty && submission?.createdAt) 
       ? safeFormatDate(submission.createdAt, 'dd MMMM yyyy', { locale: id })
       : '';
-    const submitDivisiStr = (!isEmpty && submission?.sumberRekening) ? `Divisi Keuangan ${submission.sumberRekening}` : '';
+      
+    let submitDivisiStr = '';
+    if (!isEmpty && submission) {
+      if (submission.divisi) {
+        submitDivisiStr = submission.divisi;
+      } else if (submission.sumberRekening) {
+        submitDivisiStr = `Divisi Keuangan ${submission.sumberRekening}`;
+      }
+    }
     
     doc.setFont("helvetica", "bold");
     doc.text(submitDateStr, 49, 35);
@@ -274,7 +282,7 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
       
       // Parse Bank account info if found or default to "Transfer Bank" if transfer
       let bankName = config?.bankName || "BANK SYARIAH INDONESIA (BSI)";
-      let norek = "-";
+      let norek = submission.noRekeningPengaju || "-";
       let atasNama = submission.picName || "Bendahara SCB";
       
       if (submission.sumberRekening) {
@@ -400,7 +408,16 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     if (creatorName) doc.line(32, 179, 61, 179);
     
     // Right side: Head Dept
-    const headDeptVal = (!isEmpty && config?.headDeptName) ? config.headDeptName : "Ust Siswadi";
+    let headDeptVal = (!isEmpty && config?.headDeptName) ? config.headDeptName : "Ust Siswadi";
+    if (!isEmpty && submission?.divisi) {
+      if (submission.divisi === 'Asrama') {
+        headDeptVal = config?.approverAsrama || "Helmi Nursirwan";
+      } else if (submission.divisi === 'Akademik/Kesiswaan') {
+        headDeptVal = config?.approverAkademik || "Siswadi Dinianto";
+      } else if (submission.divisi === 'Operasional') {
+        headDeptVal = config?.approverOperasional || "Mohamad Roni";
+      }
+    }
     doc.text(headDeptVal, 85.5, 178, { align: 'center' });
     doc.line(71, 179, 100, 179);
 
