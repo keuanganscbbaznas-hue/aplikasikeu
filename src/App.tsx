@@ -1365,11 +1365,11 @@ export default function App() {
         >
           <Card className="border-none shadow-2xl">
             <CardHeader className="space-y-4 text-center">
-              <div className="mx-auto flex h-24 w-24 items-center justify-center p-2 rounded-full bg-white shadow-sm ring-1 ring-slate-100">
+              <div className="mx-auto flex h-32 w-32 items-center justify-center p-2 rounded-[2rem] bg-white shadow-xl shadow-slate-200/50 ring-1 ring-slate-100 overflow-hidden">
                 <img 
-                  src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0d/Logo_BAZNAS.png/512px-Logo_BAZNAS.png" 
+                  src={logoURL} 
                   alt="Logo MONETA SCB" 
-                  className="h-full w-full object-contain p-1"
+                  className="max-h-full max-w-full object-contain p-1"
                   referrerPolicy="no-referrer"
                 />
               </div>
