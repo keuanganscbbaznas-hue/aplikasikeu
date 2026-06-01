@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { getApiUrl } from './utils';
+import { SCB_LOGO_BASE64, BAZNAS_LOGO_BASE64 } from './logos';
 
 // Helper to convert date
 const parseFirestoreDate = (dateField: any): Date => {
@@ -145,19 +146,12 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     // Load & draw SCB Logo (left)
     if (!config?.hideScbLogo) {
       try {
-        const scbBase64 = await loadBase64Image("/api/logo/scb");
-        doc.addImage(scbBase64, 'PNG', 18, 11.5, 14, 13);
-      } catch (e) {
-        console.warn("Retrying main SCB Logo URL direct load:", e);
-        try {
-          const scbBase64 = await loadBase64Image("https://neoschool.oss-ap-southeast-5.aliyuncs.com/scb/core/organizations/scb-logo-1710220971.png");
-          doc.addImage(scbBase64, 'PNG', 18, 11.5, 14, 13);
-        } catch (err2) {
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(8);
-          doc.setTextColor(16, 124, 65); // emerald green
-          doc.text("SCB", 25, 19, { align: "center" });
-        }
+        doc.addImage(SCB_LOGO_BASE64, 'PNG', 18, 11.5, 14, 13);
+      } catch (err2) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(16, 124, 65); // emerald green
+        doc.text("SCB", 25, 19, { align: "center" });
       }
     }
     
@@ -170,19 +164,12 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     // Load & draw BAZNAS Logo (right)
     if (!config?.hideBaznasLogo) {
       try {
-        const baznasBase64 = await loadBase64Image("/api/logo/baznas");
-        doc.addImage(baznasBase64, 'PNG', 177, 11, 16, 14);
-      } catch (e) {
-        console.warn("Retrying main BAZNAS Logo URL direct load:", e);
-        try {
-          const baznasBase64 = await loadBase64Image("https://baznas.go.id/assets/images/logo_baznas_mobile.png");
-          doc.addImage(baznasBase64, 'PNG', 177, 11, 16, 14);
-        } catch (err2) {
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(8);
-          doc.setTextColor(180, 140, 20); // gold
-          doc.text("BAZNAS", 185, 19, { align: "center" });
-        }
+        doc.addImage(BAZNAS_LOGO_BASE64, 'PNG', 177, 11, 16, 14);
+      } catch (err2) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(180, 140, 20); // gold
+        doc.text("BAZNAS", 185, 19, { align: "center" });
       }
     }
 
