@@ -642,10 +642,14 @@ export default function App() {
   const [editDescription, setEditDescription] = useState('');
   const [editPicName, setEditPicName] = useState('');
   const [editPicWhatsapp, setEditPicWhatsapp] = useState('');
+  const [editDivisi, setEditDivisi] = useState<'Asrama' | 'Akademik/Kesiswaan' | 'Operasional' | ''>('');
+  const [editNoRekeningPengaju, setEditNoRekeningPengaju] = useState('');
   const [editSumberRekening, setEditSumberRekening] = useState<'SMP' | 'SMA' | ''>('');
   const [editKodeBudget, setEditKodeBudget] = useState('');
   const [editNoDokumen, setEditNoDokumen] = useState('');
   const [editEvidenceUrl, setEditEvidenceUrl] = useState('');
+  const [editEvidenceBase64, setEditEvidenceBase64] = useState('');
+  const [editEvidenceMimeType, setEditEvidenceMimeType] = useState('');
   const [editCreatedAt, setEditCreatedAt] = useState('');
   const [editHistory, setEditHistory] = useState<HistoryEntry[]>([]);
   const [editStageIndex, setEditStageIndex] = useState(0);
@@ -1120,10 +1124,14 @@ export default function App() {
     setEditDescription(submission.description || '');
     setEditPicName(submission.picName || '');
     setEditPicWhatsapp(submission.picWhatsapp || '');
+    setEditDivisi(submission.divisi || '');
+    setEditNoRekeningPengaju(submission.noRekeningPengaju || '');
     setEditSumberRekening(submission.sumberRekening || '');
     setEditKodeBudget(submission.kodeBudget || '');
     setEditNoDokumen(submission.noDokumen || '');
     setEditEvidenceUrl(submission.evidenceUrl || '');
+    setEditEvidenceBase64('');
+    setEditEvidenceMimeType('');
     setEditCreatedAt(format(parseFirestoreDate(submission.createdAt), "yyyy-MM-dd'T'HH:mm"));
     setEditHistory([...submission.history]);
     setEditStageIndex(submission.currentStageIndex);
@@ -1139,6 +1147,25 @@ export default function App() {
     setEditHistory(updatedHistory);
   };
 
+  const handleEditEvidenceFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Ukuran file maksimal 5MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setEditEvidenceBase64(reader.result as string);
+        setEditEvidenceMimeType(file.type);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setEditEvidenceBase64('');
+      setEditEvidenceMimeType('');
+    }
+  };
+
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingSubmission || !profile || !TRACKING_ADMIN_EMAILS.includes(profile.email)) {
@@ -1149,32 +1176,62 @@ export default function App() {
     const submissionId = editingSubmission.id;
     const stages = getStagesByType(editType);
     
-    // Prepare payload
-    const updatePayload = {
-      type: editType,
-      title: editTitle,
-      amount: Number(editAmount),
-      description: editDescription,
-      picName: editPicName,
-      picWhatsapp: editPicWhatsapp || null,
-      sumberRekening: editSumberRekening || null,
-      kodeBudget: editKodeBudget || null,
-      noDokumen: editNoDokumen || null,
-      evidenceUrl: editEvidenceUrl,
-      createdAt: Timestamp.fromDate(new Date(editCreatedAt)),
-      history: editHistory,
-      currentStageIndex: editStageIndex,
-      status: stages[editStageIndex],
-      updatedAt: serverTimestamp()
-    };
-
     // Close dialog immediately for instant UI feedback
     setIsEditDialogOpen(false);
     setEditingSubmission(null);
     
     // Perform update in background with a promise toast
+    const updateProcess = async () => {
+      let finalEvidenceUrl = editEvidenceUrl;
+      
+      if (editEvidenceBase64) {
+        const ext = editEvidenceMimeType.split('/')[1] || 'png';
+        try {
+          const localRes = await fetch(getApiUrl('/api/gallery/upload'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filename: `bukti_pengajuan_terbaru_${Date.now()}.${ext}`,
+              base64Data: editEvidenceBase64,
+              mimeType: editEvidenceMimeType
+            })
+          });
+          if (localRes.ok) {
+            const localData = await localRes.json();
+            if (localData.success) {
+              finalEvidenceUrl = localData.url;
+            }
+          }
+        } catch (uploadErr) {
+          console.error("Gagal upload lampiran revisi:", uploadErr);
+        }
+      }
+
+      const updatePayload = {
+        type: editType,
+        title: editTitle,
+        amount: Number(editAmount),
+        description: editDescription,
+        picName: editPicName,
+        picWhatsapp: editPicWhatsapp || null,
+        divisi: editDivisi || null,
+        noRekeningPengaju: editNoRekeningPengaju || null,
+        sumberRekening: editSumberRekening || null,
+        kodeBudget: editKodeBudget || null,
+        noDokumen: editNoDokumen || null,
+        evidenceUrl: finalEvidenceUrl,
+        createdAt: Timestamp.fromDate(new Date(editCreatedAt)),
+        history: editHistory,
+        currentStageIndex: editStageIndex,
+        status: stages[editStageIndex],
+        updatedAt: serverTimestamp()
+      };
+      
+      await updateDoc(doc(db, 'submissions', submissionId), updatePayload);
+    };
+
     toast.promise(
-      updateDoc(doc(db, 'submissions', submissionId), updatePayload),
+      updateProcess(),
       {
         loading: 'Menyimpan perubahan...',
         success: 'Data pengajuan berhasil diperbarui',
@@ -2062,6 +2119,32 @@ export default function App() {
                         />
                       </div>
                       <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-divisi" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Divisi (Optional)</Label>
+                        <Select 
+                          value={editDivisi} 
+                          onValueChange={(v: 'Asrama' | 'Akademik/Kesiswaan' | 'Operasional' | '') => setEditDivisi(v)}
+                        >
+                          <SelectTrigger id="edit-divisi" className="h-10 rounded-xl border-slate-200 bg-white">
+                            <SelectValue placeholder="Pilih divisi" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value="Asrama">Asrama</SelectItem>
+                            <SelectItem value="Akademik/Kesiswaan">Akademik/Kesiswaan</SelectItem>
+                            <SelectItem value="Operasional">Operasional</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-norek" className="text-[9px] font-black uppercase tracking-wider text-slate-500">No Rekening Pengaju (Optional)</Label>
+                        <Input 
+                          id="edit-norek" 
+                          placeholder="Contoh: BSI 1234567890 an Ahmad" 
+                          value={editNoRekeningPengaju}
+                          onChange={(e) => setEditNoRekeningPengaju(e.target.value)}
+                          className="h-10 rounded-xl border-slate-200 bg-white"
+                        />
+                      </div>
+                      <div className="grid gap-2 ml-1">
                         <Label htmlFor="edit-sumber" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Sumber Rekening</Label>
                         <Select 
                           value={editSumberRekening} 
@@ -2144,14 +2227,27 @@ export default function App() {
                         />
                       </div>
                       <div className="grid gap-2 ml-1 md:col-span-2">
-                        <Label htmlFor="edit-evidence" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Link Bukti Dokumen</Label>
-                        <Input 
-                          id="edit-evidence" 
-                          value={editEvidenceUrl}
-                          onChange={(e) => setEditEvidenceUrl(e.target.value)}
-                          className="h-10 rounded-xl border-slate-200 bg-white"
-                          placeholder="https://drive.google.com/..."
-                        />
+                        <Label htmlFor="edit-evidence" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Dokumen Lampiran (Upload File atau Copas Link)</Label>
+                        <div className="flex gap-2 items-center">
+                          <Input 
+                            type="file" 
+                            id="edit_evidence_file"
+                            onChange={handleEditEvidenceFile}
+                            className="h-10 rounded-xl border-slate-200 text-xs py-2 w-1/2 cursor-pointer bg-white"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,image/*"
+                          />
+                          <span className="text-[10px] font-black text-slate-400">ATAU</span>
+                          <Input 
+                            id="edit-evidence" 
+                            value={editEvidenceUrl}
+                            onChange={(e) => setEditEvidenceUrl(e.target.value)}
+                            className="h-10 rounded-xl border-slate-200 bg-white w-1/2"
+                            placeholder="https://drive.google.com/..."
+                          />
+                        </div>
+                        {editEvidenceBase64 && (
+                          <p className="text-[10px] text-emerald-600 font-bold ml-1 mt-1">✓ File siap diupload</p>
+                        )}
                       </div>
                     </div>
                   </div>
