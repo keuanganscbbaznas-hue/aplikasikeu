@@ -418,32 +418,32 @@ function SubmissionCard({
                     </Button>
                   }
                 />
-                <DialogContent className="max-w-3xl md:max-w-4xl rounded-[2rem] border-none shadow-3xl p-0 overflow-hidden">
-                  <div className="flex flex-col max-h-[90vh]">
-                    <div className="p-6 border-b border-slate-100 bg-white">
-                      <DialogHeader>
-                        <div className="flex items-center justify-between">
-                           <div className="flex items-center gap-4">
-                              <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-xs font-black shadow-lg ${typeStyles[submission.type] || typeStyles.pembiayaan}`}>
-                                 {typeInitial[submission.type as keyof typeof typeInitial] || "PB"}
-                              </div>
-                              <div>
-                                 <DialogTitle className="font-black text-xl tracking-tighter text-slate-900">{submission.title}</DialogTitle>
-                                 <div className="flex items-center gap-3 mt-1">
-                                    <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest">{submission.type.replace('_', ' ')}</Badge>
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase">{format(parseFirestoreDate(submission.createdAt), 'dd MMMM yyyy HH:mm')}</span>
-                                 </div>
-                              </div>
-                           </div>
-                           <div className="text-right">
-                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Nominal</p>
-                              <p className="text-2xl font-black text-slate-900 tracking-tighter">Rp {submission.amount.toLocaleString('id-ID')}</p>
-                           </div>
-                        </div>
-                      </DialogHeader>
-                    </div>
-                    
-                    <ScrollArea className="flex-1 p-8 bg-slate-50/30">
+                <DialogContent className="max-w-3xl md:max-w-4xl max-h-[90vh] flex flex-col rounded-[2rem] border-none shadow-3xl p-0 overflow-hidden">
+                  <div className="p-6 border-b border-slate-100 bg-white shrink-0">
+                    <DialogHeader>
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-4">
+                            <div className={`h-12 w-12 rounded-2xl flex items-center justify-center text-xs font-black shadow-lg ${typeStyles[submission.type] || typeStyles.pembiayaan}`}>
+                               {typeInitial[submission.type as keyof typeof typeInitial] || "PB"}
+                            </div>
+                            <div>
+                               <DialogTitle className="font-black text-xl tracking-tighter text-slate-900">{submission.title}</DialogTitle>
+                               <div className="flex items-center gap-3 mt-1">
+                                  <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest">{submission.type.replace('_', ' ')}</Badge>
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase">{format(parseFirestoreDate(submission.createdAt), 'dd MMMM yyyy HH:mm')}</span>
+                               </div>
+                            </div>
+                         </div>
+                         <div className="text-right">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Nominal</p>
+                            <p className="text-2xl font-black text-slate-900 tracking-tighter">Rp {submission.amount.toLocaleString('id-ID')}</p>
+                         </div>
+                      </div>
+                    </DialogHeader>
+                  </div>
+                  
+                  <ScrollArea className="flex-1 min-h-0 bg-slate-50/30">
+                    <div className="p-8">
                       <SubmissionDetailView 
                         submission={submission} 
                         stages={stages} 
@@ -456,8 +456,8 @@ function SubmissionCard({
                         userRole={userRole}
                         currentUser={currentUser}
                       />
-                    </ScrollArea>
-                  </div>
+                    </div>
+                  </ScrollArea>
                 </DialogContent>
               </Dialog>
               
