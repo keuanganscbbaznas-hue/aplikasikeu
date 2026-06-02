@@ -121,7 +121,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { resizeImage, getApiUrl } from './lib/utils';
-import { Phone } from 'lucide-react';
+import { Phone, Send } from 'lucide-react';
 
 const formatWhatsAppMessage = (submission: Submission) => {
   const stages = getStagesByType(submission.type);
@@ -4024,6 +4024,7 @@ function SubmissionDetailView({
   const [hdSigEdit, setHdSigEdit] = useState('');
   const [isLpjSignPicOpen, setIsLpjSignPicOpen] = useState(false);
   const [isLpjSignDeptOpen, setIsLpjSignDeptOpen] = useState(false);
+  const [waReminderPhone, setWaReminderPhone] = useState('');
 
   useEffect(() => {
     if (submission) {
@@ -4040,6 +4041,7 @@ function SubmissionDetailView({
       setNoDokumenLaporanEdit(submission.noDokumenLaporan || '');
       setPicSigEdit(submission.signatures?.pic?.signature || '');
       setHdSigEdit(submission.signatures?.headDept?.signature || '');
+      setWaReminderPhone(submission.picWhatsapp || '');
     }
   }, [submission, isEditingLPJ]);
 
@@ -4609,6 +4611,65 @@ function SubmissionDetailView({
                           "{submission.penggunaanDana || 'Tidak ada uraian rincian penggunaan.'}"
                         </p>
                       </div>
+
+                      {sisaDanaVal > 0 && (
+                        <div id="lpj-wa-reminder-section" className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-3 shadow-inner my-3">
+                          <div className="flex items-center gap-2">
+                            <div className="h-7 w-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-md shrink-0">
+                              <MessageSquare size={14} />
+                            </div>
+                            <div>
+                              <h5 className="text-[11px] font-black uppercase tracking-wider text-emerald-800">
+                                WA Reminder Pengembalian Sisa LPJ
+                              </h5>
+                              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-tight">
+                                Kirim tagihan setoran sisa dana ke PIC
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <div className="flex-1 space-y-1">
+                              <Label className="text-[9px] font-bold text-slate-500 uppercase tracking-tight ml-0.5">Nomor WA PIC</Label>
+                              <Input 
+                                id="wa-reminder-phone"
+                                type="text"
+                                placeholder="Contoh: 08123456789"
+                                value={waReminderPhone}
+                                onChange={(e) => setWaReminderPhone(e.target.value)}
+                                className="h-9 rounded-xl border-emerald-200 bg-white text-xs font-medium focus:ring-emerald-500 focus:border-emerald-500"
+                              />
+                            </div>
+                            <div className="flex items-end shrink-0">
+                              <Button
+                                id="btn-send-wa-reminder"
+                                size="sm"
+                                onClick={() => {
+                                  const msg = `Assalamu'alaikum Wr. Wb.
+Yth. PIC Pengaju *${submission.picName || submission.submittedByName || '-'}*
+
+Mengingatkan kembali untuk proses pengembalian sisa dana LPJ dari pengajuan:
+📦 *Judul:* ${submission.title || '-'}
+💰 *Nominal Uang Muka:* Rp ${(submission.amount || 0).toLocaleString('id-ID')}
+💵 *Dana Terpakai (Realisasi):* Rp ${usedFundVal.toLocaleString('id-ID')}
+🔄 *Sisa Dana yang Harus Dikembalikan:* Rp ${sisaDanaVal.toLocaleString('id-ID')}
+
+Mohon agar sisa dana pengembalian disetorkan kembali ke rekening kas SCB BAZNAS dan mengunggah atau mengonfirmasi bukti setorannya di aplikasi.
+
+Terima kasih banyak atas kerjasama dan amanahnya.
+Wassalamu'alaikum Wr. Wb.
+- Keuangan SCB BAZNAS`;
+                                  sendWhatsApp(waReminderPhone, msg);
+                                }}
+                                className="w-full sm:w-auto h-9 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider border-none gap-1.5 flex items-center justify-center transition-all shadow shadow-emerald-600/10"
+                              >
+                                <Send size={12} />
+                                Kirim Pengingat
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Display Signatures under view mode */}
                       <div className="grid grid-cols-2 gap-4 py-2 border-t border-slate-100">
