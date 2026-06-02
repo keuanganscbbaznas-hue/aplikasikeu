@@ -121,6 +121,10 @@ export interface Submission {
   isBooked?: boolean;
   bookedAtSheet?: string;
   bookedAt?: any;
+  penggunaanDana?: string;
+  sisaDana?: number;
+  alokasiPeruntukan?: string;
+  nominalPermohonanLaporan?: number;
 }
 
 export interface DonationConfirmation {

@@ -3339,10 +3339,91 @@ function ApprovalDialog({
   const [headDeptSignature, setHeadDeptSignature] = useState('');
   const [verifikatorSignature, setVerifikatorSignature] = useState('');
   
+  // Laporan Pertanggungjawaban Form States (for stage "Belum Laporan")
+  const [picNameLocal, setPicNameLocal] = useState('');
+  const [divisiLocal, setDivisiLocal] = useState<'Asrama' | 'Akademik/Kesiswaan' | 'Operasional' | ''>('');
+  const [amountLocal, setAmountLocal] = useState('');
+  const [penggunaanDanaLocal, setPenggunaanDanaLocal] = useState('');
+  const [sisaDanaLocal, setSisaDanaLocal] = useState('');
+  const [alokasiPeruntukanLocal, setAlokasiPeruntukanLocal] = useState('');
+  const [picSignatureLocal, setPicSignatureLocal] = useState('');
+  const [headDeptSignatureLocal, setHeadDeptSignatureLocal] = useState('');
+  const [isSignPicOpen, setIsSignPicOpen] = useState(false);
+  const [isSignDeptLaporanOpen, setIsSignDeptLaporanOpen] = useState(false);
+  
+  const [fpppConfigLocal, setFpppConfigLocal] = useState<any>(null);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'config', 'fppp'), (docSnap) => {
+      if (docSnap.exists()) {
+        setFpppConfigLocal(docSnap.data());
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const stages = getStagesByType(submission.type);
+  const currentStageName = stages[submission.currentStageIndex];
   const isFirstStageApprove = mode === 'approve' && submission.currentStageIndex === 0;
+  const isBelumLaporanApprove = mode === 'approve' && currentStageName === "Belum Laporan";
+
+  useEffect(() => {
+    if (isOpen && isBelumLaporanApprove) {
+      setPicNameLocal(submission.picName || submission.submittedByName || '');
+      setDivisiLocal(submission.divisi || 'Asrama');
+      setAmountLocal(submission.amount ? submission.amount.toString() : '');
+      setPenggunaanDanaLocal(submission.penggunaanDana || '');
+      setSisaDanaLocal(submission.sisaDana !== undefined ? submission.sisaDana.toString() : '0');
+      setAlokasiPeruntukanLocal(submission.alokasiPeruntukan || '');
+      setPicSignatureLocal(submission.signatures?.pic?.signature || '');
+      setHeadDeptSignatureLocal(submission.signatures?.headDept?.signature || '');
+    }
+  }, [isOpen, submission, isBelumLaporanApprove]);
 
   const handleSubmit = async () => {
-    if (isFirstStageApprove) {
+    if (isBelumLaporanApprove) {
+      if (!picSignatureLocal || !headDeptSignatureLocal) {
+        toast.error("Silakan lengkapi tanda tangan PIC dan HEADDEPT!");
+        return;
+      }
+
+      const newSignatures = submission.signatures ? { ...submission.signatures } : {};
+      
+      if (picSignatureLocal) {
+        newSignatures.pic = {
+          name: picNameLocal || submission.submittedByName,
+          signature: picSignatureLocal,
+          timestamp: new Date()
+        };
+      }
+      
+      if (headDeptSignatureLocal) {
+        let headDeptName = "Pegawai SCB";
+        if (divisiLocal === 'Asrama') headDeptName = "Helmi Nursirwan";
+        else if (divisiLocal === 'Akademik/Kesiswaan') headDeptName = "Siswadi Dinianto";
+        else if (divisiLocal === 'Operasional') headDeptName = "Mohamad Roni";
+        
+        newSignatures.headDept = {
+          name: headDeptName,
+          signature: headDeptSignatureLocal,
+          timestamp: new Date()
+        };
+      }
+
+      try {
+        await updateDoc(doc(db, 'submissions', submission.id), {
+          picName: picNameLocal || null,
+          divisi: divisiLocal || null,
+          nominalPermohonanLaporan: Number(amountLocal) || 0,
+          penggunaanDana: penggunaanDanaLocal || null,
+          sisaDana: Number(sisaDanaLocal) || 0,
+          alokasiPeruntukan: alokasiPeruntukanLocal || null,
+          signatures: newSignatures
+        });
+      } catch (e) {
+        console.error("Error updating Belum Laporan details:", e);
+      }
+    } else if (isFirstStageApprove) {
       // Update submission with the new signatures
       const newSignatures = submission.signatures ? { ...submission.signatures } : {};
       
@@ -3401,70 +3482,268 @@ function ApprovalDialog({
           </Button>
         }
       />
-      <DialogContent className="sm:max-w-[425px] rounded-[2rem]">
-        <DialogHeader>
+      <DialogContent className={`${isBelumLaporanApprove ? 'sm:max-w-[550px]' : 'sm:max-w-[425px]'} rounded-[2rem] max-h-[90vh] flex flex-col overflow-hidden`}>
+        <DialogHeader className="pb-2 border-b border-slate-50 shrink-0">
           <DialogTitle className="font-black text-xl tracking-tighter">
-            {mode === 'approve' ? 'Konfirmasi Persetujuan' : 'Konfirmasi Penolakan'}
+            {isBelumLaporanApprove 
+              ? 'Laporan Pertanggungjawaban (LPJ) Uang Muka' 
+              : mode === 'approve' 
+                ? 'Konfirmasi Persetujuan' 
+                : 'Konfirmasi Penolakan'}
           </DialogTitle>
           <DialogDescription className="text-xs font-bold text-slate-400">
-            {mode === 'approve' 
-              ? 'Pastikan berkas telah diperiksa sebelum melanjutkan ke tahap berikutnya.' 
-              : 'Berikan alasan penolakan agar pengaju dapat melakukan perbaikan.'}
+            {isBelumLaporanApprove
+              ? 'Lengkapi rincian penggunaan dan sisa dana di bawah ini beserta tanda tangan pengesahan.'
+              : mode === 'approve' 
+                ? 'Pastikan berkas telah diperiksa sebelum melanjutkan ke tahap berikutnya.' 
+                : 'Berikan alasan penolakan agar pengaju dapat melakukan perbaikan.'}
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4 space-y-4">
-          <div>
-            <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Catatan / Alasan</Label>
-            <Input 
-              placeholder="Tulis pesan Anda di sini..." 
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              className="rounded-xl border-slate-200 focus:ring-emerald-500"
-            />
-          </div>
-          
-          {isFirstStageApprove && (
-            <div className="space-y-4 mt-4 p-4 border border-emerald-100 bg-emerald-50 rounded-2xl">
+        
+        <ScrollArea className="flex-1 pr-2">
+          <div className="py-4 space-y-4">
+            {isBelumLaporanApprove ? (
+              /* THE SPECIAL FORM FOR BELUM LAPORAN */
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="lap-pic" className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">PIC / Penerima</Label>
+                    <Input 
+                      id="lap-pic" 
+                      placeholder="Nama PIC" 
+                      value={picNameLocal}
+                      onChange={(e) => setPicNameLocal(e.target.value)}
+                      className="rounded-xl border-slate-200 focus:ring-emerald-500 h-10"
+                    />
+                  </div>
+                  
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="lap-divisi" className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Divisi</Label>
+                    <Select 
+                      value={divisiLocal || undefined} 
+                      onValueChange={(v: 'Asrama' | 'Akademik/Kesiswaan' | 'Operasional') => setDivisiLocal(v)}
+                    >
+                      <SelectTrigger id="lap-divisi" className="h-10 rounded-xl border-slate-200 bg-white">
+                        <SelectValue placeholder="Pilih Divisi" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="Asrama">Asrama</SelectItem>
+                        <SelectItem value="Akademik/Kesiswaan">Akademik/Kesiswaan</SelectItem>
+                        <SelectItem value="Operasional">Operasional</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="lap-amount" className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Nominal Permohonan Dana (Rp)</Label>
+                    <Input 
+                      id="lap-amount" 
+                      type="number"
+                      placeholder="0" 
+                      value={amountLocal}
+                      onChange={(e) => setAmountLocal(e.target.value)}
+                      className="rounded-xl border-slate-200 focus:ring-emerald-500 h-10"
+                    />
+                  </div>
+                  
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="lap-sisa" className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Sisa Dana (Rp)</Label>
+                    <Input 
+                      id="lap-sisa" 
+                      type="number"
+                      placeholder="0" 
+                      value={sisaDanaLocal}
+                      onChange={(e) => setSisaDanaLocal(e.target.value)}
+                      className="rounded-xl border-slate-200 focus:ring-emerald-500 h-10"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label htmlFor="lap-penggunaan" className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Penggunaan Dana</Label>
+                  <textarea 
+                    id="lap-penggunaan" 
+                    placeholder="Jelaskan secara rinci penggunaan dana..." 
+                    value={penggunaanDanaLocal}
+                    onChange={(e) => setPenggunaanDanaLocal(e.target.value)}
+                    className="p-3 w-full rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 min-h-[70px] resize-none text-sm font-medium text-slate-800 bg-white shadow-inner"
+                  />
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label htmlFor="lap-alokasi" className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Alokasi / Peruntukan</Label>
+                  <Input 
+                    id="lap-alokasi" 
+                    placeholder="Contoh: Pembelian Bahan Makanan Asrama" 
+                    value={alokasiPeruntukanLocal}
+                    onChange={(e) => setAlokasiPeruntukanLocal(e.target.value)}
+                    className="rounded-xl border-slate-200 focus:ring-emerald-500 h-10"
+                  />
+                </div>
+
+                {/* SIGNATURE SECTION FOR PIC & HEADDEPT */}
+                <div className="pt-2 border-t border-slate-100">
+                  <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block text-center">Pengesahan Dokumen Laporan</Label>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* PIC Signature Column */}
+                    <div className="space-y-2 text-center p-3 border border-slate-100 rounded-2xl bg-slate-50/50">
+                      <span className="text-[10px] font-black text-slate-700 uppercase tracking-tighter block">Tanda Tangan PIC</span>
+                      
+                      {picSignatureLocal ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <img src={picSignatureLocal} alt="PIC Sign" className="h-16 object-contain bg-white rounded-lg border border-slate-200 p-1" />
+                          <Button variant="ghost" size="sm" onClick={() => setPicSignatureLocal('')} className="text-red-500 hover:text-red-600 h-6 text-[10px]">Ubah</Button>
+                        </div>
+                      ) : (
+                        <Button type="button" onClick={() => setIsSignPicOpen(true)} className="w-full bg-white border border-slate-200 text-emerald-700 hover:bg-emerald-50 rounded-xl h-10 text-[10px] font-bold shadow-sm">
+                          Tanda Tangan PIC
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* HEADDEPT Signature Column */}
+                    <div className="space-y-2 text-center p-3 border border-slate-100 rounded-2xl bg-slate-50/50">
+                      <span className="text-[10px] font-black text-slate-700 uppercase tracking-tighter block">Tanda Tangan HEADDEPT</span>
+                      
+                      {headDeptSignatureLocal ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <img src={headDeptSignatureLocal} alt="HEADDEPT Sign" className="h-16 object-contain bg-white rounded-lg border border-slate-200 p-1" />
+                          <Button variant="ghost" size="sm" onClick={() => setHeadDeptSignatureLocal('')} className="text-red-500 hover:text-red-600 h-6 text-[10px]">Ubah</Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Button type="button" onClick={() => setIsSignDeptLaporanOpen(true)} className="w-full bg-white border border-slate-200 text-emerald-700 hover:bg-emerald-50 rounded-xl h-10 text-[10px] font-bold shadow-sm mb-1">
+                            Tanda Tangan Dept
+                          </Button>
+                          
+                          {/* Option to use auto signature if configured */}
+                          {fpppConfigLocal && (
+                            (divisiLocal === 'Asrama' && fpppConfigLocal.useDefaultAsramaSign && fpppConfigLocal.asramaDefaultSign) ||
+                            (divisiLocal === 'Akademik/Kesiswaan' && fpppConfigLocal.useDefaultAkademikSign && fpppConfigLocal.akademikDefaultSign) ||
+                            (divisiLocal === 'Operasional' && fpppConfigLocal.useDefaultOperasionalSign && fpppConfigLocal.operasionalDefaultSign)
+                          ) && (
+                            <Button 
+                              type="button" 
+                              onClick={() => {
+                                let defaultSign = '';
+                                if (divisiLocal === 'Asrama') defaultSign = fpppConfigLocal.asramaDefaultSign;
+                                else if (divisiLocal === 'Akademik/Kesiswaan') defaultSign = fpppConfigLocal.akademikDefaultSign;
+                                else if (divisiLocal === 'Operasional') defaultSign = fpppConfigLocal.operasionalDefaultSign;
+                                setHeadDeptSignatureLocal(defaultSign);
+                                toast.success("TTD Auto Kepala Divisi terpasang");
+                              }}
+                              className="w-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl h-10 text-[9px] font-black uppercase tracking-tight"
+                            >
+                              Gunakan TTD Auto
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Optional general note/comment */}
+                <div className="grid gap-1">
+                  <Label htmlFor="lap-catatan" className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">Catatan Tambahan (Optional)</Label>
+                  <Input 
+                    id="lap-catatan" 
+                    placeholder="Tulis catatan jika ada..." 
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className="rounded-xl border-slate-200 focus:ring-emerald-500 h-10"
+                  />
+                </div>
+              </div>
+            ) : (
+              /* THE STANDARD APPROVE/REJECT COMMENT FORM */
               <div>
-                <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2 block text-center">Tanda Tangan Kepala Divisi <span className="font-normal normal-case italic text-emerald-600/70">(Opsional)</span></Label>
-                {headDeptSignature ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <img src={headDeptSignature} alt="Head Dept Sign" className="h-16 object-contain bg-white rounded-lg border border-slate-200 p-1" />
-                    <Button variant="ghost" size="sm" onClick={() => setHeadDeptSignature('')} className="text-red-500 hover:text-red-600 h-6 text-[10px]">Hapus</Button>
+                <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Catatan / Alasan</Label>
+                <Input 
+                  placeholder="Tulis pesan Anda di sini..." 
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  className="rounded-xl border-slate-200 focus:ring-emerald-500"
+                />
+                
+                {isFirstStageApprove && (
+                  <div className="space-y-4 mt-4 p-4 border border-emerald-100 bg-emerald-50 rounded-2xl">
+                    <div>
+                      <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2 block text-center">Tanda Tangan Kepala Divisi <span className="font-normal normal-case italic text-emerald-600/70">(Opsional)</span></Label>
+                      {headDeptSignature ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <img src={headDeptSignature} alt="Head Dept Sign" className="h-16 object-contain bg-white rounded-lg border border-slate-200 p-1" />
+                          <Button variant="ghost" size="sm" onClick={() => setHeadDeptSignature('')} className="text-red-500 hover:text-red-600 h-6 text-[10px]">Hapus</Button>
+                        </div>
+                      ) : (
+                        <Button type="button" onClick={() => setIsSignDeptOpen(true)} className="w-full bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl h-10 text-[10px] font-bold">
+                          Tanda Tangan Sekarang
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="pt-2 border-t border-emerald-200/50">
+                      <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2 block text-center">Tanda Tangan Verifikator (Akuntan) <span className="font-normal normal-case italic text-emerald-600/70">(Opsional)</span></Label>
+                      {verifikatorSignature ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <img src={verifikatorSignature} alt="Verifikator Sign" className="h-16 object-contain bg-white rounded-lg border border-slate-200 p-1" />
+                          <Button variant="ghost" size="sm" onClick={() => setVerifikatorSignature('')} className="text-red-500 hover:text-red-600 h-6 text-[10px]">Hapus</Button>
+                        </div>
+                      ) : (
+                        <Button type="button" onClick={() => setIsSignVerifikatorOpen(true)} className="w-full bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl h-10 text-[10px] font-bold">
+                          Tanda Tangan Sekarang
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <Button type="button" onClick={() => setIsSignDeptOpen(true)} className="w-full bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl h-10 text-[10px] font-bold">
-                    Tanda Tangan Sekarang
-                  </Button>
                 )}
               </div>
-              
-              <div className="pt-2 border-t border-emerald-200/50">
-                <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2 block text-center">Tanda Tangan Verifikator (Akuntan) <span className="font-normal normal-case italic text-emerald-600/70">(Opsional)</span></Label>
-                {verifikatorSignature ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <img src={verifikatorSignature} alt="Verifikator Sign" className="h-16 object-contain bg-white rounded-lg border border-slate-200 p-1" />
-                    <Button variant="ghost" size="sm" onClick={() => setVerifikatorSignature('')} className="text-red-500 hover:text-red-600 h-6 text-[10px]">Hapus</Button>
-                  </div>
-                ) : (
-                  <Button type="button" onClick={() => setIsSignVerifikatorOpen(true)} className="w-full bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl h-10 text-[10px] font-bold">
-                    Tanda Tangan Sekarang
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-        <DialogFooter>
+            )}
+          </div>
+        </ScrollArea>
+        
+        <DialogFooter className="pt-3 border-t border-slate-50 shrink-0">
           <Button variant="ghost" onClick={() => setIsOpen(false)} className="font-bold text-xs">Batal</Button>
           <Button 
             onClick={handleSubmit} 
             className={mode === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'}
           >
-            {mode === 'approve' ? 'Ya, Setujui' : 'Ya, Tolak'}
+            {isBelumLaporanApprove 
+              ? 'Simpan & Setujui' 
+              : mode === 'approve' 
+                ? 'Ya, Setujui' 
+                : 'Ya, Tolak'}
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* SIGNATURE PAD MODALS */}
+      {isSignPicOpen && (
+        <SignaturePadModal 
+          isOpen={isSignPicOpen}
+          onClose={() => setIsSignPicOpen(false)}
+          title="Tanda Tangan PIC"
+          onSave={(sig) => {
+            setPicSignatureLocal(sig);
+            setIsSignPicOpen(false);
+          }}
+        />
+      )}
+
+      {isSignDeptLaporanOpen && (
+        <SignaturePadModal 
+          isOpen={isSignDeptLaporanOpen}
+          onClose={() => setIsSignDeptLaporanOpen(false)}
+          title="Tanda Tangan Kepala Divisi"
+          onSave={(sig) => {
+            setHeadDeptSignatureLocal(sig);
+            setIsSignDeptLaporanOpen(false);
+          }}
+        />
+      )}
 
       {isFirstStageApprove && (
         <>
