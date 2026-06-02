@@ -125,6 +125,7 @@ export interface Submission {
   sisaDana?: number;
   alokasiPeruntukan?: string;
   nominalPermohonanLaporan?: number;
+  noDokumenLaporan?: string;
 }
 
 export interface DonationConfirmation {

@@ -649,6 +649,7 @@ export default function App() {
   const [editSumberRekening, setEditSumberRekening] = useState<'SMP' | 'SMA' | ''>('');
   const [editKodeBudget, setEditKodeBudget] = useState('');
   const [editNoDokumen, setEditNoDokumen] = useState('');
+  const [editNoDokumenLaporan, setEditNoDokumenLaporan] = useState('');
   const [editEvidenceUrl, setEditEvidenceUrl] = useState('');
   const [editEvidenceBase64, setEditEvidenceBase64] = useState('');
   const [editEvidenceMimeType, setEditEvidenceMimeType] = useState('');
@@ -1134,6 +1135,7 @@ export default function App() {
     setEditSumberRekening(submission.sumberRekening || '');
     setEditKodeBudget(submission.kodeBudget || '');
     setEditNoDokumen(submission.noDokumen || '');
+    setEditNoDokumenLaporan(submission.noDokumenLaporan || '');
     setEditEvidenceUrl(submission.evidenceUrl || '');
     setEditEvidenceBase64('');
     setEditEvidenceMimeType('');
@@ -1225,6 +1227,7 @@ export default function App() {
         sumberRekening: editSumberRekening || null,
         kodeBudget: editKodeBudget || null,
         noDokumen: editNoDokumen || null,
+        noDokumenLaporan: editNoDokumenLaporan || null,
         evidenceUrl: finalEvidenceUrl,
         createdAt: Timestamp.fromDate(new Date(editCreatedAt)),
         history: editHistory,
@@ -2204,6 +2207,18 @@ export default function App() {
                           className="h-10 rounded-xl border-slate-200 bg-white"
                         />
                       </div>
+                      {editType === 'uang_muka' && (
+                        <div className="grid gap-2 ml-1 md:col-span-2">
+                          <Label htmlFor="edit-nodokumen-laporan" className="text-[9px] font-black uppercase tracking-wider text-slate-500">No. Doc Laporan (LPJ)</Label>
+                          <Input 
+                            id="edit-nodokumen-laporan" 
+                            value={editNoDokumenLaporan}
+                            onChange={(e) => setEditNoDokumenLaporan(e.target.value)}
+                            placeholder="Contoh: LPJ.01.020626"
+                            className="h-10 rounded-xl border-slate-200 bg-white"
+                          />
+                        </div>
+                      )}
                       <div className="grid gap-2 ml-1">
                         <Label htmlFor="edit-status" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Status Alur (Admin)</Label>
                         <Select 
@@ -3985,6 +4000,7 @@ function SubmissionDetailView({
   const [sisaDanaEdit, setSisaDanaEdit] = useState('');
   const [alokasiEdit, setAlokasiEdit] = useState('');
   const [penggunaanEdit, setPenggunaanEdit] = useState('');
+  const [noDokumenLaporanEdit, setNoDokumenLaporanEdit] = useState('');
   const [picSigEdit, setPicSigEdit] = useState('');
   const [hdSigEdit, setHdSigEdit] = useState('');
   const [isLpjSignPicOpen, setIsLpjSignPicOpen] = useState(false);
@@ -4002,6 +4018,7 @@ function SubmissionDetailView({
       setSisaDanaEdit(submission.sisaDana !== undefined ? submission.sisaDana.toString() : '0');
       setAlokasiEdit(submission.alokasiPeruntukan || '');
       setPenggunaanEdit(submission.penggunaanDana || '');
+      setNoDokumenLaporanEdit(submission.noDokumenLaporan || '');
       setPicSigEdit(submission.signatures?.pic?.signature || '');
       setHdSigEdit(submission.signatures?.headDept?.signature || '');
     }
@@ -4019,6 +4036,7 @@ function SubmissionDetailView({
         sisaDana: Number(sisaDanaEdit) || 0,
         alokasiPeruntukan: alokasiEdit || null,
         penggunaanDana: penggunaanEdit || null,
+        noDokumenLaporan: noDokumenLaporanEdit || null,
       };
 
       // Handle signatures safely if changed
@@ -4397,14 +4415,26 @@ function SubmissionDetailView({
                         </div>
                       </div>
 
-                      <div className="space-y-1">
-                        <Label className="text-[9px] font-black text-slate-400 uppercase">Alokasi Peruntukan</Label>
-                        <Input 
-                          id="edit-lpj-alokasi"
-                          value={alokasiEdit} 
-                          onChange={(e) => setAlokasiEdit(e.target.value)} 
-                          className="h-9 rounded-xl border-slate-200 bg-white text-xs font-medium"
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[9px] font-black text-slate-400 uppercase">Alokasi Peruntukan</Label>
+                          <Input 
+                            id="edit-lpj-alokasi"
+                            value={alokasiEdit} 
+                            onChange={(e) => setAlokasiEdit(e.target.value)} 
+                            className="h-9 rounded-xl border-slate-200 bg-white text-xs font-medium"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[9px] font-black text-slate-400 uppercase">No. Doc Laporan</Label>
+                          <Input 
+                            id="edit-lpj-nodoc-laporan"
+                            value={noDokumenLaporanEdit} 
+                            onChange={(e) => setNoDokumenLaporanEdit(e.target.value)} 
+                            placeholder="Contoh: LPJ.01.020626"
+                            className="h-9 rounded-xl border-slate-200 bg-white text-xs font-medium"
+                          />
+                        </div>
                       </div>
 
                       <div className="space-y-1">
@@ -4539,11 +4569,19 @@ function SubmissionDetailView({
                         </div>
                       </div>
 
-                      <div>
-                        <Label className="text-[9px] text-slate-400 lowercase italic">Alokasi Peruntukan</Label>
-                        <p className="text-xs font-medium text-slate-700 mt-0.5">
-                          {submission.alokasiPeruntukan || '-'}
-                        </p>
+                       <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-[9px] text-slate-400 lowercase italic">Alokasi Peruntukan</Label>
+                          <p className="text-xs font-medium text-slate-700 mt-0.5">
+                            {submission.alokasiPeruntukan || '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-[9px] text-slate-400 lowercase italic">No. Doc Laporan (LPJ)</Label>
+                          <p className="text-xs font-black text-emerald-700 mt-0.5">
+                            {submission.noDokumenLaporan || '-'}
+                          </p>
+                        </div>
                       </div>
 
                       <div>

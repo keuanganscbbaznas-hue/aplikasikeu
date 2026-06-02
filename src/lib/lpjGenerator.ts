@@ -54,10 +54,9 @@ export async function generateLPJPDF(submission: any, config?: any) {
     
     // Values inside the top-left box
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    const noDocVal = submission.noDokumen ? submission.noDokumen.split('/') : [''];
-    const docDocStr = noDocVal[0] || '';
-    doc.text(docDocStr, 26.25, 27, { align: "center" });
+    const noDocLaporanStr = submission.noDokumenLaporan || '-';
+    doc.setFontSize(noDocLaporanStr.length > 15 ? 5.5 : noDocLaporanStr.length > 10 ? 6.5 : 7.5);
+    doc.text(noDocLaporanStr, 26.25, 27, { align: "center" });
     
     const payDateVal = submission.bookedAt || submission.updatedAt || null;
     const dateBoxStr = payDateVal ? safeFormatDate(payDateVal, 'dd/MM/yy') : safeFormatDate(new Date(), 'dd/MM/yy');
@@ -118,7 +117,7 @@ export async function generateLPJPDF(submission: any, config?: any) {
     doc.setFont("helvetica", "normal");
     doc.text(submission.picName || submission.submittedByName || '-', 58, currentY);
     
-    // Right side box structure: No. Doc FR and Date FR
+    // Right side box structure: No. Uang Muka and Date UM
     // Width = 65 (X=130 to 195), Height = 12
     doc.rect(130, 38, 65, 12);
     doc.line(130, 44, 195, 44); // Horizontal divisor
@@ -126,19 +125,19 @@ export async function generateLPJPDF(submission: any, config?: any) {
     
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7.5);
-    doc.text("No. Doc FR", 145, 42.2, { align: "center" });
-    doc.text("Date FR", 145, 48.2, { align: "center" });
+    doc.text("No. Uang Muka", 145, 42.2, { align: "center" });
+    doc.text("Date UM", 145, 48.2, { align: "center" });
     
     doc.setFont("helvetica", "normal");
-    const frNoStr = submission.noDokumen || '-';
+    const umNoStr = submission.noDokumen || '-';
     // Trim if too long
-    const frNoStrDisplay = frNoStr.length > 20 ? frNoStr.substring(0, 19) + '..' : frNoStr;
-    doc.setFontSize(frNoStr.length > 15 ? 6.5 : 7.5);
-    doc.text(frNoStrDisplay, 177.5, 42.2, { align: "center" });
+    const umNoStrDisplay = umNoStr.length > 20 ? umNoStr.substring(0, 19) + '..' : umNoStr;
+    doc.setFontSize(umNoStr.length > 15 ? 6.5 : 7.5);
+    doc.text(umNoStrDisplay, 177.5, 42.2, { align: "center" });
     
-    const frDateStr = submission.createdAt ? safeFormatDate(submission.createdAt, 'dd/MM/yyyy') : '-';
+    const umDateStr = submission.createdAt ? safeFormatDate(submission.createdAt, 'dd/MM/yyyy') : '-';
     doc.setFontSize(7.5);
-    doc.text(frDateStr, 177.5, 48.2, { align: "center" });
+    doc.text(umDateStr, 177.5, 48.2, { align: "center" });
     
     currentY += lineSpacing;
     
