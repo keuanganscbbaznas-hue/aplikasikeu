@@ -3382,11 +3382,6 @@ function ApprovalDialog({
 
   const handleSubmit = async () => {
     if (isBelumLaporanApprove) {
-      if (!picSignatureLocal || !headDeptSignatureLocal) {
-        toast.error("Silakan lengkapi tanda tangan PIC dan HEADDEPT!");
-        return;
-      }
-
       const newSignatures = submission.signatures ? { ...submission.signatures } : {};
       
       if (picSignatureLocal) {
@@ -3590,7 +3585,7 @@ function ApprovalDialog({
                   <div className="grid grid-cols-2 gap-4">
                     {/* PIC Signature Column */}
                     <div className="space-y-2 text-center p-3 border border-slate-100 rounded-2xl bg-slate-50/50">
-                      <span className="text-[10px] font-black text-slate-700 uppercase tracking-tighter block">Tanda Tangan PIC</span>
+                      <span className="text-[10px] font-black text-slate-700 uppercase tracking-tighter block">Tanda Tangan PIC <span className="font-normal lowercase italic text-slate-500/70">(opsional)</span></span>
                       
                       {picSignatureLocal ? (
                         <div className="flex flex-col items-center gap-1">
@@ -3606,7 +3601,7 @@ function ApprovalDialog({
 
                     {/* HEADDEPT Signature Column */}
                     <div className="space-y-2 text-center p-3 border border-slate-100 rounded-2xl bg-slate-50/50">
-                      <span className="text-[10px] font-black text-slate-700 uppercase tracking-tighter block">Tanda Tangan HEADDEPT</span>
+                      <span className="text-[10px] font-black text-slate-700 uppercase tracking-tighter block">Tanda Tangan HEADDEPT <span className="font-normal lowercase italic text-slate-500/70">(opsional)</span></span>
                       
                       {headDeptSignatureLocal ? (
                         <div className="flex flex-col items-center gap-1">
