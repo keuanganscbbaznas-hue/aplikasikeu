@@ -442,7 +442,7 @@ function SubmissionCard({
                     </DialogHeader>
                   </div>
                   
-                  <ScrollArea className="flex-1 min-h-0 bg-slate-50/30">
+                  <div className="flex-1 overflow-y-auto min-h-0 bg-slate-50/30">
                     <div className="p-8">
                       <SubmissionDetailView 
                         submission={submission} 
@@ -457,7 +457,7 @@ function SubmissionCard({
                         currentUser={currentUser}
                       />
                     </div>
-                  </ScrollArea>
+                  </div>
                 </DialogContent>
               </Dialog>
               
