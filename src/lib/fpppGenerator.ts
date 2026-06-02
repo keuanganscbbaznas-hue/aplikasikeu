@@ -443,11 +443,35 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
         doc.restoreGraphicsState();
       }
       
-      if (submission.signatures?.headDept) {
-        doc.addImage(submission.signatures.headDept.signature, 'PNG', 71, 160, 24, 12);
-        const sigDate = parseFirestoreDate(submission.signatures.headDept.timestamp);
-        doc.setFontSize(6);
-        doc.text(format(sigDate, 'dd/MM/yy HH:mm'), 85.5, 174, { align: 'center' });
+      let headDeptSignData = submission.signatures?.headDept?.signature || null;
+      let headDeptSignTime = submission.signatures?.headDept?.timestamp 
+        ? format(parseFirestoreDate(submission.signatures.headDept.timestamp), 'dd/MM/yy HH:mm') 
+        : null;
+
+      if (!headDeptSignData && config) {
+        if (submission.divisi === 'Asrama' && config.useDefaultAsramaSign) {
+          headDeptSignData = config.asramaDefaultSign || null;
+        } else if (submission.divisi === 'Akademik/Kesiswaan' && config.useDefaultAkademikSign) {
+          headDeptSignData = config.akademikDefaultSign || null;
+        } else if (submission.divisi === 'Operasional' && config.useDefaultOperasionalSign) {
+          headDeptSignData = config.operasionalDefaultSign || null;
+        }
+        
+        if (headDeptSignData) {
+          headDeptSignTime = format(new Date(), 'dd/MM/yy HH:mm') + " (AUTO)";
+        }
+      }
+
+      if (headDeptSignData) {
+        try {
+          doc.addImage(headDeptSignData, 'PNG', 71, 160, 24, 12);
+          if (headDeptSignTime) {
+            doc.setFontSize(6);
+            doc.text(headDeptSignTime, 85.5, 174, { align: 'center' });
+          }
+        } catch (err) {
+          console.error("Error drawing Head Dept signature:", err);
+        }
       }
     }
 

@@ -2713,6 +2713,8 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
   const [newEvidenceMimeType, setNewEvidenceMimeType] = useState('');
   const [isNewPicSignatureModalOpen, setIsNewPicSignatureModalOpen] = useState(false);
   const [newPicSignature, setNewPicSignature] = useState('');
+  const [isNewHeadDeptSignatureModalOpen, setIsNewHeadDeptSignatureModalOpen] = useState(false);
+  const [newHeadDeptSignature, setNewHeadDeptSignature] = useState('');
 
   const handleNewEvidenceFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -2766,6 +2768,27 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
           }
         }
 
+        const initialSignatures: Record<string, any> = {};
+        if (newPicSignature) {
+          initialSignatures.pic = {
+            name: newPicName || profile.displayName || "PIC Pengaju",
+            signature: newPicSignature,
+            timestamp: new Date()
+          };
+        }
+        if (newHeadDeptSignature) {
+          let headDeptName = "Pegawai SCB";
+          if (newDivisi === 'Asrama') headDeptName = "Helmi Nursirwan";
+          else if (newDivisi === 'Akademik/Kesiswaan') headDeptName = "Siswadi Dinianto";
+          else if (newDivisi === 'Operasional') headDeptName = "Mohamad Roni";
+          
+          initialSignatures.headDept = {
+            name: headDeptName,
+            signature: newHeadDeptSignature,
+            timestamp: new Date()
+          };
+        }
+
         const newSubmission: Omit<Submission, 'id'> = {
           type: newType,
           title: newTitle,
@@ -2786,13 +2809,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           evidenceUrl: finalEvidenceUrl,
-          signatures: newPicSignature ? {
-            pic: {
-              name: newPicName,
-              signature: newPicSignature,
-              timestamp: new Date()
-            }
-          } : {},
+          signatures: initialSignatures,
           history: [{
             stage: stages[0],
             status: 'submitted',
@@ -2822,6 +2839,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
       setNewKodeBudget('');
       setNewNoDokumen('');
       setNewPicSignature('');
+      setNewHeadDeptSignature('');
 
       // Background process
       toast.promise(
@@ -3000,7 +3018,30 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
                       onClick={() => setIsNewPicSignatureModalOpen(true)}
                       className="h-10 rounded-xl border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 justify-start"
                     >
-                      + Tambah Tanda Tangan
+                      + Tambah Tanda Tangan PIC
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid gap-2">
+                  <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Tanda Tangan Kepala Divisi (Opsional)</Label>
+                  {newHeadDeptSignature ? (
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-24 bg-white border border-slate-200 rounded-lg flex items-center justify-center p-1">
+                        <img src={newHeadDeptSignature} alt="Head Dept Signature" className="max-h-full max-w-full object-contain" />
+                      </div>
+                      <Button variant="outline" type="button" size="sm" onClick={() => setNewHeadDeptSignature('')} className="h-8 text-[10px] text-red-500 hover:text-red-600 rounded-lg">
+                        Hapus
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => setIsNewHeadDeptSignatureModalOpen(true)}
+                      className="h-10 rounded-xl border-dashed border-slate-300 text-slate-500 hover:bg-slate-50 justify-start"
+                    >
+                      + Tambah Tanda Tangan Kepala Divisi
                     </Button>
                   )}
                 </div>
@@ -3026,6 +3067,17 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
           onSave={(sig) => {
             setNewPicSignature(sig);
             setIsNewPicSignatureModalOpen(false);
+          }}
+        />
+      )}
+      {isNewHeadDeptSignatureModalOpen && (
+        <SignaturePadModal 
+          isOpen={isNewHeadDeptSignatureModalOpen}
+          onClose={() => setIsNewHeadDeptSignatureModalOpen(false)}
+          title="Tanda Tangan Kepala Divisi"
+          onSave={(sig) => {
+            setNewHeadDeptSignature(sig);
+            setIsNewHeadDeptSignatureModalOpen(false);
           }}
         />
       )}
@@ -3265,24 +3317,21 @@ function ApprovalDialog({
 
   const handleSubmit = async () => {
     if (isFirstStageApprove) {
-      if (!headDeptSignature) {
-        toast.error("Tanda tangan Kepala Divisi wajib diisi untuk tahap ini.");
-        return;
-      }
-      
       // Update submission with the new signatures
-      const newSignatures = { ...submission.signatures } || {};
+      const newSignatures = submission.signatures ? { ...submission.signatures } : {};
       
-      let headDeptName = "Pegawai SCB";
-      if (submission.divisi === 'Asrama') headDeptName = "Helmi Nursirwan";
-      else if (submission.divisi === 'Akademik/Kesiswaan') headDeptName = "Siswadi Dinianto";
-      else if (submission.divisi === 'Operasional') headDeptName = "Mohamad Roni";
-      
-      newSignatures.headDept = {
-        name: headDeptName,
-        signature: headDeptSignature,
-        timestamp: new Date()
-      };
+      if (headDeptSignature) {
+        let headDeptName = "Pegawai SCB";
+        if (submission.divisi === 'Asrama') headDeptName = "Helmi Nursirwan";
+        else if (submission.divisi === 'Akademik/Kesiswaan') headDeptName = "Siswadi Dinianto";
+        else if (submission.divisi === 'Operasional') headDeptName = "Mohamad Roni";
+        
+        newSignatures.headDept = {
+          name: headDeptName,
+          signature: headDeptSignature,
+          timestamp: new Date()
+        };
+      }
       
       if (verifikatorSignature) {
         newSignatures.verifikator = {
@@ -3292,12 +3341,14 @@ function ApprovalDialog({
         };
       }
       
-      try {
-        await updateDoc(doc(db, 'submissions', submission.id), {
-          signatures: newSignatures
-        });
-      } catch (e) {
-        console.error("Error saving signatures:", e);
+      if (headDeptSignature || verifikatorSignature) {
+        try {
+          await updateDoc(doc(db, 'submissions', submission.id), {
+            signatures: newSignatures
+          });
+        } catch (e) {
+          console.error("Error saving signatures:", e);
+        }
       }
     }
 
@@ -3349,7 +3400,7 @@ function ApprovalDialog({
           {isFirstStageApprove && (
             <div className="space-y-4 mt-4 p-4 border border-emerald-100 bg-emerald-50 rounded-2xl">
               <div>
-                <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2 block text-center">Tanda Tangan Kepala Divisi <span className="text-red-500">*</span></Label>
+                <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2 block text-center">Tanda Tangan Kepala Divisi <span className="font-normal normal-case italic text-emerald-600/70">(Opsional)</span></Label>
                 {headDeptSignature ? (
                   <div className="flex flex-col items-center gap-2">
                     <img src={headDeptSignature} alt="Head Dept Sign" className="h-16 object-contain bg-white rounded-lg border border-slate-200 p-1" />

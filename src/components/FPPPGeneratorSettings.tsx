@@ -38,10 +38,16 @@ interface FPPPConfig {
   useDefaultRoniSign: boolean;
   useDefaultKamalSign: boolean;
   useDefaultKasirSign: boolean;
+  useDefaultAsramaSign?: boolean;
+  useDefaultAkademikSign?: boolean;
+  useDefaultOperasionalSign?: boolean;
   akuntanDefaultSign: string;
   roniDefaultSign: string;
   kamalDefaultSign: string;
   kasirDefaultSign: string;
+  asramaDefaultSign?: string;
+  akademikDefaultSign?: string;
+  operasionalDefaultSign?: string;
   // Custom Tampilan FPPP
   fpppTitleOverride?: string;
   hideScbLogo?: boolean;
@@ -75,15 +81,21 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
   const [useDefaultRoniSign, setUseDefaultRoniSign] = useState(false);
   const [useDefaultKamalSign, setUseDefaultKamalSign] = useState(false);
   const [useDefaultKasirSign, setUseDefaultKasirSign] = useState(false);
+  const [useDefaultAsramaSign, setUseDefaultAsramaSign] = useState(false);
+  const [useDefaultAkademikSign, setUseDefaultAkademikSign] = useState(false);
+  const [useDefaultOperasionalSign, setUseDefaultOperasionalSign] = useState(false);
 
   // Stored signatures (base64)
   const [akuntanSign, setAkuntanSign] = useState('');
   const [roniSign, setRoniSign] = useState('');
   const [kamalSign, setKamalSign] = useState('');
   const [kasirSign, setKasirSign] = useState('');
+  const [asramaSign, setAsramaSign] = useState('');
+  const [akademikSign, setAkademikSign] = useState('');
+  const [operasionalSign, setOperasionalSign] = useState('');
 
   // UI state
-  const [selectedSlot, setSelectedSlot] = useState<'akuntan' | 'roni' | 'kamal' | 'kasir'>('akuntan');
+  const [selectedSlot, setSelectedSlot] = useState<'akuntan' | 'roni' | 'kamal' | 'kasir' | 'asrama' | 'akademik' | 'operasional'>('akuntan');
   const [sigText, setSigText] = useState('');
   const [selectedFont, setSelectedFont] = useState<'brush' | 'calligraphy' | 'classic' | 'playful'>('brush');
   
@@ -113,11 +125,17 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
       setUseDefaultRoniSign(!!fpppConfig.useDefaultRoniSign);
       setUseDefaultKamalSign(!!fpppConfig.useDefaultKamalSign);
       setUseDefaultKasirSign(!!fpppConfig.useDefaultKasirSign);
+      setUseDefaultAsramaSign(!!fpppConfig.useDefaultAsramaSign);
+      setUseDefaultAkademikSign(!!fpppConfig.useDefaultAkademikSign);
+      setUseDefaultOperasionalSign(!!fpppConfig.useDefaultOperasionalSign);
 
       setAkuntanSign(fpppConfig.akuntanDefaultSign || '');
       setRoniSign(fpppConfig.roniDefaultSign || '');
       setKamalSign(fpppConfig.kamalDefaultSign || '');
       setKasirSign(fpppConfig.kasirDefaultSign || '');
+      setAsramaSign(fpppConfig.asramaDefaultSign || '');
+      setAkademikSign(fpppConfig.akademikDefaultSign || '');
+      setOperasionalSign(fpppConfig.operasionalDefaultSign || '');
     }
   }, [fpppConfig]);
 
@@ -144,10 +162,16 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
         useDefaultRoniSign,
         useDefaultKamalSign,
         useDefaultKasirSign,
+        useDefaultAsramaSign,
+        useDefaultAkademikSign,
+        useDefaultOperasionalSign,
         akuntanDefaultSign: akuntanSign,
         roniDefaultSign: roniSign,
         kamalDefaultSign: kamalSign,
-        kasirDefaultSign: kasirSign
+        kasirDefaultSign: kasirSign,
+        asramaDefaultSign: asramaSign,
+        akademikDefaultSign: akademikSign,
+        operasionalDefaultSign: operasionalSign
       }, { merge: true });
 
       toast.success("Konfigurasi FPPP berhasil disimpan!", { id: toastId });
@@ -287,7 +311,10 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
       akuntan: 'Akuntan SCB',
       roni: 'Roni',
       kamal: 'Kamal',
-      kasir: 'Kasir'
+      kasir: 'Kasir',
+      asrama: 'Asrama (Helmi Nursirwan)',
+      akademik: 'Akademik/Kesiswaan (Siswadi Dinianto)',
+      operasional: 'Operasional (Mohamad Roni)'
     };
     
     const toastId = toast.loading(`Menyimpan tanda tangan ${slotLabels[selectedSlot]}...`);
@@ -301,6 +328,12 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
         setKamalSign(base64);
       } else if (selectedSlot === 'kasir') {
         setKasirSign(base64);
+      } else if (selectedSlot === 'asrama') {
+        setAsramaSign(base64);
+      } else if (selectedSlot === 'akademik') {
+        setAkademikSign(base64);
+      } else if (selectedSlot === 'operasional') {
+        setOperasionalSign(base64);
       }
 
       // Update Firestore database instantly
@@ -321,7 +354,7 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
     }
   };
 
-  const deleteSignatureFromSlot = async (slot: 'akuntan' | 'roni' | 'kamal' | 'kasir') => {
+  const deleteSignatureFromSlot = async (slot: 'akuntan' | 'roni' | 'kamal' | 'kasir' | 'asrama' | 'akademik' | 'operasional') => {
     if (confirm("Apakah Anda yakin ingin menghapus tanda tangan template ini?")) {
       const toastId = toast.loading("Menghapus...");
       try {
@@ -329,13 +362,16 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
         else if (slot === 'roni') setRoniSign('');
         else if (slot === 'kamal') setKamalSign('');
         else if (slot === 'kasir') setKasirSign('');
+        else if (slot === 'asrama') setAsramaSign('');
+        else if (slot === 'akademik') setAkademikSign('');
+        else if (slot === 'operasional') setOperasionalSign('');
 
         const fpppRef = doc(db, 'config', 'fppp');
         const updatePayload: any = {};
         updatePayload[`${slot}DefaultSign`] = "";
         
         await setDoc(fpppRef, updatePayload, { merge: true });
-        toast.success("Tanda tangan berhasil dihapus!", { id: toastId });
+         toast.success("Tanda tangan berhasil dihapus!", { id: toastId });
         if (onRefreshConfig) onRefreshConfig();
       } catch (err: any) {
         toast.error("Gagal menghapus: " + err.message, { id: toastId });
@@ -502,7 +538,7 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
                 Aktifkan opsi di bawah agar tanda tangan template yang disimpan di bawah langsung disisipkan secara otomatis saat Anda mengunduh dokumen FPPP, meskipun pengajuan tersebut belum ditandatangani secara manual di dashboard.
               </p>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none bg-white ${useDefaultAkuntanSign ? 'border-emerald-300 shadow-sm' : 'border-slate-100'}`}>
                   <input 
                     type="checkbox"
@@ -566,6 +602,55 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
                     <span className="text-[10px] text-slate-400">Kasir / Bendahara</span>
                   </div>
                 </label>
+
+                {/* Head Depts automated signatures */}
+                <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none bg-white ${useDefaultAsramaSign ? 'border-emerald-300 shadow-sm' : 'border-slate-100'}`}>
+                  <input 
+                    type="checkbox"
+                    checked={useDefaultAsramaSign}
+                    onChange={(e) => {
+                      setUseDefaultAsramaSign(e.target.checked);
+                      toast.info(e.target.checked ? "Ttd auto Kepala Divisi Asrama diaktifkan" : "Ttd auto Kepala Divisi Asrama dinonaktifkan");
+                    }}
+                    className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-slate-800">Ttd Auto Asrama</span>
+                    <span className="text-[10px] text-slate-400">Helmi Nursirwan</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none bg-white ${useDefaultAkademikSign ? 'border-emerald-300 shadow-sm' : 'border-slate-100'}`}>
+                  <input 
+                    type="checkbox"
+                    checked={useDefaultAkademikSign}
+                    onChange={(e) => {
+                      setUseDefaultAkademikSign(e.target.checked);
+                      toast.info(e.target.checked ? "Ttd auto Kepala Divisi Akademik diaktifkan" : "Ttd auto Kepala Divisi Akademik dinonaktifkan");
+                    }}
+                    className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-slate-800">Ttd Auto Akademik</span>
+                    <span className="text-[10px] text-slate-400">Siswadi Dinianto</span>
+                  </div>
+                </label>
+
+                <label className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none bg-white ${useDefaultOperasionalSign ? 'border-emerald-300 shadow-sm' : 'border-slate-100'}`}>
+                  <input 
+                    type="checkbox"
+                    checked={useDefaultOperasionalSign}
+                    onChange={(e) => {
+                      setUseDefaultOperasionalSign(e.target.checked);
+                      toast.info(e.target.checked ? "Ttd auto Kepala Divisi Operasional diaktifkan" : "Ttd auto Kepala Divisi Operasional dinonaktifkan");
+                    }}
+                    className="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-slate-800">Ttd Auto Operasional</span>
+                    <span className="text-[10px] text-slate-400">Mohamad Roni</span>
+                  </div>
+                </label>
               </div>
 
               <div className="flex justify-end mt-4">
@@ -583,7 +668,7 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
 
           {/* MAIN SIGNATURE GENERATOR CANVAS */}
           <Card className="border-slate-100 shadow-sm rounded-2xl overflow-hidden">
-            <CardHeader className="py-4 px-5 bg-slate-50 border-b flex flex-row items-center justify-between">
+            <CardHeader className="py-4 px-5 bg-slate-50 border-b flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
               <div>
                 <CardTitle className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-2">
                   <PenTool size={15} className="text-indigo-600" />
@@ -598,7 +683,7 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
                 value={selectedSlot} 
                 onValueChange={(val) => setSelectedSlot(val as any)}
               >
-                <SelectTrigger className="w-[200px] h-8 text-xs bg-white font-bold text-slate-700">
+                <SelectTrigger className="w-full md:w-[260px] h-8 text-xs bg-white font-bold text-slate-700">
                   <SelectValue placeholder="Pilih Orang / Slot" />
                 </SelectTrigger>
                 <SelectContent>
@@ -606,6 +691,9 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
                   <SelectItem value="roni" className="text-xs font-medium">Manager: {managerName}</SelectItem>
                   <SelectItem value="kamal" className="text-xs font-medium">Kepala SCB: {kepalaName}</SelectItem>
                   <SelectItem value="kasir" className="text-xs font-medium">Kasir / Bendahara Admin</SelectItem>
+                  <SelectItem value="asrama" className="text-xs font-medium">Ka. Divisi Asrama: Helmi Nursirwan</SelectItem>
+                  <SelectItem value="akademik" className="text-xs font-medium">Ka. Divisi Akademik: Siswadi Dinianto</SelectItem>
+                  <SelectItem value="operasional" className="text-xs font-medium">Ka. Divisi Operasional: Mohamad Roni</SelectItem>
                 </SelectContent>
               </Select>
             </CardHeader>
@@ -742,7 +830,7 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
               {/* LIST OF SAVED SIG PREVIEWS WITH DETAILS */}
               <div className="mt-8 pt-6 border-t border-slate-100">
                 <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-4">Galeri Tanda Tangan Template Saat Ini</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   
                   {/* Slot Akuntan */}
                   <div className="p-4 rounded-2xl border border-slate-100 bg-white relative flex flex-col items-center justify-between min-h-[160px]">
@@ -834,6 +922,90 @@ export function FPPPGeneratorSettings({ fpppConfig, onRefreshConfig }: FPPPGener
                       {kasirSign && (
                         <Button 
                           onClick={() => deleteSignatureFromSlot('kasir')}
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 size={11} />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Slot Asrama */}
+                  <div className="p-4 rounded-2xl border border-slate-100 bg-white relative flex flex-col items-center justify-between min-h-[160px]">
+                    <span className="absolute top-2 left-2 text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Asrama</span>
+                    <div className="flex-1 flex items-center justify-center py-4">
+                      {asramaSign ? (
+                        <img src={asramaSign} alt="Asrama Sign" className="max-h-[70px] max-w-full object-contain filter drop-shadow-sm" />
+                      ) : (
+                        <div className="text-[10px] text-slate-400 font-medium italic">Belum diset (Ttd otomatis asrama helmi)</div>
+                      )}
+                    </div>
+                    <div className="w-full pt-2 border-t border-slate-50 flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">Helmi Nursirwan</span>
+                        <span className="text-[8px] text-slate-400">Ka. Divisi Asrama</span>
+                      </div>
+                      {asramaSign && (
+                        <Button 
+                          onClick={() => deleteSignatureFromSlot('asrama')}
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 size={11} />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Slot Akademik */}
+                  <div className="p-4 rounded-2xl border border-slate-100 bg-white relative flex flex-col items-center justify-between min-h-[160px]">
+                    <span className="absolute top-2 left-2 text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Akademik</span>
+                    <div className="flex-1 flex items-center justify-center py-4">
+                      {akademikSign ? (
+                        <img src={akademikSign} alt="Akademik Sign" className="max-h-[70px] max-w-full object-contain filter drop-shadow-sm" />
+                      ) : (
+                        <div className="text-[10px] text-slate-400 font-medium italic">Belum diset (Ttd otomatis kesiswaan siswadi)</div>
+                      )}
+                    </div>
+                    <div className="w-full pt-2 border-t border-slate-50 flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">Siswadi Dinianto</span>
+                        <span className="text-[8px] text-slate-400">Ka. Divisi Akademik</span>
+                      </div>
+                      {akademikSign && (
+                        <Button 
+                          onClick={() => deleteSignatureFromSlot('akademik')}
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                        >
+                          <Trash2 size={11} />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Slot Operasional */}
+                  <div className="p-4 rounded-2xl border border-slate-100 bg-white relative flex flex-col items-center justify-between min-h-[160px]">
+                    <span className="absolute top-2 left-2 text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Operasional</span>
+                    <div className="flex-1 flex items-center justify-center py-4">
+                      {operasionalSign ? (
+                        <img src={operasionalSign} alt="Operasional Sign" className="max-h-[70px] max-w-full object-contain filter drop-shadow-sm" />
+                      ) : (
+                        <div className="text-[10px] text-slate-400 font-medium italic">Belum diset (Ttd otomatis operasional roni)</div>
+                      )}
+                    </div>
+                    <div className="w-full pt-2 border-t border-slate-50 flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">Mohamad Roni</span>
+                        <span className="text-[8px] text-slate-400">Ka. Divisi Operasional</span>
+                      </div>
+                      {operasionalSign && (
+                        <Button 
+                          onClick={() => deleteSignatureFromSlot('operasional')}
                           variant="ghost" 
                           size="sm" 
                           className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
