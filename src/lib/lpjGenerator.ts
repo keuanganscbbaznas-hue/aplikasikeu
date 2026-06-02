@@ -52,13 +52,23 @@ export async function generateLPJPDF(submission: any, config?: any) {
     doc.text("No. Doc", 26.25, 19, { align: "center" });
     doc.text("Date", 48.75, 19, { align: "center" });
     
-    // Values inside the top-left box
     doc.setFont("helvetica", "normal");
     const noDocLaporanStr = submission.noDokumenLaporan || '-';
     doc.setFontSize(noDocLaporanStr.length > 15 ? 5.5 : noDocLaporanStr.length > 10 ? 6.5 : 7.5);
     doc.text(noDocLaporanStr, 26.25, 27, { align: "center" });
     
-    const payDateVal = submission.bookedAt || submission.updatedAt || null;
+    // Find transition timestamp for "Pencatatan Transaksi dan Penomeran Dokumen Laporan"
+    let dateLaporanVal = null;
+    if (submission.history && Array.isArray(submission.history)) {
+      const targetHistory = submission.history.find((h: any) => 
+        h.stage === "Pencatatan Transaksi dan Penomeran Dokumen Laporan" &&
+        (h.status === 'approved' || h.status === 'submitted')
+      );
+      if (targetHistory && targetHistory.timestamp) {
+        dateLaporanVal = targetHistory.timestamp;
+      }
+    }
+    const payDateVal = dateLaporanVal || submission.bookedAt || submission.updatedAt || null;
     const dateBoxStr = payDateVal ? safeFormatDate(payDateVal, 'dd/MM/yy') : safeFormatDate(new Date(), 'dd/MM/yy');
     doc.text(dateBoxStr, 48.75, 27, { align: "center" });
     
@@ -135,7 +145,37 @@ export async function generateLPJPDF(submission: any, config?: any) {
     doc.setFontSize(umNoStr.length > 15 ? 6.5 : 7.5);
     doc.text(umNoStrDisplay, 177.5, 42.2, { align: "center" });
     
-    const umDateStr = submission.createdAt ? safeFormatDate(submission.createdAt, 'dd/MM/yyyy') : '-';
+    // Parse date from document number if it follows a format like UM.XX.190526
+    let parsedUmDateStr = null;
+    const umNoCleaned = umNoStr.trim();
+    // Check if it ends with dots containing 6 digits (ddmmyy) e.g. UM.01.190526
+    const dateMatch = umNoCleaned.match(/\.(\d{2})(\d{2})(\d{2})$/);
+    if (dateMatch) {
+      const d = dateMatch[1];
+      const m = dateMatch[2];
+      const yStr = dateMatch[3];
+      const dayNum = parseInt(d, 10);
+      const monthNum = parseInt(m, 10);
+      if (dayNum >= 1 && dayNum <= 31 && monthNum >= 1 && monthNum <= 12) {
+        parsedUmDateStr = `${d}/${m}/20${yStr}`;
+      }
+    }
+    // Backup: check if there are 6 digits at the absolute end of the string
+    if (!parsedUmDateStr) {
+      const endDigitsMatch = umNoCleaned.match(/(\d{2})(\d{2})(\d{2})$/);
+      if (endDigitsMatch) {
+        const d = endDigitsMatch[1];
+        const m = endDigitsMatch[2];
+        const yStr = endDigitsMatch[3];
+        const dayNum = parseInt(d, 10);
+        const monthNum = parseInt(m, 10);
+        if (dayNum >= 1 && dayNum <= 31 && monthNum >= 1 && monthNum <= 12) {
+          parsedUmDateStr = `${d}/${m}/20${yStr}`;
+        }
+      }
+    }
+    
+    const umDateStr = parsedUmDateStr || (submission.createdAt ? safeFormatDate(submission.createdAt, 'dd/MM/yyyy') : '-');
     doc.setFontSize(7.5);
     doc.text(umDateStr, 177.5, 48.2, { align: "center" });
     
@@ -378,7 +418,7 @@ export async function generateLPJPDF(submission: any, config?: any) {
     }
     
     // 3. Verifikator Sign (Akuntan)
-    let accName = config?.verifikatorName || "Akuntan SCB";
+    let accName = submission.signatures?.verifikator?.name || config?.verifikatorName || "Keuangan SCB";
     const accNameTrim = accName.length > 18 ? accName.substring(0, 16) + '..' : accName;
     doc.text(accNameTrim, sigX[2] + (boxW / 2), sigY + boxH - 2, { align: "center" });
     

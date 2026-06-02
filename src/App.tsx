@@ -3382,6 +3382,7 @@ function ApprovalDialog({
   const currentStageName = stages[submission.currentStageIndex];
   const isFirstStageApprove = mode === 'approve' && submission.currentStageIndex === 0;
   const isBelumLaporanApprove = mode === 'approve' && currentStageName === "Belum Laporan";
+  const isVerifikasiLaporanApprove = mode === 'approve' && currentStageName === "Verifikasi Laporan";
 
   useEffect(() => {
     if (isOpen && isBelumLaporanApprove) {
@@ -3438,11 +3439,11 @@ function ApprovalDialog({
       } catch (e) {
         console.error("Error updating Belum Laporan details:", e);
       }
-    } else if (isFirstStageApprove) {
+    } else if (isFirstStageApprove || isVerifikasiLaporanApprove) {
       // Update submission with the new signatures
       const newSignatures = submission.signatures ? { ...submission.signatures } : {};
       
-      if (headDeptSignature) {
+      if (isFirstStageApprove && headDeptSignature) {
         let headDeptName = "Pegawai SCB";
         if (submission.divisi === 'Asrama') headDeptName = "Helmi Nursirwan";
         else if (submission.divisi === 'Akademik/Kesiswaan') headDeptName = "Siswadi Dinianto";
@@ -3457,13 +3458,13 @@ function ApprovalDialog({
       
       if (verifikatorSignature) {
         newSignatures.verifikator = {
-          name: "Akuntan SCB",
+          name: "Keuangan SCB",
           signature: verifikatorSignature,
           timestamp: new Date()
         };
       }
       
-      if (headDeptSignature || verifikatorSignature) {
+      if ((isFirstStageApprove && headDeptSignature) || verifikatorSignature) {
         try {
           await updateDoc(doc(db, 'submissions', submission.id), {
             signatures: newSignatures
@@ -3703,33 +3704,49 @@ function ApprovalDialog({
                   className="rounded-xl border-slate-200 focus:ring-emerald-500"
                 />
                 
-                {isFirstStageApprove && (
+                {(isFirstStageApprove || isVerifikasiLaporanApprove) && (
                   <div className="space-y-4 mt-4 p-4 border border-emerald-100 bg-emerald-50 rounded-2xl">
-                    <div>
-                      <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2 block text-center">Tanda Tangan Kepala Divisi <span className="font-normal normal-case italic text-emerald-600/70">(Opsional)</span></Label>
-                      {headDeptSignature ? (
-                        <div className="flex flex-col items-center gap-2">
-                          <img src={headDeptSignature} alt="Head Dept Sign" className="h-16 object-contain bg-white rounded-lg border border-slate-200 p-1" />
-                          <Button variant="ghost" size="sm" onClick={() => setHeadDeptSignature('')} className="text-red-500 hover:text-red-600 h-6 text-[10px]">Hapus</Button>
-                        </div>
-                      ) : (
-                        <Button type="button" onClick={() => setIsSignDeptOpen(true)} className="w-full bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl h-10 text-[10px] font-bold">
-                          Tanda Tangan Sekarang
-                        </Button>
-                      )}
-                    </div>
+                    {isFirstStageApprove && (
+                      <div>
+                        <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2 block text-center">Tanda Tangan Kepala Divisi <span className="font-normal normal-case italic text-emerald-600/70">(Opsional)</span></Label>
+                        {headDeptSignature ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <img src={headDeptSignature} alt="Head Dept Sign" className="h-16 object-contain bg-white rounded-lg border border-slate-200 p-1" />
+                            <Button variant="ghost" size="sm" onClick={() => setHeadDeptSignature('')} className="text-red-500 hover:text-red-600 h-6 text-[10px]">Hapus</Button>
+                          </div>
+                        ) : (
+                          <Button type="button" onClick={() => setIsSignDeptOpen(true)} className="w-full bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl h-10 text-[10px] font-bold">
+                            Tanda Tangan Sekarang
+                          </Button>
+                        )}
+                      </div>
+                    )}
                     
-                    <div className="pt-2 border-t border-emerald-200/50">
-                      <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2 block text-center">Tanda Tangan Verifikator (Akuntan) <span className="font-normal normal-case italic text-emerald-600/70">(Opsional)</span></Label>
+                    <div className={isFirstStageApprove ? "pt-2 border-t border-emerald-200/50" : ""}>
+                      <Label className="text-[10px] font-black text-emerald-700 uppercase tracking-widest mb-2 block text-center">Tanda Tangan Verifikator (Keuangan SCB)</Label>
                       {verifikatorSignature ? (
                         <div className="flex flex-col items-center gap-2">
                           <img src={verifikatorSignature} alt="Verifikator Sign" className="h-16 object-contain bg-white rounded-lg border border-slate-200 p-1" />
                           <Button variant="ghost" size="sm" onClick={() => setVerifikatorSignature('')} className="text-red-500 hover:text-red-600 h-6 text-[10px]">Hapus</Button>
                         </div>
                       ) : (
-                        <Button type="button" onClick={() => setIsSignVerifikatorOpen(true)} className="w-full bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl h-10 text-[10px] font-bold">
-                          Tanda Tangan Sekarang
-                        </Button>
+                        <div className="space-y-2">
+                          <Button type="button" onClick={() => setIsSignVerifikatorOpen(true)} className="w-full bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 rounded-xl h-10 text-[10px] font-bold">
+                            Tanda Tangan Sekarang
+                          </Button>
+                          {fpppConfigLocal && fpppConfigLocal.useDefaultAkuntanSign && fpppConfigLocal.akuntanDefaultSign && (
+                            <Button 
+                              type="button" 
+                              onClick={() => {
+                                setVerifikatorSignature(fpppConfigLocal.akuntanDefaultSign);
+                                toast.success("Tanda Tangan Keuangan SCB Auto terpasang");
+                              }}
+                              className="w-full bg-emerald-100 text-emerald-800 hover:bg-emerald-200 rounded-xl h-10 text-[9px] font-black uppercase tracking-tight"
+                            >
+                              Gunakan TTD Auto Keuangan SCB
+                            </Button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -3779,17 +3796,19 @@ function ApprovalDialog({
         />
       )}
 
-      {isFirstStageApprove && (
+       {(isFirstStageApprove || isVerifikasiLaporanApprove) && (
         <>
-          <SignaturePadModal 
-            isOpen={isSignDeptOpen}
-            onClose={() => setIsSignDeptOpen(false)}
-            title="Tanda Tangan Kepala Divisi"
-            onSave={(sig) => {
-              setHeadDeptSignature(sig);
-              setIsSignDeptOpen(false);
-            }}
-          />
+          {isFirstStageApprove && (
+            <SignaturePadModal 
+              isOpen={isSignDeptOpen}
+              onClose={() => setIsSignDeptOpen(false)}
+              title="Tanda Tangan Kepala Divisi"
+              onSave={(sig) => {
+                setHeadDeptSignature(sig);
+                setIsSignDeptOpen(false);
+              }}
+            />
+          )}
           <SignaturePadModal 
             isOpen={isSignVerifikatorOpen}
             onClose={() => setIsSignVerifikatorOpen(false)}
