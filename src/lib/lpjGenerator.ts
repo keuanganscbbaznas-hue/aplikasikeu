@@ -88,12 +88,6 @@ export async function generateLPJPDF(submission: any, config?: any) {
     // BAZNAS Logo (right)
     try {
       doc.addImage(BAZNAS_LOGO_BASE64, 'PNG', 170, 13, 15, 13);
-      doc.setFontSize(6.5);
-      doc.setTextColor(30, 41, 59);
-      doc.text("BAZNAS", 177.5, 28.5, { align: "center" });
-      doc.setFontSize(4.5);
-      doc.setFont("helvetica", "normal");
-      doc.text("Badan Amil Zakat Nasional", 177.5, 30.5, { align: "center" });
     } catch (e) {
       console.warn("Baznas Logo failed to load:", e);
     }
@@ -310,36 +304,6 @@ export async function generateLPJPDF(submission: any, config?: any) {
     
     // ----------------- 4. FOOTER & SIGNATURE SECTION -----------------
     
-    // QR Code Box (bottom left)
-    // Draw a mock elegant decorative barcode or box or qr if dynamic.
-    // We can draw a beautiful box representation of the QR code from the template picture
-    const qrTextLine1 = "*Wajib melampirkan";
-    const qrTextLine2 = "laporan sesuai format";
-    const qrLinkStr = "http://bit.ly/2F9DCge";
-    
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(7.5);
-    doc.text(qrTextLine1, 15, 149);
-    doc.text(qrTextLine2, 15, 152);
-    
-    // Render an actual neat QR box with cross inner hatchings to look just like the QR code in the image!
-    doc.rect(15, 154, 21, 21);
-    doc.setDrawColor(230, 230, 230);
-    // Draw horizontal/vertical lines inside QR box for visual authenticity
-    for (let offset = 2; offset < 21; offset += 3) {
-      doc.line(15 + offset, 154, 15 + offset, 175);
-      doc.line(15, 154 + offset, 36, 154 + offset);
-    }
-    // High contrast border
-    doc.setDrawColor(15, 23, 42);
-    doc.rect(15, 154, 6, 6);
-    doc.rect(30, 154, 6, 6);
-    doc.rect(15, 169, 6, 6);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(6.5);
-    doc.text(qrLinkStr, 15, 178.5);
-    
     // 4 SIGNATURE BOXES: PIC, Head Dept, Verifikator, Cashier
     // Spacing starting from W=30 for each, GAP = 4.
     // X Positions: 63, 97, 131, 165. Width = 30. Height = 34.
@@ -460,18 +424,32 @@ export async function generateLPJPDF(submission: any, config?: any) {
         } catch (err) {
           console.warn("Error rendering Kasir Signature:", err);
         }
-      } else {
-        // Red stamp "PAID"
-        doc.saveGraphicsState();
-        doc.setDrawColor(220, 38, 38);
-        doc.setTextColor(220, 38, 38);
-        doc.setLineWidth(0.4);
-        doc.rect(sigX[3] + 4, sigY + 11, boxW - 8, 8);
-        doc.setFontSize(7.5);
-        doc.setFont("courier", "bold");
-        doc.text("PAID/LUNAS", sigX[3] + (boxW / 2), sigY + 16.5, { align: "center" });
-        doc.restoreGraphicsState();
       }
+      
+      // Draw dynamic cherry-red "LUNAS" (PAID) ink stamp that cuts/overlaps to the right boundary of Cashier box
+      doc.saveGraphicsState();
+      doc.setDrawColor(220, 38, 38);
+      doc.setTextColor(220, 38, 38);
+      doc.setLineWidth(0.5);
+      
+      // Stamp location intersects the Cashier box's right boundary (X is 165 to 195, stamp goes from 180 to 201)
+      const stampX = sigX[3] + 15; // 180 (overlapping to the right)
+      const stampY = sigY + 9;     // 155
+      const stampW = 21;
+      const stampH = 10;
+      
+      // Double rectangular border stamp
+      doc.rect(stampX, stampY, stampW, stampH);
+      doc.rect(stampX + 0.5, stampY + 0.5, stampW - 1.0, stampH - 1.0);
+      
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.text("LUNAS", stampX + (stampW / 2), stampY + 6.8, { align: "center" });
+      
+      doc.setFontSize(4.2);
+      doc.text("KASIR BAZNAS SCB", stampX + (stampW / 2), stampY + 3.2, { align: "center" });
+      
+      doc.restoreGraphicsState();
     }
     
     // ----------------- EXPORT FILE -----------------
