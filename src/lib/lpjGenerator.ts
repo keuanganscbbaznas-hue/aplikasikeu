@@ -1,0 +1,448 @@
+import { jsPDF } from 'jspdf';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
+import { toast } from 'sonner';
+import { SCB_LOGO_BASE64, BAZNAS_LOGO_BASE64 } from './logos';
+
+// Helper to convert date
+const parseFirestoreDate = (dateField: any): Date => {
+  if (!dateField) return new Date();
+  if (typeof dateField.toDate === 'function') {
+    return dateField.toDate();
+  }
+  if (dateField.seconds) {
+    return new Date(dateField.seconds * 1000);
+  }
+  return new Date(dateField);
+};
+
+// Safe date formatter
+const safeFormatDate = (dateField: any, pattern: string, options?: any): string => {
+  if (!dateField) return '';
+  try {
+    const d = parseFirestoreDate(dateField);
+    if (isNaN(d.getTime())) return '';
+    return format(d, pattern, options);
+  } catch (err) {
+    console.error("Error formatting date:", err);
+    return '';
+  }
+};
+
+export async function generateLPJPDF(submission: any, config?: any) {
+  const toastId = toast.loading("Menyiapkan dokumen LPJ (Form Fund Submission)...");
+  
+  try {
+    const doc = new jsPDF('p', 'mm', 'a4');
+    
+    // Set default font
+    doc.setFont("helvetica", "normal");
+    
+    // Margins: Left=15, Right=195, Top=15
+    
+    // ----------------- 1. HEADER SECTION -----------------
+    
+    // Top-Left Box: No. Doc / Date
+    doc.rect(15, 15, 45, 18);
+    doc.line(37.5, 15, 37.5, 33); // Vertical divide
+    doc.line(15, 21, 60, 21); // Horizontal divide
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.text("No. Doc", 26.25, 19, { align: "center" });
+    doc.text("Date", 48.75, 19, { align: "center" });
+    
+    // Values inside the top-left box
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    const noDocVal = submission.noDokumen ? submission.noDokumen.split('/') : [''];
+    const docDocStr = noDocVal[0] || '';
+    doc.text(docDocStr, 26.25, 27, { align: "center" });
+    
+    const payDateVal = submission.bookedAt || submission.updatedAt || null;
+    const dateBoxStr = payDateVal ? safeFormatDate(payDateVal, 'dd/MM/yy') : safeFormatDate(new Date(), 'dd/MM/yy');
+    doc.text(dateBoxStr, 48.75, 27, { align: "center" });
+    
+    // SCB Logo (left of title)
+    try {
+      doc.addImage(SCB_LOGO_BASE64, 'PNG', 69, 14, 16, 15);
+    } catch (err) {
+      console.warn("SCB Logo failed to load:", err);
+    }
+    
+    // Title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(15, 23, 42); // slate-900
+    doc.text("FORM FUND SUBMISSION", 121, 23, { align: "center" });
+    
+    // BAZNAS Logo (right)
+    try {
+      doc.addImage(BAZNAS_LOGO_BASE64, 'PNG', 170, 13, 15, 13);
+      doc.setFontSize(6.5);
+      doc.setTextColor(30, 41, 59);
+      doc.text("BAZNAS", 177.5, 28.5, { align: "center" });
+      doc.setFontSize(4.5);
+      doc.setFont("helvetica", "normal");
+      doc.text("Badan Amil Zakat Nasional", 177.5, 30.5, { align: "center" });
+    } catch (e) {
+      console.warn("Baznas Logo failed to load:", e);
+    }
+    
+    // Restore styling
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "normal");
+    
+    // Horizontal separator
+    doc.setFontSize(8);
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(0.4);
+    doc.line(15, 35, 195, 35);
+    doc.setLineWidth(0.25);
+    
+    // ----------------- 2. CONTENT FIELDS SECTION -----------------
+    
+    let currentY = 42;
+    const lineSpacing = 8.5;
+    
+    // PIC penanggungjawab
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("PIC", 15, currentY);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.text("penanggungjawab", 22, currentY);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(":", 55, currentY);
+    doc.setFont("helvetica", "normal");
+    doc.text(submission.picName || submission.submittedByName || '-', 58, currentY);
+    
+    // Right side box structure: No. Doc FR and Date FR
+    // Width = 65 (X=130 to 195), Height = 12
+    doc.rect(130, 38, 65, 12);
+    doc.line(130, 44, 195, 44); // Horizontal divisor
+    doc.line(160, 38, 160, 50); // Vertical divisor
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.text("No. Doc FR", 145, 42.2, { align: "center" });
+    doc.text("Date FR", 145, 48.2, { align: "center" });
+    
+    doc.setFont("helvetica", "normal");
+    const frNoStr = submission.noDokumen || '-';
+    // Trim if too long
+    const frNoStrDisplay = frNoStr.length > 20 ? frNoStr.substring(0, 19) + '..' : frNoStr;
+    doc.setFontSize(frNoStr.length > 15 ? 6.5 : 7.5);
+    doc.text(frNoStrDisplay, 177.5, 42.2, { align: "center" });
+    
+    const frDateStr = submission.createdAt ? safeFormatDate(submission.createdAt, 'dd/MM/yyyy') : '-';
+    doc.setFontSize(7.5);
+    doc.text(frDateStr, 177.5, 48.2, { align: "center" });
+    
+    currentY += lineSpacing;
+    
+    // Division bagian
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Division", 15, currentY);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.text("bagian", 28, currentY);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(":", 55, currentY);
+    doc.setFont("helvetica", "normal");
+    doc.text(submission.divisi || '-', 58, currentY);
+    
+    // Dot lines for fields (replicating exact lines shown in standard templates)
+    doc.setDrawColor(200, 200, 200);
+    doc.line(58, currentY + 1.2, 125, currentY + 1.2);
+    
+    currentY += lineSpacing;
+    
+    // Fund req permohonan dana
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Fund req", 15, currentY);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.text("permohonan dana", 30, currentY);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(":", 55, currentY);
+    doc.text("Rp.", 58, currentY);
+    
+    doc.setFont("helvetica", "normal");
+    const amountVal = isNaN(Number(submission.amount)) ? 0 : Number(submission.amount);
+    const amountFormatted = `${amountVal.toLocaleString('id-ID')},-`;
+    doc.text(amountFormatted, 65, currentY);
+    doc.line(58, currentY + 1.2, 195, currentY + 1.2);
+    
+    currentY += lineSpacing;
+    
+    // Use penggunaan dana
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Use", 15, currentY);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.text("penggunaan dana", 22, currentY);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(":", 55, currentY);
+    doc.text("Rp.", 58, currentY);
+    
+    doc.setFont("helvetica", "normal");
+    // If there is nominal permohonan laporan (the LPJ used fund amount), display it:
+    const usedFundVal = submission.nominalPermohonanLaporan !== undefined 
+      ? Number(submission.nominalPermohonanLaporan) 
+      : (submission.amount - (submission.sisaDana || 0));
+    
+    const usedFundFormatted = `${usedFundVal.toLocaleString('id-ID')},-`;
+    doc.text(usedFundFormatted, 65, currentY);
+    
+    // Also append the text usage description right next to it or offset
+    const pengDanaText = submission.penggunaanDana ? `  (${submission.penggunaanDana})` : '';
+    doc.setFontSize(8);
+    doc.text(pengDanaText.length > 70 ? pengDanaText.substring(0, 68) + '...' : pengDanaText, 105, currentY);
+    doc.setFontSize(10);
+    doc.line(58, currentY + 1.2, 195, currentY + 1.2);
+    
+    currentY += lineSpacing;
+    
+    // Balancing sisa
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Balancing", 15, currentY);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.text("sisa", 31, currentY);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(":", 55, currentY);
+    doc.text("Rp.", 58, currentY);
+    
+    doc.setFont("helvetica", "normal");
+    const sisaDanaVal = Number(submission.sisaDana) || 0;
+    const sisaDanaFormatted = `${sisaDanaVal.toLocaleString('id-ID')},-`;
+    doc.text(sisaDanaFormatted, 65, currentY);
+    doc.line(58, currentY + 1.2, 195, currentY + 1.2);
+    
+    currentY += lineSpacing;
+    
+    // Allocation peruntukan
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("Allocation", 15, currentY);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.text("peruntukan", 32, currentY);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(":", 55, currentY);
+    
+    doc.setFont("helvetica", "normal");
+    doc.text(submission.alokasiPeruntukan || '-', 58, currentY);
+    doc.line(58, currentY + 1.2, 195, currentY + 1.2);
+    
+    // Double lines / Thick line separator for notes
+    doc.setDrawColor(15, 23, 42);
+    doc.setLineWidth(0.4);
+    doc.line(15, 103, 195, 103);
+    doc.setLineWidth(0.25);
+    
+    // ----------------- 3. NOTES BOX SECTION -----------------
+    
+    // Rectangle frame W=180, H=32, X=15, Y=108
+    doc.rect(15, 108, 180, 32);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.text("Notes", 17, 113);
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.text("catatan", 26, 113);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    const mainComment = submission.description || '';
+    const splitNotes = doc.splitTextToSize(mainComment, 174);
+    doc.text(splitNotes, 17, 118);
+    
+    // ----------------- 4. FOOTER & SIGNATURE SECTION -----------------
+    
+    // QR Code Box (bottom left)
+    // Draw a mock elegant decorative barcode or box or qr if dynamic.
+    // We can draw a beautiful box representation of the QR code from the template picture
+    const qrTextLine1 = "*Wajib melampirkan";
+    const qrTextLine2 = "laporan sesuai format";
+    const qrLinkStr = "http://bit.ly/2F9DCge";
+    
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.text(qrTextLine1, 15, 149);
+    doc.text(qrTextLine2, 15, 152);
+    
+    // Render an actual neat QR box with cross inner hatchings to look just like the QR code in the image!
+    doc.rect(15, 154, 21, 21);
+    doc.setDrawColor(230, 230, 230);
+    // Draw horizontal/vertical lines inside QR box for visual authenticity
+    for (let offset = 2; offset < 21; offset += 3) {
+      doc.line(15 + offset, 154, 15 + offset, 175);
+      doc.line(15, 154 + offset, 36, 154 + offset);
+    }
+    // High contrast border
+    doc.setDrawColor(15, 23, 42);
+    doc.rect(15, 154, 6, 6);
+    doc.rect(30, 154, 6, 6);
+    doc.rect(15, 169, 6, 6);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.text(qrLinkStr, 15, 178.5);
+    
+    // 4 SIGNATURE BOXES: PIC, Head Dept, Verifikator, Cashier
+    // Spacing starting from W=30 for each, GAP = 4.
+    // X Positions: 63, 97, 131, 165. Width = 30. Height = 34.
+    const sigX = [63, 97, 131, 165];
+    const boxW = 30;
+    const boxH = 34;
+    const sigY = 146;
+    
+    const sigHeaders = ["PIC", "Head Dept", "Verifikator", "Cashier"];
+    
+    sigX.forEach((x, index) => {
+      // Draw outer box
+      doc.rect(x, sigY, boxW, boxH);
+      
+      // Header dividing line
+      doc.line(x, sigY + 6, x + boxW, sigY + 6);
+      
+      // Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+      doc.text(sigHeaders[index], x + (boxW / 2), sigY + 4.2, { align: "center" });
+      
+      // Footer dividing line
+      doc.line(x, sigY + boxH - 6, x + boxW, sigY + boxH - 6);
+    });
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    
+    // 1. PIC Sign
+    const creatorName = submission.picName || submission.submittedByName || "-";
+    const creatorNameTrim = creatorName.length > 18 ? creatorName.substring(0, 16) + '..' : creatorName;
+    doc.text(creatorNameTrim, sigX[0] + (boxW / 2), sigY + boxH - 2, { align: "center" });
+    
+    if (submission.signatures?.pic?.signature) {
+      try {
+        doc.addImage(submission.signatures.pic.signature, 'PNG', sigX[0] + 3, sigY + 8, boxW - 6, boxH - 16);
+      } catch (err) {
+        console.warn("Error rendering PIC Signature:", err);
+      }
+    } else {
+      // Print digital stamps
+      doc.setFontSize(6);
+      doc.setFont("helvetica", "italic");
+      doc.text("Signed via", sigX[0] + (boxW / 2), sigY + 16, { align: "center" });
+      doc.text("DIGITAL PORTAL", sigX[0] + (boxW / 2), sigY + 20, { align: "center" });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+    }
+    
+    // 2. Head Dept Sign
+    let hdName = "Helmi Nursirwan";
+    if (submission.divisi === 'Akademik/Kesiswaan') hdName = "Siswadi Dinianto";
+    else if (submission.divisi === 'Operasional') hdName = "Mohamad Roni";
+    
+    const hdNameTrim = hdName.length > 18 ? hdName.substring(0, 16) + '..' : hdName;
+    doc.text(hdNameTrim, sigX[1] + (boxW / 2), sigY + boxH - 2, { align: "center" });
+    
+    let headDeptSignData = submission.signatures?.headDept?.signature || null;
+    if (!headDeptSignData && config) {
+      if (submission.divisi === 'Asrama' && config.useDefaultAsramaSign) {
+        headDeptSignData = config.asramaDefaultSign || null;
+      } else if (submission.divisi === 'Akademik/Kesiswaan' && config.useDefaultAkademikSign) {
+        headDeptSignData = config.akademikDefaultSign || null;
+      } else if (submission.divisi === 'Operasional' && config.useDefaultOperasionalSign) {
+        headDeptSignData = config.operasionalDefaultSign || null;
+      }
+    }
+    
+    if (headDeptSignData) {
+      try {
+        doc.addImage(headDeptSignData, 'PNG', sigX[1] + 3, sigY + 8, boxW - 6, boxH - 16);
+      } catch (err) {
+        console.warn("Error rendering Head Dept Signature:", err);
+      }
+    }
+    
+    // 3. Verifikator Sign (Akuntan)
+    let accName = config?.verifikatorName || "Akuntan SCB";
+    const accNameTrim = accName.length > 18 ? accName.substring(0, 16) + '..' : accName;
+    doc.text(accNameTrim, sigX[2] + (boxW / 2), sigY + boxH - 2, { align: "center" });
+    
+    let accSignData = submission.signatures?.verifikator?.signature || null;
+    if (!accSignData && config?.useDefaultAkuntanSign) {
+      accSignData = config.akuntanDefaultSign || null;
+    }
+    
+    // Or if transferred anyway, we can stamp as verified
+    const isReadyForStamp = submission.isBooked || submission.currentStageIndex >= 4;
+    if (accSignData) {
+      try {
+        doc.addImage(accSignData, 'PNG', sigX[2] + 3, sigY + 8, boxW - 6, boxH - 16);
+      } catch (err) {
+        console.warn("Error rendering Verifikator Signature:", err);
+      }
+    } else if (isReadyForStamp) {
+      doc.saveGraphicsState();
+      doc.setDrawColor(16, 185, 129);
+      doc.setTextColor(16, 185, 129);
+      doc.rect(sigX[2] + 4, sigY + 10, boxW - 8, 10);
+      doc.setFontSize(6);
+      doc.setFont("courier", "bold");
+      doc.text("VERIFIED", sigX[2] + (boxW / 2), sigY + 16, { align: "center" });
+      doc.restoreGraphicsState();
+    }
+    
+    // 4. Cashier Sign
+    let cashName = "Nur Asiah";
+    doc.text(cashName, sigX[3] + (boxW / 2), sigY + boxH - 2, { align: "center" });
+    
+    const isTransferred = submission.isBooked || submission.currentStageIndex >= 4;
+    const kasirSignData = config?.kasirDefaultSign;
+    
+    if (isTransferred) {
+      if (kasirSignData && config?.useDefaultKasirSign) {
+        try {
+          doc.addImage(kasirSignData, 'PNG', sigX[3] + 3, sigY + 8, boxW - 6, boxH - 16);
+        } catch (err) {
+          console.warn("Error rendering Kasir Signature:", err);
+        }
+      } else {
+        // Red stamp "PAID"
+        doc.saveGraphicsState();
+        doc.setDrawColor(220, 38, 38);
+        doc.setTextColor(220, 38, 38);
+        doc.setLineWidth(0.4);
+        doc.rect(sigX[3] + 4, sigY + 11, boxW - 8, 8);
+        doc.setFontSize(7.5);
+        doc.setFont("courier", "bold");
+        doc.text("PAID/LUNAS", sigX[3] + (boxW / 2), sigY + 16.5, { align: "center" });
+        doc.restoreGraphicsState();
+      }
+    }
+    
+    // ----------------- EXPORT FILE -----------------
+    const cleanId = (submission.id || 'doc').substring(0, 8);
+    const filename = `LPJ_FundSubmission_${cleanId}.pdf`;
+    doc.save(filename);
+    
+    toast.success("Dokumen LPJ berhasil diunduh!", { id: toastId });
+  } catch (error: any) {
+    console.error("Critical fail inside LPJ PDF Generator:", error);
+    toast.error("Gagal mengunduh LPJ: " + (error?.message || "Kesalahan Tidak Diketahui"), { id: toastId });
+  }
+}

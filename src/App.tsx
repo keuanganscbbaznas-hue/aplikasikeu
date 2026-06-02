@@ -55,6 +55,7 @@ import { InfoKeuanganSection } from './components/InfoKeuanganSection';
 import SignaturePad from 'signature_pad';
 import { jsPDF } from 'jspdf';
 import { generateFPPP } from './lib/fpppGenerator';
+import { generateLPJPDF } from './lib/lpjGenerator';
 import { FPPPGeneratorSettings } from './components/FPPPGeneratorSettings';
 import { DonationConfirmation } from './components/administrasi/DonationConfirmation';
 import { DocumentTemplates } from './components/administrasi/DocumentTemplates';
@@ -3952,6 +3953,99 @@ function SubmissionDetailView({
   const [isBukukanMenuOpen, setIsBukukanMenuOpen] = useState(false);
   const [fpppConfigLocal, setFpppConfigLocal] = useState<any>(null);
 
+  // LPJ Edit & View States
+  const [isEditingLPJ, setIsEditingLPJ] = useState(false);
+  const [picNameEdit, setPicNameEdit] = useState('');
+  const [divisiEdit, setDivisiEdit] = useState<'Asrama' | 'Akademik/Kesiswaan' | 'Operasional' | ''>('');
+  const [amountEdit, setAmountEdit] = useState('');
+  const [nominalPermohonanLaporanEdit, setNominalPermohonanLaporanEdit] = useState('');
+  const [sisaDanaEdit, setSisaDanaEdit] = useState('');
+  const [alokasiEdit, setAlokasiEdit] = useState('');
+  const [penggunaanEdit, setPenggunaanEdit] = useState('');
+  const [picSigEdit, setPicSigEdit] = useState('');
+  const [hdSigEdit, setHdSigEdit] = useState('');
+  const [isLpjSignPicOpen, setIsLpjSignPicOpen] = useState(false);
+  const [isLpjSignDeptOpen, setIsLpjSignDeptOpen] = useState(false);
+
+  useEffect(() => {
+    if (submission) {
+      setPicNameEdit(submission.picName || submission.submittedByName || '');
+      setDivisiEdit(submission.divisi || 'Asrama');
+      setAmountEdit(submission.amount ? submission.amount.toString() : '');
+      const defaultUsed = submission.nominalPermohonanLaporan !== undefined 
+        ? submission.nominalPermohonanLaporan.toString() 
+        : (submission.amount - (submission.sisaDana || 0)).toString();
+      setNominalPermohonanLaporanEdit(defaultUsed);
+      setSisaDanaEdit(submission.sisaDana !== undefined ? submission.sisaDana.toString() : '0');
+      setAlokasiEdit(submission.alokasiPeruntukan || '');
+      setPenggunaanEdit(submission.penggunaanDana || '');
+      setPicSigEdit(submission.signatures?.pic?.signature || '');
+      setHdSigEdit(submission.signatures?.headDept?.signature || '');
+    }
+  }, [submission, isEditingLPJ]);
+
+  const handleSaveLPJ = async () => {
+    try {
+      const docRef = doc(db, 'submissions', submission.id);
+      
+      const updatedData: any = {
+        picName: picNameEdit || null,
+        divisi: divisiEdit || null,
+        amount: Number(amountEdit) || 0,
+        nominalPermohonanLaporan: Number(nominalPermohonanLaporanEdit) || 0,
+        sisaDana: Number(sisaDanaEdit) || 0,
+        alokasiPeruntukan: alokasiEdit || null,
+        penggunaanDana: penggunaanEdit || null,
+      };
+
+      // Handle signatures safely if changed
+      let hasPicChanged = picSigEdit !== (submission.signatures?.pic?.signature || '');
+      let hasHdChanged = hdSigEdit !== (submission.signatures?.headDept?.signature || '');
+
+      if (hasPicChanged || hasHdChanged) {
+        const newSignatures = submission.signatures ? { ...submission.signatures } : {};
+        
+        if (hasPicChanged) {
+          if (picSigEdit) {
+            newSignatures.pic = {
+              name: picNameEdit || submission.submittedByName || 'PIC',
+              signature: picSigEdit,
+              timestamp: Timestamp.now()
+            };
+          } else {
+            delete newSignatures.pic;
+          }
+        }
+
+        if (hasHdChanged) {
+          if (hdSigEdit) {
+            let headDeptName = "Pegawai SCB";
+            if (divisiEdit === 'Asrama') headDeptName = "Helmi Nursirwan";
+            else if (divisiEdit === 'Akademik/Kesiswaan') headDeptName = "Siswadi Dinianto";
+            else if (divisiEdit === 'Operasional') headDeptName = "Mohamad Roni";
+            
+            newSignatures.headDept = {
+              name: headDeptName,
+              signature: hdSigEdit,
+              timestamp: Timestamp.now()
+            };
+          } else {
+            delete newSignatures.headDept;
+          }
+        }
+
+        updatedData.signatures = newSignatures;
+      }
+
+      await updateDoc(docRef, updatedData);
+      setIsEditingLPJ(false);
+      toast.success("Berhasil memperbarui data LPJ!");
+    } catch (error) {
+      console.error("Error saving LPJ:", error);
+      toast.error("Gagal menyimpan data LPJ.");
+    }
+  };
+
   useEffect(() => {
     const unsub = onSnapshot(doc(db, 'config', 'fppp'), (docSnap) => {
       if (docSnap.exists()) {
@@ -4167,6 +4261,336 @@ function SubmissionDetailView({
                 </div>
              </div>
           </div>
+
+          {/* Laporan Pertanggungjawaban (LPJ) Section for Admin & Owner */}
+          {(() => {
+            const indexBelumLaporan = stages.indexOf("Belum Laporan");
+            const showLPJ = indexBelumLaporan !== -1 && submission.currentStageIndex >= indexBelumLaporan;
+            const isAuthorized = isAdmin || isOwner;
+
+            if (showLPJ && isAuthorized) {
+              const sisaDanaVal = Number(submission.sisaDana) || 0;
+              const usedFundVal = submission.nominalPermohonanLaporan !== undefined 
+                ? Number(submission.nominalPermohonanLaporan) 
+                : (submission.amount - sisaDanaVal);
+
+              let headDeptSignData = submission.signatures?.headDept?.signature || null;
+              if (!headDeptSignData && resolvedFpppConfig) {
+                if (submission.divisi === 'Asrama' && resolvedFpppConfig.useDefaultAsramaSign) {
+                  headDeptSignData = resolvedFpppConfig.asramaDefaultSign || null;
+                } else if (submission.divisi === 'Akademik/Kesiswaan' && resolvedFpppConfig.useDefaultAkademikSign) {
+                  headDeptSignData = resolvedFpppConfig.akademikDefaultSign || null;
+                } else if (submission.divisi === 'Operasional' && resolvedFpppConfig.useDefaultOperasionalSign) {
+                  headDeptSignData = resolvedFpppConfig.operasionalDefaultSign || null;
+                }
+              }
+
+              return (
+                <div id="lpj-card-section" className="bg-white p-6 rounded-3xl border border-emerald-100 shadow-sm bg-gradient-to-b from-white to-emerald-50/20">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                    <div>
+                      <h4 className="text-xs font-black text-emerald-700 uppercase tracking-widest">
+                        Laporan Pertanggungjawaban (LPJ) Uang Muka
+                      </h4>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">
+                        Akses Khusus Admin & Owner
+                      </p>
+                    </div>
+                    
+                    {!isEditingLPJ && (
+                      <Button 
+                        id="btn-edit-lpj"
+                        size="sm"
+                        onClick={() => setIsEditingLPJ(true)}
+                        className="h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 text-[10px] font-black uppercase tracking-widest gap-1.5 border-none"
+                      >
+                        <Edit2 size={12} />
+                        Edit LPJ
+                      </Button>
+                    )}
+                  </div>
+
+                  {isEditingLPJ ? (
+                    /* EDITING MODE */
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[9px] font-black text-slate-400 uppercase">Nama PIC</Label>
+                          <Input 
+                            id="edit-lpj-pic"
+                            value={picNameEdit} 
+                            onChange={(e) => setPicNameEdit(e.target.value)} 
+                            className="h-9 rounded-xl border-slate-200 bg-white text-xs font-medium"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[9px] font-black text-slate-400 uppercase">Divisi</Label>
+                          <Select 
+                            value={divisiEdit || undefined} 
+                            onValueChange={(v: 'Asrama' | 'Akademik/Kesiswaan' | 'Operasional') => setDivisiEdit(v)}
+                          >
+                            <SelectTrigger id="edit-lpj-divisi" className="h-9 rounded-xl border-slate-200 bg-white">
+                              <SelectValue placeholder="Pilih Divisi" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              <SelectItem value="Asrama">Asrama</SelectItem>
+                              <SelectItem value="Akademik/Kesiswaan">Akademik/Kesiswaan</SelectItem>
+                              <SelectItem value="Operasional">Operasional</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[9px] font-black text-slate-400 uppercase">Nominal UM</Label>
+                          <Input 
+                            id="edit-lpj-amount"
+                            type="number"
+                            value={amountEdit} 
+                            onChange={(e) => setAmountEdit(e.target.value)} 
+                            className="h-9 rounded-xl border-slate-200 bg-white text-xs font-medium"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[9px] font-black text-slate-400 uppercase">Realisasi (Use)</Label>
+                          <Input 
+                            id="edit-lpj-realisasi"
+                            type="number"
+                            value={nominalPermohonanLaporanEdit} 
+                            onChange={(e) => setNominalPermohonanLaporanEdit(e.target.value)} 
+                            className="h-9 rounded-xl border-slate-200 bg-white text-xs font-medium"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[9px] font-black text-slate-400 uppercase">Sisa Dana</Label>
+                          <Input 
+                            id="edit-lpj-sisa"
+                            type="number"
+                            value={sisaDanaEdit} 
+                            onChange={(e) => setSisaDanaEdit(e.target.value)} 
+                            className="h-9 rounded-xl border-slate-200 bg-white text-xs font-medium"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-black text-slate-400 uppercase">Alokasi Peruntukan</Label>
+                        <Input 
+                          id="edit-lpj-alokasi"
+                          value={alokasiEdit} 
+                          onChange={(e) => setAlokasiEdit(e.target.value)} 
+                          className="h-9 rounded-xl border-slate-200 bg-white text-xs font-medium"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-black text-slate-400 uppercase">Penggunaan Dana (Rincian)</Label>
+                        <textarea 
+                          id="edit-lpj-penggunaan"
+                          value={penggunaanEdit} 
+                          onChange={(e) => setPenggunaanEdit(e.target.value)} 
+                          className="p-2 w-full rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 min-h-[60px] resize-none text-xs text-slate-800 bg-white"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+                        <div className="text-center p-2.5 border border-slate-100 rounded-2xl bg-slate-50/50">
+                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-tight block mb-2">Tanda Tangan PIC</span>
+                          {picSigEdit ? (
+                            <div className="flex flex-col items-center gap-1.5">
+                              <img src={picSigEdit} alt="PIC Signature" className="h-12 object-contain bg-white rounded border border-slate-200 p-1" />
+                              <Button variant="ghost" size="sm" onClick={() => setPicSigEdit('')} className="text-red-500 hover:text-red-600 h-5 text-[9px]">Hapus</Button>
+                            </div>
+                          ) : (
+                            <Button 
+                              id="btn-lpj-sign-pic"
+                              type="button" 
+                              onClick={() => { setIsLpjSignPicOpen(true); }} 
+                              className="w-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl h-9 text-[10px] font-bold"
+                            >
+                              Pad TTD PIC
+                            </Button>
+                          )}
+                        </div>
+
+                        <div className="text-center p-2.5 border border-slate-100 rounded-2xl bg-slate-50/50">
+                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-tight block mb-2">Tanda Tangan Dept</span>
+                          {hdSigEdit ? (
+                            <div className="flex flex-col items-center gap-1.5">
+                              <img src={hdSigEdit} alt="Dept Head Signature" className="h-12 object-contain bg-white rounded border border-slate-200 p-1" />
+                              <Button variant="ghost" size="sm" onClick={() => setHdSigEdit('')} className="text-red-500 hover:text-red-600 h-5 text-[9px]">Hapus</Button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-1">
+                              <Button 
+                                id="btn-lpj-sign-dept"
+                                type="button" 
+                                onClick={() => { setIsLpjSignDeptOpen(true); }} 
+                                className="w-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl h-8 text-[9px] font-bold"
+                              >
+                                Pad TTD Dept
+                              </Button>
+                              {resolvedFpppConfig && (
+                                (divisiEdit === 'Asrama' && resolvedFpppConfig.useDefaultAsramaSign && resolvedFpppConfig.asramaDefaultSign) ||
+                                (divisiEdit === 'Akademik/Kesiswaan' && resolvedFpppConfig.useDefaultAkademikSign && resolvedFpppConfig.akademikDefaultSign) ||
+                                (divisiEdit === 'Operasional' && resolvedFpppConfig.useDefaultOperasionalSign && resolvedFpppConfig.operasionalDefaultSign)
+                              ) && (
+                                <button 
+                                  id="btn-lpj-auto-sign"
+                                  type="button"
+                                  onClick={() => {
+                                    let defaultSign = '';
+                                    if (divisiEdit === 'Asrama') defaultSign = resolvedFpppConfig.asramaDefaultSign;
+                                    else if (divisiEdit === 'Akademik/Kesiswaan') defaultSign = resolvedFpppConfig.akademikDefaultSign;
+                                    else if (divisiEdit === 'Operasional') defaultSign = resolvedFpppConfig.operasionalDefaultSign;
+                                    setHdSigEdit(defaultSign);
+                                    toast.success("TTD Auto Kepala Divisi terpasang");
+                                  }}
+                                  className="w-full bg-emerald-50 text-emerald-700 text-[8px] font-bold py-1 px-2 rounded-lg"
+                                >
+                                  Gunakan TTD Auto
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                        <Button 
+                          id="btn-lpj-edit-cancel"
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setIsEditingLPJ(false)}
+                          className="h-9 rounded-xl text-slate-500 font-bold text-xs"
+                        >
+                          Batal
+                        </Button>
+                        <Button 
+                          id="btn-lpj-edit-save"
+                          size="sm"
+                          onClick={handleSaveLPJ}
+                          className="h-9 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 border-none"
+                        >
+                          Simpan Perubahan
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* VIEW MODE */
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4 pb-2 border-b border-slate-100/50">
+                        <div>
+                          <Label className="text-[9px] text-slate-400 lowercase italic">PIC Penanggungjawab</Label>
+                          <p className="text-xs font-black text-slate-800 uppercase tracking-tight mt-0.5">
+                            {submission.picName || submission.submittedByName || '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-[9px] text-slate-400 lowercase italic">Divisi Bagian</Label>
+                          <p className="text-xs font-black text-slate-800 mt-0.5">
+                            {submission.divisi || '-'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 py-1 border-b border-slate-100/50">
+                        <div>
+                          <Label className="text-[9px] text-slate-400 lowercase italic">Permohonan Uang Muka</Label>
+                          <p className="text-xs font-black text-slate-800 tracking-tight mt-0.5">
+                            Rp {submission.amount ? submission.amount.toLocaleString('id-ID') : '0'}
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-[9px] text-emerald-600 lowercase italic font-bold">Dana Terpakai (Use)</Label>
+                          <p className="text-xs font-black text-emerald-700 tracking-tight mt-0.5">
+                            Rp {usedFundVal.toLocaleString('id-ID')}
+                          </p>
+                        </div>
+                        <div>
+                          <Label className="text-[9px] text-slate-400 lowercase italic">Balancing Sisa</Label>
+                          <p className="text-xs font-black text-slate-800 tracking-tight mt-0.5">
+                            Rp {sisaDanaVal.toLocaleString('id-ID')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-[9px] text-slate-400 lowercase italic">Alokasi Peruntukan</Label>
+                        <p className="text-xs font-medium text-slate-700 mt-0.5">
+                          {submission.alokasiPeruntukan || '-'}
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label className="text-[9px] text-slate-400 lowercase italic">Rincian Penggunaan Dana (Use)</Label>
+                        <p className="text-xs font-medium text-slate-700 mt-0.5 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100/50 italic">
+                          "{submission.penggunaanDana || 'Tidak ada uraian rincian penggunaan.'}"
+                        </p>
+                      </div>
+
+                      {/* Display Signatures under view mode */}
+                      <div className="grid grid-cols-2 gap-4 py-2 border-t border-slate-100">
+                        <div>
+                          <Label className="text-[9px] text-slate-400 lowercase italic block mb-1">Tanda Tangan PIC</Label>
+                          {submission.signatures?.pic?.signature ? (
+                            <img src={submission.signatures.pic.signature} alt="PIC Signature" className="h-10 object-contain bg-white rounded border border-slate-200 p-0.5 shadow-sm" />
+                          ) : (
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tight italic">Belum TTD</span>
+                          )}
+                        </div>
+                        <div>
+                          <Label className="text-[9px] text-slate-400 lowercase italic block mb-1">Tanda Tangan Kepala Divisi</Label>
+                          {headDeptSignData ? (
+                            <img src={headDeptSignData} alt="Head Dept Signature" className="h-10 object-contain bg-white rounded border border-slate-200 p-0.5 shadow-sm" />
+                          ) : (
+                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tight italic">Belum TTD</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Download PDF trigger button */}
+                      <Button 
+                        id="btn-lpj-download-pdf"
+                        onClick={() => generateLPJPDF(submission, resolvedFpppConfig)}
+                        className="w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl h-11 text-[11px] font-black uppercase tracking-wider transition-all shadow-lg shadow-emerald-600/10 flex items-center justify-center gap-2 border-none"
+                      >
+                        <FileCheck size={16} />
+                        Cetak Laporan LPJ (Fund Submission)
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Interconnected signature models */}
+                  {isLpjSignPicOpen && (
+                    <SignaturePadModal 
+                      isOpen={isLpjSignPicOpen}
+                      onClose={() => { setIsLpjSignPicOpen(false); }}
+                      title="Tanda Tangan PIC"
+                      onSave={(sig) => {
+                        setPicSigEdit(sig);
+                        setIsLpjSignPicOpen(false);
+                      }}
+                    />
+                  )}
+
+                  {isLpjSignDeptOpen && (
+                    <SignaturePadModal 
+                      isOpen={isLpjSignDeptOpen}
+                      onClose={() => { setIsLpjSignDeptOpen(false); }}
+                      title="Tanda Tangan Kepala Divisi"
+                      onSave={(sig) => {
+                        setHdSigEdit(sig);
+                        setIsLpjSignDeptOpen(false);
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden">
              <div className="flex items-center justify-between mb-4">
