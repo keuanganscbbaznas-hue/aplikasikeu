@@ -453,8 +453,10 @@ export async function generateLPJPDF(submission: any, config?: any) {
     }
     
     // ----------------- EXPORT FILE -----------------
-    const cleanId = (submission.id || 'doc').substring(0, 8);
-    const filename = `LPJ_FundSubmission_${cleanId}.pdf`;
+    const titleClean = (submission.title || 'Fund_Submission')
+      .replace(/[\/\\?%*:|"<>]/g, '_')
+      .trim();
+    const filename = `LPJ_${titleClean}.pdf`;
     doc.save(filename);
     
     toast.success("Dokumen LPJ berhasil diunduh!", { id: toastId });
