@@ -644,6 +644,7 @@ export default function App() {
   const [editPicWhatsapp, setEditPicWhatsapp] = useState('');
   const [editDivisi, setEditDivisi] = useState<'Asrama' | 'Akademik/Kesiswaan' | 'Operasional' | ''>('');
   const [editNoRekeningPengaju, setEditNoRekeningPengaju] = useState('');
+  const [editNamaRekening, setEditNamaRekening] = useState('');
   const [editSumberRekening, setEditSumberRekening] = useState<'SMP' | 'SMA' | ''>('');
   const [editKodeBudget, setEditKodeBudget] = useState('');
   const [editNoDokumen, setEditNoDokumen] = useState('');
@@ -1128,6 +1129,7 @@ export default function App() {
     setEditPicWhatsapp(submission.picWhatsapp || '');
     setEditDivisi(submission.divisi || '');
     setEditNoRekeningPengaju(submission.noRekeningPengaju || '');
+    setEditNamaRekening(submission.namaRekening || '');
     setEditSumberRekening(submission.sumberRekening || '');
     setEditKodeBudget(submission.kodeBudget || '');
     setEditNoDokumen(submission.noDokumen || '');
@@ -1218,6 +1220,7 @@ export default function App() {
         picWhatsapp: editPicWhatsapp || null,
         divisi: editDivisi || null,
         noRekeningPengaju: editNoRekeningPengaju || null,
+        namaRekening: editNamaRekening || null,
         sumberRekening: editSumberRekening || null,
         kodeBudget: editKodeBudget || null,
         noDokumen: editNoDokumen || null,
@@ -2140,9 +2143,19 @@ export default function App() {
                         <Label htmlFor="edit-norek" className="text-[9px] font-black uppercase tracking-wider text-slate-500">No Rekening Pengaju (Optional)</Label>
                         <Input 
                           id="edit-norek" 
-                          placeholder="Contoh: BSI 1234567890 an Ahmad" 
+                          placeholder="Contoh: BSI 1234567890" 
                           value={editNoRekeningPengaju}
                           onChange={(e) => setEditNoRekeningPengaju(e.target.value)}
+                          className="h-10 rounded-xl border-slate-200 bg-white"
+                        />
+                      </div>
+                      <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-namarek" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Nama Pemilik Rekening (Optional)</Label>
+                        <Input 
+                          id="edit-namarek" 
+                          placeholder="Contoh: Ahmad" 
+                          value={editNamaRekening}
+                          onChange={(e) => setEditNamaRekening(e.target.value)}
                           className="h-10 rounded-xl border-slate-200 bg-white"
                         />
                       </div>
@@ -2704,6 +2717,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
   const [newPicWhatsapp, setNewPicWhatsapp] = useState('');
   const [newDivisi, setNewDivisi] = useState<'Asrama' | 'Akademik/Kesiswaan' | 'Operasional' | ''>('');
   const [newNoRekeningPengaju, setNewNoRekeningPengaju] = useState('');
+  const [newNamaRekening, setNewNamaRekening] = useState('');
   const [newSumberRekening, setNewSumberRekening] = useState<'SMP' | 'SMA' | ''>('');
   const [newKodeBudget, setNewKodeBudget] = useState('');
   const [newNoDokumen, setNewNoDokumen] = useState('');
@@ -2803,6 +2817,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
           picWhatsapp: newPicWhatsapp || null,
           divisi: newDivisi || null,
           noRekeningPengaju: newNoRekeningPengaju || null,
+          namaRekening: newNamaRekening || null,
           sumberRekening: newSumberRekening || null,
           kodeBudget: newKodeBudget || null,
           noDokumen: newNoDokumen || null,
@@ -2835,6 +2850,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
       setNewPicWhatsapp('');
       setNewDivisi('');
       setNewNoRekeningPengaju('');
+      setNewNamaRekening('');
       setNewSumberRekening('');
       setNewKodeBudget('');
       setNewNoDokumen('');
@@ -2958,9 +2974,19 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
                   <Label htmlFor="new-norek" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">No Rekening Pengaju (Optional)</Label>
                   <Input 
                     id="new-norek" 
-                    placeholder="Contoh: BSI 1234567890 an Ahmad" 
+                    placeholder="Contoh: BSI 1234567890" 
                     value={newNoRekeningPengaju}
                     onChange={(e) => setNewNoRekeningPengaju(e.target.value)}
+                    className="h-10 rounded-xl border-slate-200"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="new-namarek" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Nama Pemilik Rekening (Optional)</Label>
+                  <Input 
+                    id="new-namarek" 
+                    placeholder="Contoh: Ahmad" 
+                    value={newNamaRekening}
+                    onChange={(e) => setNewNamaRekening(e.target.value)}
                     className="h-10 rounded-xl border-slate-200"
                   />
                 </div>
@@ -3790,6 +3816,22 @@ function SubmissionDetailView({
                      <p className="text-[10px] font-black text-slate-900 uppercase tracking-tighter mt-0.5">{submission.noDokumen || '-'}</p>
                    </div>
                 </div>
+                {(submission.noRekeningPengaju || submission.namaRekening) && (
+                  <div className="grid grid-cols-2 gap-4 pt-4 pb-2 border-b border-slate-50">
+                    {submission.noRekeningPengaju && (
+                      <div>
+                        <Label className="text-[10px] text-slate-400 lowercase italic">No Rekening Pengaju</Label>
+                        <p className="text-xs font-black text-slate-900 uppercase tracking-tighter mt-0.5">{submission.noRekeningPengaju}</p>
+                      </div>
+                    )}
+                    {submission.namaRekening && (
+                      <div>
+                        <Label className="text-[10px] text-slate-400 lowercase italic">Nama Pemilik Rekening</Label>
+                        <p className="text-xs font-black text-slate-900 mt-0.5">{submission.namaRekening}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {submission.evidenceUrl && (
                   <div className="pt-4 border-t border-slate-50">
                     <Label className="text-[10px] text-slate-400 lowercase italic">Dokumen Bukti</Label>

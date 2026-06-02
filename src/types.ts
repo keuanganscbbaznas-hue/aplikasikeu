@@ -102,6 +102,7 @@ export interface Submission {
   picWhatsapp?: string;
   divisi?: 'Asrama' | 'Akademik/Kesiswaan' | 'Operasional';
   noRekeningPengaju?: string;
+  namaRekening?: string;
   sumberRekening?: 'SMP' | 'SMA';
   kodeBudget?: string;
   noDokumen?: string;

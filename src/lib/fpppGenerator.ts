@@ -283,9 +283,9 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
       // Parse Bank account info if found or default to "Transfer Bank" if transfer
       let bankName = config?.bankName || "BANK SYARIAH INDONESIA (BSI)";
       let norek = submission.noRekeningPengaju || "-";
-      let atasNama = submission.picName || "Bendahara SCB";
+      let atasNama = submission.namaRekening || submission.picName || "Bendahara SCB";
       
-      if (submission.sumberRekening) {
+      if (!submission.namaRekening && submission.sumberRekening) {
         if (submission.sumberRekening.includes('SMA')) {
           atasNama = "SCB SMA BANTUAN BAZNAS";
         } else {
