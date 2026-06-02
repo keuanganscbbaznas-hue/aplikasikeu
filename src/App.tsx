@@ -4645,19 +4645,28 @@ function SubmissionDetailView({
                                 id="btn-send-wa-reminder"
                                 size="sm"
                                 onClick={() => {
+                                  const sumberRek = (submission.sumberRekening || '').toUpperCase();
+                                  let rekTarget = "SMP 1 : 7179071988 atau SMA 1 : 7179072507";
+                                  if (sumberRek.includes("SMP")) {
+                                    rekTarget = "SMP 1 : 7179071988";
+                                  } else if (sumberRek.includes("SMA")) {
+                                    rekTarget = "SMA 1 : 7179072507";
+                                  }
+                                  
                                   const msg = `Assalamu'alaikum Wr. Wb.
-Yth. PIC Pengaju *${submission.picName || submission.submittedByName || '-'}*
+Yth. PIC Pengaju ${submission.picName || submission.submittedByName || '-'}
 
 Mengingatkan kembali untuk proses pengembalian sisa dana LPJ dari pengajuan:
-📦 *Judul:* ${submission.title || '-'}
-💰 *Nominal Uang Muka:* Rp ${(submission.amount || 0).toLocaleString('id-ID')}
-💵 *Dana Terpakai (Realisasi):* Rp ${usedFundVal.toLocaleString('id-ID')}
-🔄 *Sisa Dana yang Harus Dikembalikan:* Rp ${sisaDanaVal.toLocaleString('id-ID')}
+📦 Judul: ${submission.title || '-'}
+💰 Nominal Uang Muka: Rp ${(submission.amount || 0).toLocaleString('id-ID')}
+💵 Dana Terpakai (Realisasi): Rp ${usedFundVal.toLocaleString('id-ID')}
+🔄 Sisa Dana yang Harus Dikembalikan: Rp ${sisaDanaVal.toLocaleString('id-ID')}
 
-Mohon agar sisa dana pengembalian disetorkan kembali ke rekening kas SCB BAZNAS dan mengunggah atau mengonfirmasi bukti setorannya di aplikasi.
+Mohon agar sisa dana pengembalian disetorkan kembali ke rekening kas SCB (${rekTarget})
 
 Terima kasih banyak atas kerjasama dan amanahnya.
 Wassalamu'alaikum Wr. Wb.
+
 - Keuangan SCB BAZNAS`;
                                   sendWhatsApp(waReminderPhone, msg);
                                 }}
@@ -4691,15 +4700,45 @@ Wassalamu'alaikum Wr. Wb.
                         </div>
                       </div>
 
-                      {/* Download PDF trigger button */}
-                      <Button 
-                        id="btn-lpj-download-pdf"
-                        onClick={() => generateLPJPDF(submission, resolvedFpppConfig)}
-                        className="w-full mt-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl h-11 text-[11px] font-black uppercase tracking-wider transition-all shadow-lg shadow-emerald-600/10 flex items-center justify-center gap-2 border-none"
-                      >
-                        <FileCheck size={16} />
-                        Cetak Laporan LPJ (Fund Submission)
-                      </Button>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                        {/* Download PDF trigger button */}
+                        <Button 
+                          id="btn-lpj-download-pdf"
+                          onClick={() => generateLPJPDF(submission, resolvedFpppConfig)}
+                          className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl h-11 text-[10px] font-black uppercase tracking-wider transition-all shadow-lg shadow-emerald-600/10 flex items-center justify-center gap-2 border-none"
+                        >
+                          <FileCheck size={16} />
+                          Cetak Laporan LPJ
+                        </Button>
+
+                        {/* WhatsApp Notification Button */}
+                        <Button 
+                          id="btn-lpj-send-wa-notif"
+                          onClick={() => {
+                            const noLpj = submission.noDokumenLaporan || '-';
+                            const msg = `Assalamu'alaikum Wr. Wb.
+Yth. PIC Pengaju *${submission.picName || submission.submittedByName || '-'}*
+
+Berikut rincian Laporan Pertanggungjawaban (LPJ) Uang Muka Anda:
+📦 *Judul:* ${submission.title || '-'}
+🏢 *Divisi:* ${submission.divisi || '-'}
+📄 *No. Laporan LPJ:* ${noLpj}
+💰 *Nominal Uang Muka:* Rp ${(submission.amount || 0).toLocaleString('id-ID')}
+💵 *Dana Terpakai:* Rp ${usedFundVal.toLocaleString('id-ID')}
+🔄 *Balancing Sisa:* Rp ${sisaDanaVal.toLocaleString('id-ID')}
+📌 *Alokasi Peruntukan:* ${submission.alokasiPeruntukan || '-'}
+
+Status LPJ Anda dapat dipantau langsung dalam sistem web aplikasi. Terima kasih banyak atas kerjasama dan amanahnya.
+Wassalamu'alaikum Wr. Wb.
+- Keuangan SCB BAZNAS`;
+                            sendWhatsApp(submission.picWhatsapp || '', msg);
+                          }}
+                          className="w-full bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl h-11 text-[10px] font-black uppercase tracking-wider transition-all shadow-lg shadow-emerald-600/10 flex items-center justify-center gap-2 border-none"
+                        >
+                          <Phone size={14} className="text-emerald-50" />
+                          Notifikasi WA LPJ
+                        </Button>
+                      </div>
                     </div>
                   )}
 
