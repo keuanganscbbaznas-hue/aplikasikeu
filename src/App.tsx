@@ -3373,9 +3373,12 @@ function ApprovalDialog({
       setPicNameLocal(submission.picName || submission.submittedByName || '');
       setDivisiLocal(submission.divisi || 'Asrama');
       setAmountLocal(submission.amount ? submission.amount.toString() : '');
-      setPenggunaanDanaLocal(submission.penggunaanDana || '');
+      const defaultUsed = submission.nominalPermohonanLaporan !== undefined 
+        ? submission.nominalPermohonanLaporan.toString() 
+        : (submission.amount - (Number(submission.sisaDana) || 0)).toString();
+      setPenggunaanDanaLocal(defaultUsed);
       setSisaDanaLocal(submission.sisaDana !== undefined ? submission.sisaDana.toString() : '0');
-      setAlokasiPeruntukanLocal(submission.alokasiPeruntukan || '');
+      setAlokasiPeruntukanLocal(submission.alokasiPeruntukan || submission.title || '');
       setPicSignatureLocal(submission.signatures?.pic?.signature || '');
       setHeadDeptSignatureLocal(submission.signatures?.headDept?.signature || '');
     }
@@ -3410,8 +3413,9 @@ function ApprovalDialog({
         await updateDoc(doc(db, 'submissions', submission.id), {
           picName: picNameLocal || null,
           divisi: divisiLocal || null,
-          nominalPermohonanLaporan: Number(amountLocal) || 0,
-          penggunaanDana: penggunaanDanaLocal || null,
+          amount: Number(amountLocal) || 0,
+          nominalPermohonanLaporan: Number(penggunaanDanaLocal) || 0,
+          penggunaanDana: "Rp " + (Number(penggunaanDanaLocal) || 0).toLocaleString('id-ID'),
           sisaDana: Number(sisaDanaLocal) || 0,
           alokasiPeruntukan: alokasiPeruntukanLocal || null,
           signatures: newSignatures
@@ -3539,7 +3543,13 @@ function ApprovalDialog({
                       type="number"
                       placeholder="0" 
                       value={amountLocal}
-                      onChange={(e) => setAmountLocal(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAmountLocal(val);
+                        const amt = Number(val) || 0;
+                        const use = Number(penggunaanDanaLocal) || 0;
+                        setSisaDanaLocal((amt - use).toString());
+                      }}
                       className="rounded-xl border-slate-200 focus:ring-emerald-500 h-10"
                     />
                   </div>
@@ -3551,20 +3561,33 @@ function ApprovalDialog({
                       type="number"
                       placeholder="0" 
                       value={sisaDanaLocal}
-                      onChange={(e) => setSisaDanaLocal(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSisaDanaLocal(val);
+                        const sisa = Number(val) || 0;
+                        const amt = Number(amountLocal) || 0;
+                        setPenggunaanDanaLocal((amt - sisa).toString());
+                      }}
                       className="rounded-xl border-slate-200 focus:ring-emerald-500 h-10"
                     />
                   </div>
                 </div>
 
                 <div className="grid gap-1.5">
-                  <Label htmlFor="lap-penggunaan" className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Penggunaan Dana</Label>
-                  <textarea 
+                  <Label htmlFor="lap-penggunaan" className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1">Penggunaan Dana (Rp)</Label>
+                  <Input 
                     id="lap-penggunaan" 
-                    placeholder="Jelaskan secara rinci penggunaan dana..." 
+                    type="number"
+                    placeholder="0" 
                     value={penggunaanDanaLocal}
-                    onChange={(e) => setPenggunaanDanaLocal(e.target.value)}
-                    className="p-3 w-full rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 min-h-[70px] resize-none text-sm font-medium text-slate-800 bg-white shadow-inner"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPenggunaanDanaLocal(val);
+                      const use = Number(val) || 0;
+                      const amt = Number(amountLocal) || 0;
+                      setSisaDanaLocal((amt - use).toString());
+                    }}
+                    className="rounded-xl border-slate-200 focus:ring-emerald-500 h-10"
                   />
                 </div>
 
