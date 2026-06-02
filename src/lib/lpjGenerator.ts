@@ -87,7 +87,7 @@ export async function generateLPJPDF(submission: any, config?: any) {
     
     // BAZNAS Logo (right)
     try {
-      doc.addImage(BAZNAS_LOGO_BASE64, 'PNG', 170, 13, 15, 13);
+      doc.addImage(BAZNAS_LOGO_BASE64, 'PNG', 169, 13, 16, 15);
     } catch (e) {
       console.warn("Baznas Logo failed to load:", e);
     }
@@ -430,24 +430,24 @@ export async function generateLPJPDF(submission: any, config?: any) {
       doc.saveGraphicsState();
       doc.setDrawColor(220, 38, 38);
       doc.setTextColor(220, 38, 38);
-      doc.setLineWidth(0.5);
+      doc.setLineWidth(0.65);
       
-      // Stamp location intersects the Cashier box's right boundary (X is 165 to 195, stamp goes from 180 to 201)
-      const stampX = sigX[3] + 15; // 180 (overlapping to the right)
-      const stampY = sigY + 9;     // 155
-      const stampW = 21;
-      const stampH = 10;
+      // Stamp location intersects the Cashier box's right boundary (X is 165 to 195)
+      const stampX = sigX[3] + 11; 
+      const stampY = sigY + 7;     
+      const stampW = 28;
+      const stampH = 13.5;
       
       // Double rectangular border stamp
       doc.rect(stampX, stampY, stampW, stampH);
-      doc.rect(stampX + 0.5, stampY + 0.5, stampW - 1.0, stampH - 1.0);
+      doc.rect(stampX + 0.6, stampY + 0.6, stampW - 1.2, stampH - 1.2);
       
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(8.5);
-      doc.text("LUNAS", stampX + (stampW / 2), stampY + 6.8, { align: "center" });
+      doc.setFontSize(11.5);
+      doc.text("LUNAS", stampX + (stampW / 2), stampY + 9.5, { align: "center" });
       
-      doc.setFontSize(4.2);
-      doc.text("KASIR BAZNAS SCB", stampX + (stampW / 2), stampY + 3.2, { align: "center" });
+      doc.setFontSize(5.2);
+      doc.text("KASIR BAZNAS SCB", stampX + (stampW / 2), stampY + 4.2, { align: "center" });
       
       doc.restoreGraphicsState();
     }
