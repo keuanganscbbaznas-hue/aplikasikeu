@@ -117,6 +117,7 @@ export const CASHFLOW_DATA = {
         pengembanganSDM: [
           { name: "Kegiatan Pelaksanaan Pengembangan SDM", amount: 14651500 }
         ],
+        standarSarana: [],
         standarPengelolaan: [
           { name: "Biaya Transportasi", amount: 27416000 }
         ],
@@ -128,42 +129,49 @@ export const CASHFLOW_DATA = {
     saldoAkhir: 29814299
   },
   sma: {
-    saldoAwal: 42150000,
+    saldoAwal: 97740056,
     penerimaan: {
       danaTerikat: [
-        { name: "Titipan Uang Saku BAZNAS Daerah", amount: 34200000 },
-        { name: "Dana PIP (Program Indonesia Pintar)", amount: 15600000 },
-        { name: "Donasi Laptop", amount: 55000000 }
+        { name: "BOSP SMA", amount: 54245400 },
+        { name: "Donasi Bencana Sumatra", amount: 9405000 }
       ],
       danaTidakTerikat: [
-        { name: "Donasi Tunjangan Profesi dan Sertifikasi (PPG) Tendik", amount: 22400000 },
-        { name: "Donasi Unit Usaha", amount: 4800000 },
-        { name: "Donasi Lainnya (Infaq Tendik dll)", amount: 31250000 }
+        { name: "BPMU", amount: 36955000 },
+        { name: "Donasi Lainnya (PPG , Infaq dll)", amount: 6497166 }
       ]
     },
     pengeluaran: {
-      nonProgram: [
-        { name: "Pengambilan Titipan Uang Saku BAZNAS Daerah", amount: 35000000 }
-      ],
+      nonProgram: [],
       program: {
         standarProses: [
-          { name: "Penguatan Komunitas Belajar", amount: 5200000 },
-          { name: "Penguatan Pendidikan Karakter", amount: 7100000 },
-          { name: "Pengadaan Sarana Penunjang Kegiatan KBM", amount: 14500000 },
-          { name: "Penyaluran Donasi Laptop", amount: 54000000 }
+          { name: "Penguatan Komunitas Belajar", amount: 0 },
+          { name: "Penguatan Pendidikan Karakter", amount: 6811500 },
+          { name: "Penyediaan Sarpras Peserta didik", amount: 34294135 },
+          { name: "Pengadaan Sarana Penunjang Kegiatan KBM", amount: 5600000 }
         ],
         pengembanganSDM: [
-          { name: "Kegiatan Pelaksanaan Pengembangan SDM", amount: 16200000 }
+          { name: "Kegiatan Pelaksanaan Pengembangan SDM", amount: 3750000 }
+        ],
+        standarSarana: [
+          { name: "Penyediaan atau Pembuatan Media Pembelajaran", amount: 0 },
+          { name: "Pengembangan Sekolah Sehat, Sekolah Aman", amount: 11169896 },
+          { name: "Pemeliharaan Prasarana Lahan, Bangunan dan Ruang", amount: 7660000 },
+          { name: "Pemeliharaan Perlengkapan Daya & Jasa Sekolah", amount: 12148965 },
+          { name: "Pemeliharaan Kendaraan", amount: 14479500 }
         ],
         standarPengelolaan: [
-          { name: "Biaya Transportasi", amount: 22800000 }
+          { name: "Konsumsi Rapat Kedinasan dan Tamu Sekolah", amount: 12550500 },
+          { name: "Biaya Transportasi", amount: 14743100 }
         ],
         standarPembiayaan: [
-          { name: "Administrasi Bank", amount: 150000 }
+          { name: "Pembayaran Honor Tenaga Penunjang atau Pelaksana", amount: 2025000 },
+          { name: "Administrasi Bank", amount: 1522000 },
+          { name: "Pembayaran daya dan/atau jasa", amount: 12598500 },
+          { name: "Penyaluran Donasi Bencana Sumatra", amount: 9405000 }
         ]
       }
     },
-    saldoAkhir: 50450000
+    saldoAkhir: 56084526
   }
 };
 
@@ -177,9 +185,10 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
   const sumNonProgram = data.pengeluaran.nonProgram.reduce((acc, current) => acc + current.amount, 0);
   const sumProgramProses = data.pengeluaran.program.standarProses.reduce((acc, current) => acc + current.amount, 0);
   const sumProgramSDM = data.pengeluaran.program.pengembanganSDM.reduce((acc, current) => acc + current.amount, 0);
+  const sumProgramSarana = data.pengeluaran.program.standarSarana ? data.pengeluaran.program.standarSarana.reduce((acc, current) => acc + current.amount, 0) : 0;
   const sumProgramPengelolaan = data.pengeluaran.program.standarPengelolaan.reduce((acc, current) => acc + current.amount, 0);
   const sumProgramPembiayaan = data.pengeluaran.program.standarPembiayaan.reduce((acc, current) => acc + current.amount, 0);
-  const sumProgram = sumProgramProses + sumProgramSDM + sumProgramPengelolaan + sumProgramPembiayaan;
+  const sumProgram = sumProgramProses + sumProgramSDM + sumProgramSarana + sumProgramPengelolaan + sumProgramPembiayaan;
   const totalPengeluaran = sumNonProgram + sumProgram;
 
   const formatRupiah = (val: number) => {
@@ -195,6 +204,7 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
     ...data.pengeluaran.nonProgram.map(x => ({ name: "Titipan Saku BAZNAS", Nominal: x.amount, Tipe: 'Non-Program' })),
     { name: "Std Proses (KBM)", Nominal: sumProgramProses, Tipe: 'Program' },
     { name: "Pengembangan SDM", Nominal: sumProgramSDM, Tipe: 'Program' },
+    ...(sumProgramSarana > 0 ? [{ name: "Std Sarana/Prasarana", Nominal: sumProgramSarana, Tipe: 'Program' }] : []),
     { name: "Std Pengelolaan", Nominal: sumProgramPengelolaan, Tipe: 'Program' },
     { name: "Std Pembiayaan", Nominal: sumProgramPembiayaan, Tipe: 'Program' }
   ];
@@ -207,7 +217,7 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
       `● Total Penerimaan: ${formatRupiah(totalPenerimaan)}\n` +
       `● Total Pengeluaran: ${formatRupiah(totalPengeluaran)}\n` +
       `● Sisa Saldo: ${formatRupiah(data.saldoAkhir)}\n\n` +
-      `Rekening Kas: BSI (${account === 'smp' ? 'SMP: 7179071988' : 'SMA: 7179072507'})`;
+      `Rekening Kas: BSI (${account === 'smp' ? 'SMP: 1032913357' : 'SMA: 1054796605'})`;
     navigator.clipboard.writeText(text);
     toast.success("Summary laporan berhasil disalin!");
   };
@@ -649,7 +659,9 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
               {data.pengeluaran.program.standarProses.map((item, idx) => (
                 <tr key={`stdproses-${idx}`} className="border-b border-slate-50/70 hover:bg-slate-50/40">
                   <td className="py-1.5 px-16 text-slate-600 pl-16 text-[11px]">{item.name}</td>
-                  <td className="py-1.5 px-5 text-right text-[11px] font-semibold text-slate-650">{formatRupiah(item.amount)}</td>
+                  <td className="py-1.5 px-5 text-right text-[11px] font-semibold text-slate-650">
+                    {item.amount === 0 ? "" : formatRupiah(item.amount)}
+                  </td>
                   <td className="py-1.5 px-5"></td>
                 </tr>
               ))}
@@ -668,7 +680,9 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
               {data.pengeluaran.program.pengembanganSDM.map((item, idx) => (
                 <tr key={`sdm-${idx}`} className="border-b border-slate-50/70 hover:bg-slate-50/40">
                   <td className="py-1.5 px-16 text-slate-600 pl-16 text-[11px]">{item.name}</td>
-                  <td className="py-1.5 px-5 text-right text-[11px] font-semibold text-slate-650">{formatRupiah(item.amount)}</td>
+                  <td className="py-1.5 px-5 text-right text-[11px] font-semibold text-slate-650">
+                    {item.amount === 0 ? "" : formatRupiah(item.amount)}
+                  </td>
                   <td className="py-1.5 px-5"></td>
                 </tr>
               ))}
@@ -678,16 +692,45 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
                 <td className="py-1.5 px-5 text-right font-black text-slate-650 text-[11px]">{formatRupiah(sumProgramSDM)}</td>
               </tr>
 
-              {/* 3. Standar Pengelolaan */}
+              {/* 3. Pengembangan Sarana dan Prasarana Sekolah (Optional) */}
+              {data.pengeluaran.program.standarSarana && data.pengeluaran.program.standarSarana.length > 0 && (
+                <>
+                  <tr className="hover:bg-slate-50/30">
+                    <td className="py-1 px-12 font-bold text-slate-800 text-[11px] tracking-wide italic pl-12 pr-5">3. Pengembangan Sarana dan Prasarana Sekolah</td>
+                    <td className="py-1 px-5"></td>
+                    <td className="py-1 px-5"></td>
+                  </tr>
+                  {data.pengeluaran.program.standarSarana.map((item, idx) => (
+                    <tr key={`sarana-${idx}`} className="border-b border-slate-50/70 hover:bg-slate-50/40">
+                      <td className="py-1.5 px-16 text-slate-600 pl-16 text-[11px]">{item.name}</td>
+                      <td className="py-1.5 px-5 text-right text-[11px] font-semibold text-slate-650">
+                        {item.amount === 0 ? "" : formatRupiah(item.amount)}
+                      </td>
+                      <td className="py-1.5 px-5"></td>
+                    </tr>
+                  ))}
+                  <tr className="bg-slate-50/30">
+                    <td className="py-1.5 px-12 pl-14 text-[10px] font-extrabold text-slate-550 italic">Total Pengembangan Sarana dan Prasarana Sekolah</td>
+                    <td className="py-1.5 px-5"></td>
+                    <td className="py-1.5 px-5 text-right font-black text-slate-650 text-[11px]">{formatRupiah(sumProgramSarana)}</td>
+                  </tr>
+                </>
+              )}
+
+              {/* 3 or 4. Standar Pengelolaan */}
               <tr className="hover:bg-slate-50/30">
-                <td className="py-1 px-12 font-bold text-slate-800 text-[11px] tracking-wide italic pl-12 pr-5">3. Pengembangan Standar Pengelolaan</td>
+                <td className="py-1 px-12 font-bold text-slate-800 text-[11px] tracking-wide italic pl-12 pr-5">
+                  {data.pengeluaran.program.standarSarana && data.pengeluaran.program.standarSarana.length > 0 ? "4" : "3"}. Pengembangan Standar Pengelolaan
+                </td>
                 <td className="py-1 px-5"></td>
                 <td className="py-1 px-5"></td>
               </tr>
               {data.pengeluaran.program.standarPengelolaan.map((item, idx) => (
                 <tr key={`pengelolaan-${idx}`} className="border-b border-slate-50/70 hover:bg-slate-50/40">
                   <td className="py-1.5 px-16 text-slate-600 pl-16 text-[11px]">{item.name}</td>
-                  <td className="py-1.5 px-5 text-right text-[11px] font-semibold text-slate-650">{formatRupiah(item.amount)}</td>
+                  <td className="py-1.5 px-5 text-right text-[11px] font-semibold text-slate-650">
+                    {item.amount === 0 ? "" : formatRupiah(item.amount)}
+                  </td>
                   <td className="py-1.5 px-5"></td>
                 </tr>
               ))}
@@ -697,16 +740,20 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
                 <td className="py-1.5 px-5 text-right font-black text-slate-650 text-[11px]">{formatRupiah(sumProgramPengelolaan)}</td>
               </tr>
 
-              {/* 4. Standar Pembiayaan */}
+              {/* 4 or 5. Standar Pembiayaan */}
               <tr className="hover:bg-slate-50/30">
-                <td className="py-1 px-12 font-bold text-slate-800 text-[11px] tracking-wide italic pl-12 pr-5">4. Pengembangan Standar Pembiayaan</td>
+                <td className="py-1 px-12 font-bold text-slate-800 text-[11px] tracking-wide italic pl-12 pr-5">
+                  {data.pengeluaran.program.standarSarana && data.pengeluaran.program.standarSarana.length > 0 ? "5" : "4"}. Pengembangan Standar Pembiayaan
+                </td>
                 <td className="py-1 px-5"></td>
                 <td className="py-1 px-5"></td>
               </tr>
               {data.pengeluaran.program.standarPembiayaan.map((item, idx) => (
                 <tr key={`pembiayaan-${idx}`} className="border-b border-slate-50/70 hover:bg-slate-50/40">
                   <td className="py-1.5 px-16 text-slate-600 pl-16 text-[11px]">{item.name}</td>
-                  <td className="py-1.5 px-5 text-right text-[11px] font-semibold text-slate-650">{formatRupiah(item.amount)}</td>
+                  <td className="py-1.5 px-5 text-right text-[11px] font-semibold text-slate-650">
+                    {item.amount === 0 ? "" : formatRupiah(item.amount)}
+                  </td>
                   <td className="py-1.5 px-5"></td>
                 </tr>
               ))}
@@ -1143,12 +1190,14 @@ export const DonationSummaryReports = () => {
                   <span className="text-xs font-black uppercase tracking-tight">Donasi SMP</span>
                 </div>
                 <span className={`text-[9px] font-bold ${cashflowAccount === 'smp' ? 'text-slate-300' : 'text-slate-400'} mt-2`}>
-                  No Rek: 7179071988
+                  No Rek: 1032913357
                 </span>
                 <div className={`h-[1px] w-full bg-current opacity-10 my-2`} />
                 <div className="flex items-center justify-between w-full mt-1">
                   <span className="text-[8px] uppercase tracking-wider opacity-60">Sisa Saldo</span>
-                  <span className={`text-xs font-extrabold ${cashflowAccount === 'smp' ? 'text-emerald-300' : 'text-emerald-600'}`}>Rp 29.814.299</span>
+                  <span className={`text-xs font-extrabold ${cashflowAccount === 'smp' ? 'text-emerald-300' : 'text-emerald-600'}`}>
+                    Rp {CASHFLOW_DATA.smp.saldoAkhir.toLocaleString('id-ID')}
+                  </span>
                 </div>
               </button>
 
@@ -1167,12 +1216,14 @@ export const DonationSummaryReports = () => {
                   <span className="text-xs font-black uppercase tracking-tight">Donasi SMA</span>
                 </div>
                 <span className={`text-[9px] font-bold ${cashflowAccount === 'sma' ? 'text-slate-300' : 'text-slate-400'} mt-2`}>
-                  No Rek: 7179072507
+                  No Rek: 1054796605
                 </span>
                 <div className={`h-[1px] w-full bg-current opacity-10 my-2`} />
                 <div className="flex items-center justify-between w-full mt-1">
                   <span className="text-[8px] uppercase tracking-wider opacity-60">Sisa Saldo</span>
-                  <span className={`text-xs font-extrabold ${cashflowAccount === 'sma' ? 'text-emerald-300' : 'text-emerald-600'}`}>Rp 50.450.000</span>
+                  <span className={`text-xs font-extrabold ${cashflowAccount === 'sma' ? 'text-emerald-300' : 'text-emerald-600'}`}>
+                    Rp {CASHFLOW_DATA.sma.saldoAkhir.toLocaleString('id-ID')}
+                  </span>
                 </div>
               </button>
             </CardContent>
