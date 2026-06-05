@@ -735,14 +735,29 @@ export default function App() {
 
   useEffect(() => {
     if (logoURL) {
-      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-      if (!link) {
-        link = document.createElement('link');
-        link.rel = 'icon';
-        document.getElementsByTagName('head')[0].appendChild(link);
-      }
-      link.type = 'image/png';
-      link.href = logoURL;
+      // Find and remove all existing icon-related link tags to prevent conflicts
+      const existingIcons = document.querySelectorAll("link[rel*='icon']");
+      existingIcons.forEach(el => el.remove());
+
+      // Create new standard favicon link tag
+      const linkIcon = document.createElement('link');
+      linkIcon.rel = 'icon';
+      linkIcon.type = 'image/png';
+      linkIcon.href = logoURL;
+      document.head.appendChild(linkIcon);
+
+      // Create shortcut icon link tag for older/alternative engines
+      const linkShortcut = document.createElement('link');
+      linkShortcut.rel = 'shortcut icon';
+      linkShortcut.type = 'image/png';
+      linkShortcut.href = logoURL;
+      document.head.appendChild(linkShortcut);
+
+      // Create high-res apple touch icon link tag for iOS/OSX and modern viewport agents
+      const linkApple = document.createElement('link');
+      linkApple.rel = 'apple-touch-icon';
+      linkApple.href = logoURL;
+      document.head.appendChild(linkApple);
     }
   }, [logoURL]);
 
