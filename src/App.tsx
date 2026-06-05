@@ -1410,20 +1410,20 @@ export default function App() {
       {/* Sidebar - Desktop */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-56 bg-slate-900 text-slate-300 transition-transform duration-300 transform lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex flex-col h-full">
-          <div className="pl-1 pr-1 py-5 bg-slate-950 flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              <div className="h-10 w-10 bg-white p-0.5 rounded-xl flex items-center justify-center shadow-lg">
+          <div className="px-4 py-5 bg-slate-950 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-white p-1 rounded-none flex items-center justify-center shadow-lg shrink-0">
                   <img 
                     src={logoURL} 
                     alt="Logo" 
                     className="h-full w-full object-contain"
                   />
               </div>
-              <div className="flex flex-col">
-                <span className="font-black text-white text-2xl tracking-tighter leading-none whitespace-nowrap">MONETA <span className="text-emerald-500">SCB</span></span>
-                <div className="flex flex-col text-[8px] font-bold text-white uppercase tracking-[0.1em] mt-2 leading-tight opacity-60">
-                  <span>Monitoring & Electronic</span>
-                  <span>Treasury Application</span>
+              <div className="flex flex-col justify-center">
+                <span className="font-black text-white text-xl tracking-tighter leading-none whitespace-nowrap">MONETA <span className="text-emerald-500">SCB</span></span>
+                <div className="flex flex-col text-[8.5px] font-bold text-white uppercase mt-1.5 leading-tight opacity-60">
+                  <span className="tracking-[0.02rem] whitespace-nowrap">Monitoring & Electronic</span>
+                  <span className="tracking-[0.088rem] whitespace-nowrap">Treasury Application</span>
                 </div>
               </div>
             </div>
