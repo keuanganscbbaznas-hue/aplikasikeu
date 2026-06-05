@@ -219,35 +219,131 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
     if (!reportRef.current) return;
     const toastId = toast.loading("Sedang mempersiapkan file PDF...");
     const originalGetComputedStyle = window.getComputedStyle;
+    const originalStyles = new Map<HTMLStyleElement, string>();
+
+    // 1. Math formulas for precise OKLCH and OKLAB to RGB conversion
+    const oklabToRgb = (l: number, a: number, b: number, alpha: number = 1): string => {
+      const l_ = l + 0.3963377774 * a + 0.2158037573 * b;
+      const m_ = l - 0.1055613458 * a - 0.0638541167 * b;
+      const s_ = l - 0.0894841775 * a - 1.2914855414 * b;
+
+      const l_cube = l_ * l_ * l_;
+      const m_cube = m_ * m_ * m_;
+      const s_cube = s_ * s_ * s_;
+
+      const r_u = +4.0767416621 * l_cube - 3.3077115913 * m_cube + 0.2309699292 * s_cube;
+      const g_u = -1.2684380046 * l_cube + 2.6097574011 * m_cube - 0.3413193965 * s_cube;
+      const b_u = -0.0041960863 * l_cube - 0.703418614 * m_cube + 1.7076147004 * s_cube;
+
+      const clampAndConvert = (val: number) => {
+        const clamped = Math.max(0, Math.min(1, val));
+        const srgb = clamped <= 0.0031308 ? 12.92 * clamped : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+        return Math.round(srgb * 255);
+      };
+
+      const red = clampAndConvert(r_u);
+      const green = clampAndConvert(g_u);
+      const blue = clampAndConvert(b_u);
+
+      return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+    };
+
+    const oklchToRgb = (l: number, c: number, h: number, alpha: number = 1): string => {
+      const hRad = (h * Math.PI) / 180;
+      const a = c * Math.cos(hRad);
+      const b = c * Math.sin(hRad);
+      return oklabToRgb(l, a, b, alpha);
+    };
+
+    const replaceModernColors = (cssText: string): string => {
+      if (!cssText) return cssText;
+      try {
+        // Normalize commas to spaces in oklch expressions first
+        let normalized = cssText.replace(/oklch\((.*?)\)/gi, (match, content) => {
+          const withoutCommas = content.replace(/,/g, ' ');
+          return `oklch(${withoutCommas})`;
+        });
+
+        // Normalize commas to spaces in oklab expressions first
+        normalized = normalized.replace(/oklab\((.*?)\)/gi, (match, content) => {
+          const withoutCommas = content.replace(/,/g, ' ');
+          return `oklab(${withoutCommas})`;
+        });
+
+        // Match oklch channels including degrees/percentages/negative numbers
+        normalized = normalized.replace(/oklch\(\s*([-+\d.%]+)\s+([-+\d.%]+)\s+([-+\d.deg%]+)(?:\s*\/\s*([-+\d.%]+))?\s*\)/gi, (match, lStr, cStr, hStr, aStr) => {
+          try {
+            const l = lStr.endsWith('%') ? parseFloat(lStr) / 100 : parseFloat(lStr);
+            const c = cStr.endsWith('%') ? parseFloat(cStr) / 100 : parseFloat(cStr);
+            const h = parseFloat(hStr.toLowerCase().replace('deg', ''));
+            let alpha = 1;
+            if (aStr) {
+              if (aStr.endsWith('%')) {
+                alpha = parseFloat(aStr) / 100;
+              } else {
+                alpha = parseFloat(aStr);
+              }
+            }
+            return oklchToRgb(l, c, h, alpha);
+          } catch (innerE) {
+            return 'rgba(36, 36, 36, 1)';
+          }
+        });
+
+        // Match oklab channels including percentages/negative numbers
+        normalized = normalized.replace(/oklab\(\s*([-+\d.%]+)\s+([-+\d.%]+)\s+([-+\d.%]+)(?:\s*\/\s*([-+\d.%]+))?\s*\)/gi, (match, lStr, aStr, bStr, alphaStr) => {
+          try {
+            const l = lStr.endsWith('%') ? parseFloat(lStr) / 100 : parseFloat(lStr);
+            const aVal = aStr.endsWith('%') ? parseFloat(aStr) / 100 : parseFloat(aStr);
+            const bVal = bStr.endsWith('%') ? parseFloat(bStr) / 100 : parseFloat(bStr);
+            let alpha = 1;
+            if (alphaStr) {
+              if (alphaStr.endsWith('%')) {
+                alpha = parseFloat(alphaStr) / 100;
+              } else {
+                alpha = parseFloat(alphaStr);
+              }
+            }
+            return oklabToRgb(l, aVal, bVal, alpha);
+          } catch (innerE) {
+            return 'rgba(36, 36, 36, 1)';
+          }
+        });
+
+        return normalized;
+      } catch (e) {
+        return cssText;
+      }
+    };
+
     try {
-      // Monkey patch window.getComputedStyle to intercept oklch styling and replace it with hex/rgb values.
-      // This protects html2canvas from throwing errors about unsupported color functions.
+      // 2. Scan all stylesheet element contents for oklch or oklab colors and substitute them
+      const styleElements = Array.from(document.querySelectorAll('style'));
+      styleElements.forEach(style => {
+        if (style.textContent && (style.textContent.includes('oklch') || style.textContent.includes('oklab'))) {
+          originalStyles.set(style, style.textContent);
+          style.textContent = replaceModernColors(style.textContent);
+        }
+      });
+
+      // 3. Monkey patch window.getComputedStyle to intercept oklch/oklab styling.
+      // Use helper to bind "this" context correctly on retrieved native functions.
       window.getComputedStyle = function (element, pseudoElt) {
         const style = originalGetComputedStyle(element, pseudoElt);
         return new Proxy(style, {
           get(target, prop) {
-            if (prop === 'getPropertyValue') {
-              return function (propertyName: string) {
-                const val = target.getPropertyValue(propertyName);
-                if (typeof val === 'string' && val.includes('oklch')) {
-                  if (propertyName.includes('border')) return 'rgb(224, 237, 230)';
-                  if (propertyName.includes('background')) return 'rgb(255, 255, 255)';
-                  return 'rgb(36, 36, 36)';
+            const val = Reflect.get(target, prop);
+            if (typeof val === 'function') {
+              return function (...args: any[]) {
+                const result = val.apply(target, args);
+                if (typeof result === 'string' && (result.includes('oklch') || result.includes('oklab'))) {
+                  return replaceModernColors(result);
                 }
-                return val;
+                return result;
               };
             }
-            
-            const val = Reflect.get(target, prop);
-            if (typeof val === 'string' && val.includes('oklch')) {
-              const propStr = String(prop);
-              if (propStr.includes('border') || propStr.includes('Border')) {
-                return 'rgb(224, 237, 230)';
-              }
-              if (propStr.includes('background') || propStr.includes('Background')) {
-                return 'rgb(255, 255, 255)';
-              }
-              return 'rgb(36, 36, 36)';
+            if (typeof val === 'string' && (val.includes('oklch') || val.includes('oklab'))) {
+              return replaceModernColors(val);
             }
             return val;
           }
@@ -259,44 +355,56 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
       const canvas = await html2canvas(element, {
         scale: 2, // High-quality resolution scaling
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false, // Prevent SecurityError when calling toDataURL
         backgroundColor: "#ffffff",
         logging: false,
         windowWidth: 1024, // Consistent desktop-grade responsive grid sizing for tables
         onclone: (clonedDoc) => {
-          // 1. Convert any specific oklch values in cloned document style tags to hex equivalent
-          const styleElements = clonedDoc.querySelectorAll('style');
-          styleElements.forEach(style => {
-            if (style.textContent && style.textContent.includes('oklch')) {
-              let cssText = style.textContent;
-              cssText = cssText.replace(/oklch\(0\.98\s+0\.01\s+160\)/gi, '#f5fdf7');
-              cssText = cssText.replace(/oklch\(0\.145\s+0\s+0\)/gi, '#242424');
-              cssText = cssText.replace(/oklch\(1\s+0\s+0\)/gi, '#ffffff');
-              cssText = cssText.replace(/oklch\(0\.35\s+0\.12\s+160\)/gi, '#0f593e');
-              cssText = cssText.replace(/oklch\(0\.985\s+0\s+0\)/gi, '#fafafa');
-              cssText = cssText.replace(/oklch\(0\.85\s+0\.21\s+85\)/gi, '#f59e0b');
-              cssText = cssText.replace(/oklch\(0\.205\s+0\s+0\)/gi, '#333333');
-              cssText = cssText.replace(/oklch\(0\.95\s+0\.02\s+160\)/gi, '#f0f5f2');
-              cssText = cssText.replace(/oklch\(0\.5\s+0\.05\s+160\)/gi, '#7a8a81');
-              cssText = cssText.replace(/oklch\(0\.9\s+0\.05\s+160\)/gi, '#e0ede6');
-              cssText = cssText.replace(/oklch\(0\.577\s+0\.245\s+27\.325\)/gi, '#ef4444');
-              cssText = cssText.replace(/oklch\(0\.35\s+0\.15\s+160\)/gi, '#137a56');
-              cssText = cssText.replace(/oklch\(0\.88\s+0\.18\s+85\)/gi, '#f59e0b');
-              cssText = cssText.replace(/oklch\(0\.439\s+0\s+0\)/gi, '#707070');
-              cssText = cssText.replace(/oklch\(0\.371\s+0\s+0\)/gi, '#5f5f5f');
-              cssText = cssText.replace(/oklch\(0\.269\s+0\s+0\)/gi, '#454545');
-              cssText = cssText.replace(/oklch\(0\.25\s+0\.05\s+160\)/gi, '#1e352b');
-              cssText = cssText.replace(/oklch\(0\.45\s+0\.15\s+160\)/gi, '#10b981');
-              cssText = cssText.replace(/oklch\(0\.18\s+0\.05\s+163\)/gi, '#121a16');
-              cssText = cssText.replace(/oklch\(0\.22\s+0\.05\s+163\)/gi, '#18221e');
-              
-              // Fallback for other generic patterns
-              cssText = cssText.replace(/oklch\([^)]+\)/gi, '#137a56');
-              style.textContent = cssText;
+          // Extra safety: Proxy getComputedStyle of the sandboxed iframe window
+          const clonedWindow = clonedDoc.defaultView;
+          if (clonedWindow) {
+            const originalClonedGetComputedStyle = clonedWindow.getComputedStyle;
+            clonedWindow.getComputedStyle = function (clonedEl, clonedPseudo) {
+              const style = originalClonedGetComputedStyle(clonedEl, clonedPseudo);
+              return new Proxy(style, {
+                get(target, prop) {
+                  const val = Reflect.get(target, prop);
+                  if (typeof val === 'function') {
+                    return function (...args: any[]) {
+                      const result = val.apply(target, args);
+                      if (typeof result === 'string' && (result.includes('oklch') || result.includes('oklab'))) {
+                        return replaceModernColors(result);
+                      }
+                      return result;
+                    };
+                  }
+                  if (typeof val === 'string' && (val.includes('oklch') || val.includes('oklab'))) {
+                    return replaceModernColors(val);
+                  }
+                  return val;
+                }
+              });
+            };
+          }
+
+          // Convert any remaining oklch/oklab values in cloned document style tags
+          const clonedStyles = clonedDoc.querySelectorAll('style');
+          clonedStyles.forEach(style => {
+            if (style.textContent && (style.textContent.includes('oklch') || style.textContent.includes('oklab'))) {
+              style.textContent = replaceModernColors(style.textContent);
             }
           });
 
-          // 2. Inject explicit fallback root variables
+          // Convert any inline attribute styles that include oklch or oklab
+          const inlineElems = clonedDoc.querySelectorAll('[style*="oklch"], [style*="oklab"]');
+          inlineElems.forEach(el => {
+            const styleAttr = el.getAttribute('style');
+            if (styleAttr) {
+              el.setAttribute('style', replaceModernColors(styleAttr));
+            }
+          });
+
+          // Inject fallback theme variables for absolute safety in output styling
           const overrideStyle = clonedDoc.createElement('style');
           overrideStyle.textContent = `
             :root {
@@ -368,8 +476,11 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
       console.error(e);
       toast.error("Gagal mengunduh PDF. Silakan gunakan tombol Cetak / Print.", { id: toastId });
     } finally {
-      // ALWAYS restore original getComputedStyle to avoid persisting changes.
+      // ALWAYS restore original getComputedStyle and styles to avoid persisting changes.
       window.getComputedStyle = originalGetComputedStyle;
+      originalStyles.forEach((originalText, styleElement) => {
+        styleElement.textContent = originalText;
+      });
     }
   };
 
