@@ -734,6 +734,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (logoURL) {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.type = 'image/png';
+      link.href = logoURL;
+    }
+  }, [logoURL]);
+
+  useEffect(() => {
     const unsub = onSnapshot(doc(db, 'config', 'fppp'), (docSnap) => {
       if (docSnap.exists()) {
         setFpppConfig(docSnap.data());
