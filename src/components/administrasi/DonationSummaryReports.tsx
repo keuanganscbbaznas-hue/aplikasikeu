@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import { db } from '../../firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { 
@@ -178,16 +180,16 @@ export const CASHFLOW_DATA = {
 export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | 'sma'; setAccount: (acc: 'smp' | 'sma') => void }) => {
   const data = CASHFLOW_DATA[account];
 
-  const sumDanaTerikat = data.penerimaan.danaTerikat.reduce((acc, current) => acc + current.amount, 0);
-  const sumDanaTidakTerikat = data.penerimaan.danaTidakTerikat.reduce((acc, current) => acc + current.amount, 0);
+  const sumDanaTerikat = (data.penerimaan.danaTerikat as any[]).reduce((acc: number, current: any) => acc + current.amount, 0);
+  const sumDanaTidakTerikat = (data.penerimaan.danaTidakTerikat as any[]).reduce((acc: number, current: any) => acc + current.amount, 0);
   const totalPenerimaan = sumDanaTerikat + sumDanaTidakTerikat;
 
-  const sumNonProgram = data.pengeluaran.nonProgram.reduce((acc, current) => acc + current.amount, 0);
-  const sumProgramProses = data.pengeluaran.program.standarProses.reduce((acc, current) => acc + current.amount, 0);
-  const sumProgramSDM = data.pengeluaran.program.pengembanganSDM.reduce((acc, current) => acc + current.amount, 0);
-  const sumProgramSarana = data.pengeluaran.program.standarSarana ? data.pengeluaran.program.standarSarana.reduce((acc, current) => acc + current.amount, 0) : 0;
-  const sumProgramPengelolaan = data.pengeluaran.program.standarPengelolaan.reduce((acc, current) => acc + current.amount, 0);
-  const sumProgramPembiayaan = data.pengeluaran.program.standarPembiayaan.reduce((acc, current) => acc + current.amount, 0);
+  const sumNonProgram = (data.pengeluaran.nonProgram as any[]).reduce((acc: number, current: any) => acc + current.amount, 0);
+  const sumProgramProses = (data.pengeluaran.program.standarProses as any[]).reduce((acc: number, current: any) => acc + current.amount, 0);
+  const sumProgramSDM = (data.pengeluaran.program.pengembanganSDM as any[]).reduce((acc: number, current: any) => acc + current.amount, 0);
+  const sumProgramSarana = data.pengeluaran.program.standarSarana ? (data.pengeluaran.program.standarSarana as any[]).reduce((acc: number, current: any) => acc + current.amount, 0) : 0;
+  const sumProgramPengelolaan = (data.pengeluaran.program.standarPengelolaan as any[]).reduce((acc: number, current: any) => acc + current.amount, 0);
+  const sumProgramPembiayaan = (data.pengeluaran.program.standarPembiayaan as any[]).reduce((acc: number, current: any) => acc + current.amount, 0);
   const sumProgram = sumProgramProses + sumProgramSDM + sumProgramSarana + sumProgramPengelolaan + sumProgramPembiayaan;
   const totalPengeluaran = sumNonProgram + sumProgram;
 
@@ -210,6 +212,166 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
   ];
 
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
+
+  const reportRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadPDF = async () => {
+    if (!reportRef.current) return;
+    const toastId = toast.loading("Sedang mempersiapkan file PDF...");
+    const originalGetComputedStyle = window.getComputedStyle;
+    try {
+      // Monkey patch window.getComputedStyle to intercept oklch styling and replace it with hex/rgb values.
+      // This protects html2canvas from throwing errors about unsupported color functions.
+      window.getComputedStyle = function (element, pseudoElt) {
+        const style = originalGetComputedStyle(element, pseudoElt);
+        return new Proxy(style, {
+          get(target, prop) {
+            if (prop === 'getPropertyValue') {
+              return function (propertyName: string) {
+                const val = target.getPropertyValue(propertyName);
+                if (typeof val === 'string' && val.includes('oklch')) {
+                  if (propertyName.includes('border')) return 'rgb(224, 237, 230)';
+                  if (propertyName.includes('background')) return 'rgb(255, 255, 255)';
+                  return 'rgb(36, 36, 36)';
+                }
+                return val;
+              };
+            }
+            
+            const val = Reflect.get(target, prop);
+            if (typeof val === 'string' && val.includes('oklch')) {
+              const propStr = String(prop);
+              if (propStr.includes('border') || propStr.includes('Border')) {
+                return 'rgb(224, 237, 230)';
+              }
+              if (propStr.includes('background') || propStr.includes('Background')) {
+                return 'rgb(255, 255, 255)';
+              }
+              return 'rgb(36, 36, 36)';
+            }
+            return val;
+          }
+        });
+      };
+
+      const element = reportRef.current;
+      
+      const canvas = await html2canvas(element, {
+        scale: 2, // High-quality resolution scaling
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        windowWidth: 1024, // Consistent desktop-grade responsive grid sizing for tables
+        onclone: (clonedDoc) => {
+          // 1. Convert any specific oklch values in cloned document style tags to hex equivalent
+          const styleElements = clonedDoc.querySelectorAll('style');
+          styleElements.forEach(style => {
+            if (style.textContent && style.textContent.includes('oklch')) {
+              let cssText = style.textContent;
+              cssText = cssText.replace(/oklch\(0\.98\s+0\.01\s+160\)/gi, '#f5fdf7');
+              cssText = cssText.replace(/oklch\(0\.145\s+0\s+0\)/gi, '#242424');
+              cssText = cssText.replace(/oklch\(1\s+0\s+0\)/gi, '#ffffff');
+              cssText = cssText.replace(/oklch\(0\.35\s+0\.12\s+160\)/gi, '#0f593e');
+              cssText = cssText.replace(/oklch\(0\.985\s+0\s+0\)/gi, '#fafafa');
+              cssText = cssText.replace(/oklch\(0\.85\s+0\.21\s+85\)/gi, '#f59e0b');
+              cssText = cssText.replace(/oklch\(0\.205\s+0\s+0\)/gi, '#333333');
+              cssText = cssText.replace(/oklch\(0\.95\s+0\.02\s+160\)/gi, '#f0f5f2');
+              cssText = cssText.replace(/oklch\(0\.5\s+0\.05\s+160\)/gi, '#7a8a81');
+              cssText = cssText.replace(/oklch\(0\.9\s+0\.05\s+160\)/gi, '#e0ede6');
+              cssText = cssText.replace(/oklch\(0\.577\s+0\.245\s+27\.325\)/gi, '#ef4444');
+              cssText = cssText.replace(/oklch\(0\.35\s+0\.15\s+160\)/gi, '#137a56');
+              cssText = cssText.replace(/oklch\(0\.88\s+0\.18\s+85\)/gi, '#f59e0b');
+              cssText = cssText.replace(/oklch\(0\.439\s+0\s+0\)/gi, '#707070');
+              cssText = cssText.replace(/oklch\(0\.371\s+0\s+0\)/gi, '#5f5f5f');
+              cssText = cssText.replace(/oklch\(0\.269\s+0\s+0\)/gi, '#454545');
+              cssText = cssText.replace(/oklch\(0\.25\s+0\.05\s+160\)/gi, '#1e352b');
+              cssText = cssText.replace(/oklch\(0\.45\s+0\.15\s+160\)/gi, '#10b981');
+              cssText = cssText.replace(/oklch\(0\.18\s+0\.05\s+163\)/gi, '#121a16');
+              cssText = cssText.replace(/oklch\(0\.22\s+0\.05\s+163\)/gi, '#18221e');
+              
+              // Fallback for other generic patterns
+              cssText = cssText.replace(/oklch\([^)]+\)/gi, '#137a56');
+              style.textContent = cssText;
+            }
+          });
+
+          // 2. Inject explicit fallback root variables
+          const overrideStyle = clonedDoc.createElement('style');
+          overrideStyle.textContent = `
+            :root {
+              --background: #f5fdf7 !important;
+              --foreground: #242424 !important;
+              --card: #ffffff !important;
+              --card-foreground: #242424 !important;
+              --popover: #ffffff !important;
+              --popover-foreground: #242424 !important;
+              --primary: #0f593e !important;
+              --primary-foreground: #fafafa !important;
+              --secondary: #f59e0b !important;
+              --secondary-foreground: #333333 !important;
+              --muted: #f0f5f2 !important;
+              --muted-foreground: #7a8a81 !important;
+              --accent: #e0ede6 !important;
+              --accent-foreground: #333333 !important;
+              --destructive: #ef4444 !important;
+              --border: #e0ede6 !important;
+              --input: #e0ede6 !important;
+              --ring: #137a56 !important;
+              --sidebar: #1e352b !important;
+              --sidebar-foreground: #fafafa !important;
+              --sidebar-primary: #0f593e !important;
+              --sidebar-primary-foreground: #fafafa !important;
+              --sidebar-accent: #f0f5f2 !important;
+              --sidebar-accent-foreground: #10b981 !important;
+              --sidebar-border: #e0ede6 !important;
+              --sidebar-ring: #10b981 !important;
+            }
+          `;
+          clonedDoc.head.appendChild(overrideStyle);
+        }
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      
+      const ratio = pdfWidth / imgWidth;
+      const calculatedImgHeight = imgHeight * ratio;
+      
+      let heightLeft = calculatedImgHeight;
+      let position = 0;
+
+      // Fit content beautifully onto one or more pages
+      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, calculatedImgHeight);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - calculatedImgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, calculatedImgHeight);
+        heightLeft -= pdfHeight;
+      }
+
+      pdf.save(`Laporan_Arus_Kas_Donasi_${account.toUpperCase()}_2025.pdf`);
+      toast.success("Laporan PDF berhasil diunduh!", { id: toastId });
+    } catch (e: any) {
+      console.error(e);
+      toast.error("Gagal mengunduh PDF. Silakan gunakan tombol Cetak / Print.", { id: toastId });
+    } finally {
+      // ALWAYS restore original getComputedStyle to avoid persisting changes.
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  };
 
   const handleCopy = () => {
     const text = `LAPORAN ARUS KAS DONASI ${account.toUpperCase()} SEKOLAH CENDEKIA BAZNAS 2025\n\n` +
@@ -248,7 +410,7 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
               Sekolah Cendekia BAZNAS (SCB). Informasi rincian penerimaan terikat/bebas serta alokasi program standar nasional pendidikan.
             </p>
           </div>
-          <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+          <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end flex-wrap">
             <Button 
               onClick={handleCopy}
               variant="outline" 
@@ -259,10 +421,17 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
             </Button>
             <Button 
               onClick={handlePrint}
-              className="rounded-xl text-xs font-black uppercase tracking-wider h-10 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
+              className="rounded-xl text-xs font-black uppercase tracking-wider h-10 bg-slate-800 hover:bg-slate-700 text-white border border-white/10"
             >
               <Download size={14} className="mr-1.5" />
               Cetak / Print
+            </Button>
+            <Button 
+              onClick={handleDownloadPDF}
+              className="rounded-xl text-xs font-black uppercase tracking-wider h-10 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20"
+            >
+              <Download size={14} className="mr-1.5" />
+              Unduh PDF
             </Button>
           </div>
         </CardContent>
@@ -518,7 +687,8 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
       </div>
 
       {/* 5. Statement of Cash Flow Cash Ledgers (Double border line) */}
-      <Card className="rounded-[2.5rem] border-slate-100 shadow-md bg-white p-6 sm:p-8 relative overflow-hidden print:border-none print:shadow-none">
+      <div ref={reportRef} className="bg-white rounded-[2.2rem]">
+        <Card className="rounded-[2.5rem] border-slate-100 shadow-md bg-white p-6 sm:p-8 relative overflow-hidden print:border-none print:shadow-none">
         {/* Double Border Graphic line */}
         <div className="border-t-[3px] border-double border-slate-900 w-full mb-6" />
 
@@ -820,6 +990,7 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
         </div>
 
       </Card>
+      </div>
     </div>
   );
 };
