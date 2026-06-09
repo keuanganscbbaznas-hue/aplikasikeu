@@ -38,7 +38,7 @@ interface BudgetTemplateItem {
   level: number; // 0, 1, 2, 3
 }
 
-const BAZNAS_BUDGET_TEMPLATES: BudgetTemplateItem[] = [
+const BAZNAS_SMP_BUDGET_TEMPLATES: BudgetTemplateItem[] = [
   // A. KEASRAMAAN
   { code: 'A', name: 'KEASRAMAAN', budget: 6500000, realDefault: 0, isHeader: true, level: 0 },
   { code: 'A1', name: 'Kegiatan Keasramaan', budget: 6500000, realDefault: 0, isHeader: true, level: 1 },
@@ -121,6 +121,89 @@ const BAZNAS_BUDGET_TEMPLATES: BudgetTemplateItem[] = [
   { code: 'S3.1', name: 'Kegiatan Ekstrakurikuler', budget: 3500000, realDefault: 1080000, level: 3 }
 ];
 
+const BAZNAS_SMA_BUDGET_TEMPLATES: BudgetTemplateItem[] = [
+  // A. KEASRAMAAN
+  { code: 'A', name: 'KEASRAMAAN', budget: 3000000, realDefault: 0, isHeader: true, level: 0 },
+  { code: 'A1', name: 'Kegiatan Keasramaan', budget: 3000000, realDefault: 0, isHeader: true, level: 1 },
+  { code: 'A1.2', name: 'Home Making Class', budget: 1000000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'A1.2.2', name: 'Tata Busana', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'A1.2.3', name: 'Barber Shop Literasi', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'A1.4', name: 'Akomodasi dan Kebutuhan Harian Santri', budget: 2000000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'A1.4.7', name: 'Biaya Kesehatan Siswa', budget: 2000000, realDefault: 0, level: 3 },
+
+  // K. KURIKULUM
+  { code: 'K', name: 'KURIKULUM', budget: 23425000, realDefault: 1316460, isHeader: true, level: 0 },
+  { code: 'K1', name: 'Kegiatan Kurikulum', budget: 23425000, realDefault: 1316460, isHeader: true, level: 1 },
+  { code: 'K1.1', name: 'SDM Program', budget: 4000000, realDefault: 1316460, isHeader: true, level: 2 },
+  { code: 'K1.1.7', name: 'Dana Kesehatan Amil Tetap (Guru)', budget: 2500000, realDefault: 1316460, level: 3 },
+  { code: 'K1.1.8', name: 'Pengembangan Tendik', budget: 1500000, realDefault: 0, level: 3 },
+  { code: 'K1.2', name: 'Bahan Penunjang KBM', budget: 1500000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'K1.2.13', name: 'Pengadaan Perangkat KBM', budget: 1500000, realDefault: 0, level: 3 },
+  { code: 'K1.4', name: 'Program KBM', budget: 8300000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'K1.4.3', name: 'Cendekia Enterpreneur Class', budget: 300000, realDefault: 0, level: 3 },
+  { code: 'K1.4.5', name: 'Klub Bidang Studi', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'K1.4.6', name: 'Pengembangan Kompetensi guru', budget: 2500000, realDefault: 0, level: 3 },
+  { code: 'K1.4.7', name: 'Olimpiade Matematika', budget: 5000000, realDefault: 0, level: 3 },
+  { code: 'K1.8', name: 'Sukses PTN (Diagnostic Test dan Pembahasan)', budget: 9625000, realDefault: 0, level: 3 },
+
+  // O. OPERASIONAL
+  { code: 'O', name: 'OPERASIONAL', budget: 42800000, realDefault: 14175888, isHeader: true, level: 0 },
+  { code: 'O1', name: 'SDM', budget: 4750000, realDefault: 4387498, isHeader: true, level: 1 },
+  { code: 'O1.1', name: 'Biaya SDM', budget: 3750000, realDefault: 4387498, isHeader: true, level: 2 },
+  { code: 'O1.1.4', name: 'Tunjangan Menikah', budget: 250000, realDefault: 0, level: 3 },
+  { code: 'O1.1.5', name: 'Tunjangan Melahirkan', budget: 250000, realDefault: 0, level: 3 },
+  { code: 'O1.1.6', name: 'Tunjangan Lembur', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'O1.1.7', name: 'Santunan Kematian/Musibah', budget: 250000, realDefault: 0, level: 3 },
+  { code: 'O1.1.11', name: 'Dana Kesehatan Amil Tetap (Pelaksana)', budget: 2500000, realDefault: 4387498, level: 3 },
+  { code: 'O1.3', name: 'Biaya Perjalanan Dinas', budget: 1000000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'O1.3.1', name: 'Biaya Perjalanan Dinas Luar Kota', budget: 1000000, realDefault: 0, level: 3 },
+
+  { code: 'O2', name: 'URT', budget: 24550000, realDefault: 9305530, isHeader: true, level: 1 },
+  { code: 'O2.1', name: 'Biaya Umum dan Rumah Tangga', budget: 24550000, realDefault: 9305530, isHeader: true, level: 2 },
+  { code: 'O2.1.5', name: 'Biaya Transportasi', budget: 5000000, realDefault: 3907000, level: 3 },
+  { code: 'O2.1.6', name: 'Biaya Makan dan Minum Rapat', budget: 2000000, realDefault: 0, level: 3 },
+  { code: 'O2.1.7', name: 'Biaya Komunikasi/Kehumasan', budget: 500000, realDefault: 995000, level: 3 },
+  { code: 'O2.1.9', name: 'Biaya Alat Tulis Kantor', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'O2.1.10', name: 'Biaya Cetak dan Fotocopy', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'O2.1.11', name: 'Biaya Listrik', budget: 3000000, realDefault: 0, level: 3 },
+  { code: 'O2.1.12', name: 'Biaya Telepon', budget: 500000, realDefault: 202300, level: 3 },
+  { code: 'O2.1.13', name: 'Biaya PDAM', budget: 1000000, realDefault: 356950, level: 3 },
+  { code: 'O2.1.14', name: 'Biaya Internet', budget: 2500000, realDefault: 2698140, level: 3 },
+  { code: 'O2.1.15', name: 'Biaya Kebutuhan Rumah Tangga', budget: 3000000, realDefault: 896000, level: 3 },
+  { code: 'O2.1.17', name: 'Biaya Iuran Lingkungan', budget: 1000000, realDefault: 250000, level: 3 },
+  { code: 'O2.1.21', name: 'Biaya WTP Chemical', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'O2.1.22', name: 'Biaya Administrasi Bank', budget: 50000, realDefault: 0, level: 3 },
+
+  { code: 'O3', name: 'Pemeliharaan', budget: 10500000, realDefault: 483000, isHeader: true, level: 1 },
+  { code: 'O3.1', name: 'Biaya Pemeliharaan Gedung', budget: 5500000, realDefault: 483000, isHeader: true, level: 2 },
+  { code: 'O3.1.2', name: 'Biaya Perbaikan pintu dan jendela', budget: 1000000, realDefault: 0, level: 3 },
+  { code: 'O3.1.3', name: 'Biaya Perbaikan Pipa Air dan Kran', budget: 2000000, realDefault: 483000, level: 3 },
+  { code: 'O3.1.4', name: 'Biaya Renovasi Bangunan', budget: 2000000, realDefault: 0, level: 3 },
+  { code: 'O3.1.6', name: 'Biaya Pemeliharaan Taman', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'O3.2', name: 'Biaya Pemeliharaan Inventaris Kantor', budget: 5000000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'O3.2.1', name: 'Biaya Perbaikan Komputer dan Printer', budget: 1000000, realDefault: 0, level: 3 },
+  { code: 'O3.2.2', name: 'Biaya Perbaikan Water Treatment Plant', budget: 1000000, realDefault: 0, level: 3 },
+  { code: 'O3.2.3', name: 'Biaya Perbaikan Furnitur', budget: 1000000, realDefault: 0, level: 3 },
+  { code: 'O3.2.4', name: 'Biaya Pemeliharaan Kendaraan', budget: 2000000, realDefault: 0, level: 3 },
+
+  { code: 'O4', name: 'Operasional UKS', budget: 2000000, realDefault: 0, isHeader: true, level: 1 },
+  { code: 'O4.1', name: 'UKS Plus', budget: 2000000, realDefault: 0, level: 3 },
+
+  { code: 'O5', name: 'Operasional Perpustakaan', budget: 1000000, realDefault: 0, isHeader: true, level: 1 },
+  { code: 'O5.1', name: 'Perpustakaan', budget: 1000000, realDefault: 0, level: 3 },
+
+  // S. KESISWAAN
+  { code: 'S', name: 'KESISWAAN', budget: 6750000, realDefault: 0, isHeader: true, level: 0 },
+  { code: 'S2', name: 'Pelatihan Siswa', budget: 1000000, realDefault: 0, isHeader: true, level: 1 },
+  { code: 'S2.3', name: 'SSR', budget: 1000000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'S2.3.2', name: 'SCB Mengajar', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'S2.3.3', name: 'Agroeduwisata', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'S3', name: 'Pengembangan Bakat dan Minat', budget: 5750000, realDefault: 0, isHeader: true, level: 1 },
+  { code: 'S3.1', name: 'Kegiatan Ekstrakurikuler', budget: 4750000, realDefault: 0, level: 3 },
+  { code: 'S3.2', name: 'Organisasi & Kepemimpinan Siswa', budget: 1000000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'S3.2.6', name: 'Forum OSIS', budget: 1000000, realDefault: 0, level: 3 }
+];
+
 const initialData: Report[] = [];
 
 export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: string, isReadOnly?: boolean }) => {
@@ -138,6 +221,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   } | null>(null);
 
   const [baznasAccount, setBaznasAccount] = useState<'SMP' | 'SMA'>('SMP');
+  const currentTemplates = baznasAccount === 'SMP' ? BAZNAS_SMP_BUDGET_TEMPLATES : BAZNAS_SMA_BUDGET_TEMPLATES;
   const [selectedBaznasCode, setSelectedBaznasCode] = useState<string>('');
   const [baznasFormBudget, setBaznasFormBudget] = useState<string>('');
   const [baznasFormReal, setBaznasFormReal] = useState<string>('');
@@ -246,7 +330,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
     
     // We compute the current value for this code
     const leavesCalculatedOne = () => {
-      const item = BAZNAS_BUDGET_TEMPLATES.find(it => it.code === selectedBaznasCode);
+      const item = currentTemplates.find(it => it.code === selectedBaznasCode);
       if (!item) return null;
       
       const matches = submissions.filter(sub => {
@@ -268,7 +352,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
       const sum = matches.reduce((acc, sub) => acc + (sub.amount || 0), 0);
       
       let initialReal = sum;
-      if (sum === 0 && baznasMonth === 'Januari' && baznasYear === '2026' && baznasAccount === 'SMP') {
+      if (sum === 0 && baznasMonth === 'Januari' && baznasYear === '2026') {
         initialReal = item.realDefault;
       }
 
@@ -309,7 +393,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   };
 
   const computeReportData = (targetMonth: string, targetYear: string) => {
-    const leafCalculated = BAZNAS_BUDGET_TEMPLATES.map(item => {
+    const leafCalculated = currentTemplates.map(item => {
       if (item.level === 3) {
         const matches = submissions.filter(sub => {
           const my = getSubmissionMonthAndYear(sub);
@@ -331,7 +415,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
         const sum = matches.reduce((acc, sub) => acc + (sub.amount || 0), 0);
         
         let initialReal = sum;
-        if (sum === 0 && targetMonth === 'Januari' && targetYear === '2026' && baznasAccount === 'SMP') {
+        if (sum === 0 && targetMonth === 'Januari' && targetYear === '2026') {
           initialReal = item.realDefault;
         }
 
@@ -738,7 +822,14 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rekening</Label>
-                          <Select value={baznasAccount} onValueChange={(val: 'SMP' | 'SMA') => setBaznasAccount(val)}>
+                          <Select value={baznasAccount} onValueChange={(val: 'SMP' | 'SMA') => {
+                            setBaznasAccount(val);
+                            if (val === 'SMA') {
+                              setBaznasNoPpd('137911');
+                            } else {
+                              setBaznasNoPpd('137910');
+                            }
+                          }}>
                             <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
                               <SelectValue placeholder="Pilih Rekening" />
                             </SelectTrigger>
@@ -797,7 +888,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                             <SelectValue placeholder="Pilih Pos Budget" />
                           </SelectTrigger>
                           <SelectContent className="max-h-60">
-                            {BAZNAS_BUDGET_TEMPLATES.filter(item => item.level === 3).map(item => (
+                            {currentTemplates.filter(item => item.level === 3).map(item => (
                               <SelectItem key={item.code} value={item.code} className="text-xs">
                                 {item.code} - {item.name}
                               </SelectItem>
