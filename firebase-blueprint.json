@@ -14,7 +14,7 @@
         "currentStageIndex": { "type": "number" },
         "picName": { "type": "string" },
         "namaBank": { "type": "string" },
-        "sumberRekening": { "type": "string", "enum": ["SMP", "SMA"] },
+        "sumberRekening": { "type": "string", "enum": ["SMP", "SMA", "Donasi SMP", "Donasi SMA"] },
         "kodeBudget": { "type": "string" },
         "noDokumen": { "type": "string" },
         "submittedBy": { "type": "string" },

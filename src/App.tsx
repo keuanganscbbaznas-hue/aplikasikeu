@@ -647,7 +647,7 @@ export default function App() {
   const [editNoRekeningPengaju, setEditNoRekeningPengaju] = useState('');
   const [editNamaRekening, setEditNamaRekening] = useState('');
   const [editNamaBank, setEditNamaBank] = useState('');
-  const [editSumberRekening, setEditSumberRekening] = useState<'SMP' | 'SMA' | ''>('');
+  const [editSumberRekening, setEditSumberRekening] = useState<'SMP' | 'SMA' | 'Donasi SMP' | 'Donasi SMA' | ''>('');
   const [editKodeBudget, setEditKodeBudget] = useState('');
   const [editNoDokumen, setEditNoDokumen] = useState('');
   const [editNoDokumenLaporan, setEditNoDokumenLaporan] = useState('');
@@ -2218,14 +2218,16 @@ export default function App() {
                         <Label htmlFor="edit-sumber" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Sumber Rekening</Label>
                         <Select 
                           value={editSumberRekening} 
-                          onValueChange={(v: 'SMP' | 'SMA') => setEditSumberRekening(v)}
+                          onValueChange={(v: any) => setEditSumberRekening(v)}
                         >
                           <SelectTrigger id="edit-sumber" className="h-10 rounded-xl border-slate-200 bg-white">
-                            <SelectValue placeholder="Pilih Unit" />
+                            <SelectValue placeholder="Pilih Unit / Rekening" />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl">
                             <SelectItem value="SMP">SMP</SelectItem>
                             <SelectItem value="SMA">SMA</SelectItem>
+                            <SelectItem value="Donasi SMP">Donasi SMP</SelectItem>
+                            <SelectItem value="Donasi SMA">Donasi SMA</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -2786,7 +2788,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
   const [newNoRekeningPengaju, setNewNoRekeningPengaju] = useState('');
   const [newNamaRekening, setNewNamaRekening] = useState('');
   const [newNamaBank, setNewNamaBank] = useState('');
-  const [newSumberRekening, setNewSumberRekening] = useState<'SMP' | 'SMA' | ''>('');
+  const [newSumberRekening, setNewSumberRekening] = useState<'SMP' | 'SMA' | 'Donasi SMP' | 'Donasi SMA' | ''>('');
   const [newKodeBudget, setNewKodeBudget] = useState('');
   const [newNoDokumen, setNewNoDokumen] = useState('');
   const [newDescription, setNewDescription] = useState('');

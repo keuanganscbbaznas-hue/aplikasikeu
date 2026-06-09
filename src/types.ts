@@ -104,7 +104,7 @@ export interface Submission {
   noRekeningPengaju?: string;
   namaRekening?: string;
   namaBank?: string;
-  sumberRekening?: 'SMP' | 'SMA';
+  sumberRekening?: 'SMP' | 'SMA' | 'Donasi SMP' | 'Donasi SMA';
   kodeBudget?: string;
   noDokumen?: string;
   createdAt: any;
