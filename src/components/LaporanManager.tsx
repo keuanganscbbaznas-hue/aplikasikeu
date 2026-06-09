@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { FileText, Plus, Search, ExternalLink, Download, Upload, Trash2, Edit2, FileDown } from 'lucide-react';
+import { FileText, Plus, Search, ExternalLink, Download, Upload, Trash2, Edit2, FileDown, Calendar, Printer, RefreshCw } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
@@ -29,9 +29,119 @@ interface Report {
   keterangan: string;
 }
 
+interface BudgetTemplateItem {
+  code: string;
+  name: string;
+  budget: number;
+  realDefault: number;
+  isHeader?: boolean;
+  level: number; // 0, 1, 2, 3
+}
+
+const BAZNAS_BUDGET_TEMPLATES: BudgetTemplateItem[] = [
+  // A. KEASRAMAAN
+  { code: 'A', name: 'KEASRAMAAN', budget: 6500000, realDefault: 0, isHeader: true, level: 0 },
+  { code: 'A1', name: 'Kegiatan Keasramaan', budget: 6500000, realDefault: 0, isHeader: true, level: 1 },
+  { code: 'A1.1', name: 'Pembentukan Karakter', budget: 1500000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'A1.1.8', name: 'GMM', budget: 1500000, realDefault: 0, level: 3 },
+  { code: 'A1.3', name: 'Peringatan Hari Besar Islam', budget: 4500000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'A1.3.4', name: 'Isra\' mi\'roj', budget: 4500000, realDefault: 0, level: 3 },
+  { code: 'A1.4', name: 'Akomodasi dan Kebutuhan Harian Santri', budget: 500000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'A1.4.7', name: 'Biaya Kesehatan Siswa', budget: 500000, realDefault: 0, level: 3 },
+
+  // K. KURIKULUM
+  { code: 'K', name: 'KURIKULUM', budget: 9050000, realDefault: 2255000, isHeader: true, level: 0 },
+  { code: 'K1', name: 'Kegiatan Kurikulum', budget: 9050000, realDefault: 2255000, isHeader: true, level: 1 },
+  { code: 'K1.1', name: 'SDM Program', budget: 4300000, realDefault: 2255000, isHeader: true, level: 2 },
+  { code: 'K1.1.7', name: 'Dana Kesehatan Amil Tetap (Guru)', budget: 2500000, realDefault: 355000, level: 3 },
+  { code: 'K1.1.9', name: 'Tunjangan Fungsional', budget: 1800000, realDefault: 1900000, level: 3 },
+  { code: 'K1.2', name: 'Bahan Penunjang KBM', budget: 500000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'K1.2.13', name: 'Pengadaan Perangkat KBM', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'K1.4', name: 'Program KBM', budget: 3250000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'K1.4.5', name: 'Klub Bidang Studi', budget: 250000, realDefault: 0, level: 3 },
+  { code: 'K1.4.6', name: 'Pengembangan Kompetensi guru', budget: 2500000, realDefault: 0, level: 3 },
+  { code: 'K1.4.7', name: 'Olimpiade Matematika', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'K1.6', name: 'Pendidikan Lingkungan Hidup', budget: 1000000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'K1.6.2', name: 'Berkebun', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'K1.6.3', name: 'Perikanan', budget: 500000, realDefault: 0, level: 3 },
+
+  // O. OPERASIONAL
+  { code: 'O', name: 'OPERASIONAL', budget: 91210000, realDefault: 65040530, isHeader: true, level: 0 },
+  { code: 'O1', name: 'SDM', budget: 34000000, realDefault: 30355931, isHeader: true, level: 1 },
+  { code: 'O1.1', name: 'Biaya SDM', budget: 32500000, realDefault: 30255931, isHeader: true, level: 2 },
+  { code: 'O1.1.2', name: 'Tunjangan BPJS Kesehatan', budget: 15500000, realDefault: 14537116, level: 3 },
+  { code: 'O1.1.3', name: 'Tunjangan BPJS Tenaga Kerja', budget: 12000000, realDefault: 11864742, level: 3 },
+  { code: 'O1.1.4', name: 'Tunjangan Menikah', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'O1.1.5', name: 'Tunjangan Melahirkan', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'O1.1.6', name: 'Tunjangan Lembur', budget: 1000000, realDefault: 1570000, level: 3 },
+  { code: 'O1.1.7', name: 'Santunan Kematian/Musibah', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'O1.1.11', name: 'Dana Kesehatan Amil Tetap (Pelaksana)', budget: 2500000, realDefault: 2184073, level: 3 },
+  { code: 'O1.3', name: 'Biaya Perjalanan Dinas', budget: 1500000, realDefault: 100000, isHeader: true, level: 2 },
+  { code: 'O1.3.1', name: 'Biaya Perjalanan Dinas Luar Kota', budget: 1500000, realDefault: 100000, level: 3 },
+
+  { code: 'O2', name: 'URT', budget: 42710000, realDefault: 24388489, isHeader: true, level: 1 },
+  { code: 'O2.1', name: 'Biaya Umum dan Rumah Tangga', budget: 42710000, realDefault: 24388489, isHeader: true, level: 2 },
+  { code: 'O2.1.1', name: 'Biaya Pengadaan Peralatan Kantor', budget: 1000000, realDefault: 0, level: 3 },
+  { code: 'O2.1.4', name: 'Biaya Sewa Infrastruktur IT', budget: 6660000, realDefault: 6660000, level: 3 },
+  { code: 'O2.1.5', name: 'Biaya Transportasi', budget: 10000000, realDefault: 7896000, level: 3 },
+  { code: 'O2.1.6', name: 'Biaya Makan dan Minum Rapat', budget: 2000000, realDefault: 1054500, level: 3 },
+  { code: 'O2.1.7', name: 'Biaya Komunikasi/Kehumasan', budget: 500000, realDefault: 0, level: 3 },
+  { code: 'O2.1.9', name: 'Biaya Alat Tulis Kantor', budget: 1000000, realDefault: 1498500, level: 3 },
+  { code: 'O2.1.10', name: 'Biaya Cetak dan Fotocopy', budget: 500000, realDefault: 460000, level: 3 },
+  { code: 'O2.1.11', name: 'Biaya Listrik', budget: 6000000, realDefault: 4715989, level: 3 },
+  { code: 'O2.1.12', name: 'Biaya Telepon', budget: 200000, realDefault: 0, level: 3 },
+  { code: 'O2.1.13', name: 'Biaya PDAM', budget: 300000, realDefault: 0, level: 3 },
+  { code: 'O2.1.14', name: 'Biaya Internet', budget: 5000000, realDefault: 6382500, level: 3 },
+  { code: 'O2.1.15', name: 'Biaya Kebutuhan Rumah Tangga', budget: 3500000, realDefault: 2281000, level: 3 },
+  { code: 'O2.1.17', name: 'Biaya Iuran Lingkungan', budget: 1500000, realDefault: 0, level: 3 },
+  { code: 'O2.1.21', name: 'Biaya WTP Chemical', budget: 4500000, realDefault: 0, level: 3 },
+  { code: 'O2.1.22', name: 'Biaya Administrasi Bank', budget: 50000, realDefault: 0, level: 3 },
+
+  { code: 'O3', name: 'Pemeliharaan', budget: 10000000, realDefault: 1707000, isHeader: true, level: 1 },
+  { code: 'O3.1', name: 'Biaya Pemeliharaan Gedung', budget: 5000000, realDefault: 1707000, isHeader: true, level: 2 },
+  { code: 'O3.1.2', name: 'Biaya Perbaikan pintu dan jendela', budget: 1000000, realDefault: 0, level: 3 },
+  { code: 'O3.1.3', name: 'Biaya Perbaikan Pipa Air dan Kran', budget: 1000000, realDefault: 1547000, level: 3 },
+  { code: 'O3.1.4', name: 'Biaya Renovasi Bangunan', budget: 2000000, realDefault: 0, level: 3 },
+  { code: 'O3.1.6', name: 'Biaya Pemeliharaan Taman', budget: 1000000, realDefault: 160000, level: 3 },
+  { code: 'O3.2', name: 'Biaya Pemeliharaan Inventaris Kantor', budget: 5000000, realDefault: 0, isHeader: true, level: 2 },
+  { code: 'O3.2.1', name: 'Biaya Perbaikan Komputer dan Printer', budget: 1000000, realDefault: 0, level: 3 },
+  { code: 'O3.2.2', name: 'Biaya Perbaikan Water Treatment Plant', budget: 1000000, realDefault: 0, level: 3 },
+  { code: 'O3.2.3', name: 'Biaya Perbaikan Furnitur', budget: 1000000, realDefault: 0, level: 3 },
+  { code: 'O3.2.4', name: 'Biaya Pemeliharaan Kendaraan', budget: 2000000, realDefault: 0, level: 3 },
+
+  { code: 'O4', name: 'Operasional UKS', budget: 2500000, realDefault: 1926610, isHeader: true, level: 1 },
+  { code: 'O4.1', name: 'UKS Plus', budget: 2500000, realDefault: 1926610, level: 3 },
+
+  { code: 'O5', name: 'Operasional Perpustakaan', budget: 2000000, realDefault: 202500, isHeader: true, level: 1 },
+  { code: 'O5.1', name: 'Perpustakaan', budget: 2000000, realDefault: 202500, level: 3 },
+
+  // S. KESISWAAN
+  { code: 'S', name: 'KESISWAAN', budget: 3500000, realDefault: 1080000, isHeader: true, level: 0 },
+  { code: 'S3', name: 'Pengembangan Bakat dan Minat', budget: 3500000, realDefault: 1080000, isHeader: true, level: 1 },
+  { code: 'S3.1', name: 'Kegiatan Ekstrakurikuler', budget: 3500000, realDefault: 1080000, level: 3 }
+];
+
 const initialData: Report[] = [];
 
 export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: string, isReadOnly?: boolean }) => {
+  const [activeTab, setActiveTab] = useState<'standard' | 'baznas'>('standard');
+  const [baznasMonth, setBaznasMonth] = useState('Januari');
+  const [baznasYear, setBaznasYear] = useState('2026');
+  const [baznasNoPpd, setBaznasNoPpd] = useState('137910');
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [customBaznasValues, setCustomBaznasValues] = useState<any[]>([]);
+  const [editingBaznasItem, setEditingBaznasItem] = useState<{
+    code: string;
+    name: string;
+    budget: number;
+    real: number;
+  } | null>(null);
+
+  const [baznasAccount, setBaznasAccount] = useState<'SMP' | 'SMA'>('SMP');
+  const [selectedBaznasCode, setSelectedBaznasCode] = useState<string>('');
+  const [baznasFormBudget, setBaznasFormBudget] = useState<string>('');
+  const [baznasFormReal, setBaznasFormReal] = useState<string>('');
+
   const [data, setData] = useState<Report[]>(initialData);
   const [month, setMonth] = useState('April');
   const [year, setYear] = useState(new Date().getFullYear().toString());
@@ -48,6 +158,240 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   const [filterYear, setFilterYear] = useState('all');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+
+  // Fetch submissions to calculate dynamic BAZNAS realisasi
+  useEffect(() => {
+    if (!userUid) return;
+    const q = query(collection(db, 'submissions'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const subs: any[] = [];
+      snapshot.forEach((docSnap) => {
+        subs.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setSubmissions(subs);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'submissions');
+    });
+    return () => unsubscribe();
+  }, [userUid]);
+
+  useEffect(() => {
+    if (!userUid) return;
+    const q = query(collection(db, 'laporan_baznas_custom_values'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const vals: any[] = [];
+      snapshot.forEach((docSnap) => {
+        vals.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setCustomBaznasValues(vals);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'laporan_baznas_custom_values');
+    });
+    return () => unsubscribe();
+  }, [userUid]);
+
+  const handleSaveBaznasOverride = async (code: string, newBudget: number, newReal: number, customAccount?: string) => {
+    try {
+      const targetAccount = customAccount || baznasAccount;
+      const docId = `${targetAccount}_${baznasMonth}_${baznasYear}_${code}`.toLowerCase().replace(/\s+/g, '_');
+      const docRef = doc(db, 'laporan_baznas_custom_values', docId);
+      await setDoc(docRef, {
+        month: baznasMonth,
+        year: baznasYear,
+        account: targetAccount,
+        code,
+        budget: newBudget,
+        real: newReal,
+        updatedAt: serverTimestamp(),
+        userUid
+      });
+      toast.success(`Berhasil memperbarui ${code}`);
+      setEditingBaznasItem(null);
+    } catch (err) {
+      console.error("Error saving BAZNAS override:", err);
+      toast.error("Gagal menyimpan perubahan");
+    }
+  };
+
+  const getSubmissionMonthAndYear = (sub: any) => {
+    let dateObj: Date | null = null;
+    if (sub.transactionDate) {
+      dateObj = new Date(sub.transactionDate);
+    } else if (sub.createdAt) {
+      const ts = sub.createdAt;
+      if (ts.seconds) {
+        dateObj = new Date(ts.seconds * 1000);
+      } else if (ts.toDate) {
+        dateObj = ts.toDate();
+      } else {
+        dateObj = new Date(ts);
+      }
+    }
+    
+    if (dateObj && !isNaN(dateObj.getTime())) {
+      const m = MONTHS[dateObj.getMonth()];
+      const y = dateObj.getFullYear().toString();
+      return { month: m, year: y };
+    }
+    return null;
+  };
+
+  // Prefill BAZNAS custom input form when selected budget item changes
+  useEffect(() => {
+    if (!selectedBaznasCode) {
+      setBaznasFormBudget('');
+      setBaznasFormReal('');
+      return;
+    }
+    
+    // We compute the current value for this code
+    const leavesCalculatedOne = () => {
+      const item = BAZNAS_BUDGET_TEMPLATES.find(it => it.code === selectedBaznasCode);
+      if (!item) return null;
+      
+      const matches = submissions.filter(sub => {
+        const my = getSubmissionMonthAndYear(sub);
+        if (!my) return false;
+        
+        const codeMatches = sub.kodeBudget === item.code;
+        const periodMatches = my.month.toLowerCase() === baznasMonth.toLowerCase() && my.year === baznasYear;
+        const isValidStage = (sub.currentStageIndex >= 4 || sub.status === 'APPROVED' || sub.status === 'approved') && sub.status !== 'REJECTED' && sub.status !== 'rejected';
+        
+        const subAccount = sub.sumberRekening || 'SMP';
+        const accountMatches = baznasAccount === 'SMP'
+          ? (subAccount === 'SMP' || subAccount === 'Donasi SMP')
+          : (subAccount === 'SMA' || subAccount === 'Donasi SMA');
+          
+        return codeMatches && periodMatches && isValidStage && accountMatches;
+      });
+      
+      const sum = matches.reduce((acc, sub) => acc + (sub.amount || 0), 0);
+      
+      let initialReal = sum;
+      if (sum === 0 && baznasMonth === 'Januari' && baznasYear === '2026' && baznasAccount === 'SMP') {
+        initialReal = item.realDefault;
+      }
+
+      const customOverride = customBaznasValues.find(v => 
+        v.month.toLowerCase() === baznasMonth.toLowerCase() &&
+        v.year === baznasYear &&
+        v.code === item.code &&
+        (v.account ? v.account.toLowerCase() === baznasAccount.toLowerCase() : baznasAccount.toLowerCase() === 'smp')
+      );
+
+      const realAsi = customOverride && customOverride.real !== undefined ? customOverride.real : initialReal;
+      const budgetAsi = customOverride && customOverride.budget !== undefined ? customOverride.budget : item.budget;
+      
+      return { budgetAsi, realAsi };
+    };
+
+    const calculated = leavesCalculatedOne();
+    if (calculated) {
+      setBaznasFormBudget(calculated.budgetAsi.toString());
+      setBaznasFormReal(calculated.realAsi.toString());
+    }
+  }, [selectedBaznasCode, baznasAccount, baznasMonth, baznasYear, submissions, customBaznasValues]);
+
+  const handleSaveBaznasForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBaznasCode) {
+      toast.error("Silakan pilih pos/kode budget terlebih dahulu");
+      return;
+    }
+    const budgetVal = parseInt(baznasFormBudget.replace(/\./g, '')) || 0;
+    const realVal = parseInt(baznasFormReal.replace(/\./g, '')) || 0;
+
+    await handleSaveBaznasOverride(selectedBaznasCode, budgetVal, realVal, baznasAccount);
+    toast.success("Berhasil menyimpan nilai laporan");
+    setSelectedBaznasCode('');
+    setBaznasFormBudget('');
+    setBaznasFormReal('');
+  };
+
+  const computeReportData = (targetMonth: string, targetYear: string) => {
+    const leafCalculated = BAZNAS_BUDGET_TEMPLATES.map(item => {
+      if (item.level === 3) {
+        const matches = submissions.filter(sub => {
+          const my = getSubmissionMonthAndYear(sub);
+          if (!my) return false;
+          
+          const codeMatches = sub.kodeBudget === item.code;
+          const periodMatches = my.month.toLowerCase() === targetMonth.toLowerCase() && my.year === targetYear;
+          const isValidStage = (sub.currentStageIndex >= 4 || sub.status === 'APPROVED' || sub.status === 'approved') && sub.status !== 'REJECTED' && sub.status !== 'rejected';
+          
+          // Check Account
+          const subAccount = sub.sumberRekening || 'SMP';
+          const accountMatches = baznasAccount === 'SMP'
+            ? (subAccount === 'SMP' || subAccount === 'Donasi SMP')
+            : (subAccount === 'SMA' || subAccount === 'Donasi SMA');
+            
+          return codeMatches && periodMatches && isValidStage && accountMatches;
+        });
+        
+        const sum = matches.reduce((acc, sub) => acc + (sub.amount || 0), 0);
+        
+        let initialReal = sum;
+        if (sum === 0 && targetMonth === 'Januari' && targetYear === '2026' && baznasAccount === 'SMP') {
+          initialReal = item.realDefault;
+        }
+
+        const customOverride = customBaznasValues.find(v => 
+          v.month.toLowerCase() === targetMonth.toLowerCase() &&
+          v.year === targetYear &&
+          v.code === item.code &&
+          (v.account ? v.account.toLowerCase() === baznasAccount.toLowerCase() : baznasAccount.toLowerCase() === 'smp')
+        );
+
+        const realAsi = customOverride && customOverride.real !== undefined ? customOverride.real : initialReal;
+        const budgetAsi = customOverride && customOverride.budget !== undefined ? customOverride.budget : item.budget;
+          
+        return {
+          ...item,
+          anggaranVal: budgetAsi,
+          realisasiVal: realAsi
+        };
+      }
+      
+      return {
+        ...item,
+        anggaranVal: 0,
+        realisasiVal: 0
+      };
+    });
+
+    // Segment-based parent-child checker
+    const isDescendant = (parentCode: string, childCode: string) => {
+      if (parentCode === childCode) return true;
+      if (childCode.startsWith(parentCode + '.')) return true;
+      if (parentCode.length === 1 && childCode.startsWith(parentCode)) return true;
+      return false;
+    };
+
+    // Calculate rolled-up values for all headers (level 0, 1, 2)
+    // from the calculated leaf values (level 3)
+    const leaves = leafCalculated.filter(item => item.level === 3);
+
+    const rolledUp = leafCalculated.map(item => {
+      if (item.level < 3) {
+        const descendants = leaves.filter(leaf => isDescendant(item.code, leaf.code));
+        const totalBudget = descendants.reduce((acc, d) => acc + (d.anggaranVal || 0), 0);
+        const totalReal = descendants.reduce((acc, d) => acc + (d.realisasiVal || 0), 0);
+        return {
+          ...item,
+          anggaranVal: totalBudget,
+          realisasiVal: totalReal
+        };
+      }
+      return item;
+    });
+
+    return rolledUp;
+  };
+
+  const reportItems = computeReportData(baznasMonth, baznasYear);
+  const totalAnggaran = reportItems.filter(item => item.level === 0).reduce((acc, c) => acc + c.anggaranVal, 0);
+  const totalRealisasi = reportItems.filter(item => item.level === 0).reduce((acc, c) => acc + c.realisasiVal, 0);
+  const totalVarian = totalAnggaran - totalRealisasi;
 
   useEffect(() => {
     if (!userUid) return;
@@ -278,14 +622,18 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
       });
       
       const pdfWidth = 210; // A4 width in mm
-      // Get actual dimensions to maintain aspect ratio
       const elWidth = pdfContainerRef.current.offsetWidth;
       const elHeight = pdfContainerRef.current.offsetHeight;
       const pdfHeight = (elHeight * pdfWidth) / elWidth;
       
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Laporan_Realisasi_BAZNAS_${year}.pdf`);
+      
+      const fileName = activeTab === 'baznas' 
+        ? `Laporan_PertUM_Format_BAZNAS_${baznasMonth}_${baznasYear}.pdf`
+        : `Laporan_Realisasi_BAZNAS_${year}.pdf`;
+        
+      pdf.save(fileName);
       toast.success('Berhasil mendownload PDF');
     } catch (error) {
       console.error('PDF export error:', error);
@@ -297,165 +645,494 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
 
   return (
     <div ref={pdfContainerRef} className="space-y-6 bg-slate-50/50 p-2 md:p-6 rounded-[2.5rem]">
+      {/* Tab Navigation - Hides on PDF export */}
+      {!isExportingPDF && (
+        <div className="flex border-b border-slate-200/60 pb-1 flex-wrap gap-2" id="laporan-tabs">
+          <button
+            type="button"
+            onClick={() => setActiveTab('standard')}
+            className={`pb-3 px-4 font-black text-xs uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 ${
+              activeTab === 'standard'
+                ? 'border-emerald-500 text-slate-800'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <FileText size={14} />
+            BAST & Realisasi Standard
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('baznas')}
+            className={`pb-3 px-4 font-black text-xs uppercase tracking-wider transition-all border-b-2 flex items-center gap-2 ${
+              activeTab === 'baznas'
+                ? 'border-emerald-500 text-slate-800'
+                : 'border-transparent text-slate-400 hover:text-slate-600'
+            }`}
+          >
+            <Calendar size={14} />
+            Laporan Pertum Format BAZNAS
+          </button>
+        </div>
+      )}
+
+      {/* Header section with download button */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Laporan Realisasi</h2>
-          <p className="text-sm text-slate-500 font-medium mt-1">Kelola dan pantau laporan realisasi anggaran.</p>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+            {activeTab === 'baznas' ? 'Laporan Format BAZNAS' : 'Laporan Realisasi'}
+          </h2>
+          <p className="text-sm text-slate-500 font-medium mt-1">
+            {activeTab === 'baznas'
+              ? `Laporan Pertanggungjawaban Uang Muka (PertUM) Periode ${baznasMonth} ${baznasYear}`
+              : 'Kelola dan pantau laporan realisasi anggaran.'}
+          </p>
         </div>
         {!isExportingPDF && (
           <div className="flex items-center gap-2" id="laporan-header-actions">
              <Button 
               variant="outline" 
               onClick={handleDownloadPDF}
-              className="font-bold border-rose-200 text-rose-700 hover:bg-rose-50 rounded-xl"
-              disabled={data.length === 0 || isExportingPDF}
+              className="font-bold border-rose-200 text-rose-700 hover:bg-rose-50 rounded-xl shadow-sm transition-all text-xs h-10 px-4"
+              disabled={isExportingPDF || (activeTab === 'standard' && data.length === 0)}
             >
-              <FileDown className="mr-2" size={16} /> {isExportingPDF ? 'Proses...' : 'PDF'}
-            </Button>
+              <FileDown className="mr-2" size={16} /> {isExportingPDF ? 'Memproses...' : 'Unduh PDF'}
+             </Button>
           </div>
         )}
       </div>
-      
-      <div className={`grid grid-cols-1 ${isExportingPDF ? '' : 'lg:grid-cols-3'} gap-6 relative`}>
-        
-        {/* Input Form */}
-        {!isExportingPDF && (
-          <div className="lg:col-span-1" id="laporan-form">
-            <Card className="rounded-3xl border-slate-100 shadow-sm h-full">
-            <CardHeader>
-              <CardTitle className="text-xl font-black text-slate-800">Input Laporan</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold text-slate-500">Bulan Laporan</Label>
-                    <Select value={month} onValueChange={setMonth}>
-                      <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
-                        <SelectValue placeholder="Pilih Bulan" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MONTHS.map(m => (
-                          <SelectItem key={m} value={m}>{m}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold text-slate-500">Tahun</Label>
-                    <Input 
-                      type="number" 
-                      value={year} 
-                      onChange={e => setYear(e.target.value)}
-                      className="rounded-xl bg-slate-50 border-slate-200"
-                    />
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500">Nominal Laporan (Rp)</Label>
-                  <Input 
-                    type="number" 
-                    value={amount} 
-                    onChange={e => setAmount(e.target.value)}
-                    placeholder="Contoh: 15000000"
-                    className="rounded-xl bg-slate-50 border-slate-200"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500">Tanggal Laporan</Label>
-                  <Input 
-                    type="date" 
-                    value={reportDate} 
-                    onChange={e => setReportDate(e.target.value)}
-                    className="rounded-xl bg-slate-50 border-slate-200"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500">Link Bukti BAST</Label>
-                  <Input 
-                    type="url" 
-                    value={bastLink} 
-                    onChange={e => setBastLink(e.target.value)}
-                    placeholder="https://..."
-                    className="rounded-xl bg-slate-50 border-slate-200"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-500">Keterangan Laporan</Label>
-                  <Input 
-                    value={keterangan} 
-                    onChange={e => setKeterangan(e.target.value)}
-                    placeholder="Contoh: Pembelian alat kantor..."
-                    className="rounded-xl bg-slate-50 border-slate-200"
-                  />
-                </div>
-
-                <Button type="submit" disabled={isSubmitting} className="w-full mt-2 font-bold bg-emerald-600 hover:bg-emerald-700 rounded-xl">
-                  {isSubmitting ? 'Menyimpan...' : (editingId ? 'Update Laporan' : 'Simpan Laporan')}
-                </Button>
-                {editingId && (
-                  <Button type="button" variant="outline" onClick={resetForm} disabled={isSubmitting} className="w-full mt-2 font-bold rounded-xl">
-                    Batal Edit
-                  </Button>
-                )}
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-        )}
-
-        {/* Chart Illustration */}
-        <div className={isExportingPDF ? "w-full mb-6 relative z-10" : "lg:col-span-2 space-y-6"} id="laporan-chart">
-          <Card className="rounded-3xl border-slate-100 shadow-sm bg-white">
-            <CardHeader>
-              <CardTitle className="text-xl font-black text-slate-800 flex justify-between items-center">
-                Bagan Realisasi Laporan {year}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[250px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: 40, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                    <XAxis 
-                      dataKey="month" 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }}
-                      dy={10}
-                    />
-                    <YAxis 
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }}
-                      tickFormatter={(value) => `Rp ${value / 1000000}Jt`}
-                      width={60}
-                    />
-                    <Tooltip 
-                      cursor={{ fill: '#F1F5F9' }}
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                      formatter={(value: number) => [`Rp ${value.toLocaleString('id-ID')}`, 'Total Laporan']}
-                    />
-                    <Bar 
-                      dataKey="total" 
-                      fill="#0ea5e9" // sky-500
-                      radius={[4, 4, 0, 0]} 
-                      barSize={24}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+      {activeTab === 'baznas' ? (
+        /* BAZNAS FORMAT VIEW */
+        <div className="space-y-6">
+          {/* Controls & Input Form Grid - Hides on PDF export */}
+          {!isExportingPDF && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="baznas-controls-and-form">
+              {/* Controls */}
+              <div className="lg:col-span-2">
+                <Card className="rounded-3xl border border-slate-100 shadow-sm bg-white h-full">
+                  <CardContent className="pt-6 h-full flex flex-col justify-between space-y-4">
+                    <div>
+                      <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-3">Filter Laporan BAZNAS</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Bulan</Label>
+                          <Select value={baznasMonth} onValueChange={setBaznasMonth}>
+                            <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
+                              <SelectValue placeholder="Pilih Bulan" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {MONTHS.map(m => (
+                                <SelectItem key={m} value={m}>{m}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Tahun</Label>
+                          <Input
+                            type="number"
+                            value={baznasYear}
+                            onChange={e => setBaznasYear(e.target.value)}
+                            className="rounded-xl bg-slate-50 border-slate-200 h-10 font-bold"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rekening</Label>
+                          <Select value={baznasAccount} onValueChange={(val: 'SMP' | 'SMA') => setBaznasAccount(val)}>
+                            <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
+                              <SelectValue placeholder="Pilih Rekening" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="SMP">Rekening SMP</SelectItem>
+                              <SelectItem value="SMA">Rekening SMA</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">No. PPD</Label>
+                          <Input
+                            type="text"
+                            value={baznasNoPpd}
+                            onChange={e => setBaznasNoPpd(e.target.value)}
+                            className="rounded-xl bg-slate-50 border-slate-200 h-10 font-bold"
+                            placeholder="Contoh: 137910"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2 border-t border-slate-100">
+                      <Button
+                        variant="outline"
+                        type="button"
+                        onClick={() => {
+                          setBaznasMonth('Januari');
+                          setBaznasYear('2026');
+                          setBaznasNoPpd('137910');
+                          setBaznasAccount('SMP');
+                          toast.success("Parameter diset kembali ke Januari 2026 Rekening SMP.");
+                        }}
+                        className="rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border-none h-10 px-4"
+                      >
+                        <RefreshCw size={14} className="mr-1.5" />
+                        Reset Filter
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </CardContent>
+
+              {/* BAZNAS Custom Value Input Form */}
+              <div className="lg:col-span-1">
+                <Card className="rounded-3xl border border-slate-100 shadow-sm bg-white">
+                  <CardContent className="pt-6 space-y-4">
+                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Plus size={16} className="text-emerald-600" />
+                      Input & Sesuaikan Anggaran / Realisasi
+                    </h3>
+                    <form onSubmit={handleSaveBaznasForm} className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Pos Budget (Level 3)</Label>
+                        <Select value={selectedBaznasCode} onValueChange={setSelectedBaznasCode}>
+                          <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200 text-xs">
+                            <SelectValue placeholder="Pilih Pos Budget" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {BAZNAS_BUDGET_TEMPLATES.filter(item => item.level === 3).map(item => (
+                              <SelectItem key={item.code} value={item.code} className="text-xs">
+                                {item.code} - {item.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Anggaran (Rp)</Label>
+                          <Input
+                            type="text"
+                            disabled={!selectedBaznasCode}
+                            value={baznasFormBudget ? parseInt(baznasFormBudget.replace(/\./g, '')).toLocaleString('id-ID') : '0'}
+                            onChange={e => {
+                              const rawVal = e.target.value.replace(/\./g, '');
+                              setBaznasFormBudget(rawVal || '0');
+                            }}
+                            className="rounded-xl bg-slate-50 border-slate-200 text-xs font-mono font-bold h-9"
+                            placeholder="Nilai Anggaran"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Realisasi (Rp)</Label>
+                          <Input
+                            type="text"
+                            disabled={!selectedBaznasCode}
+                            value={baznasFormReal ? parseInt(baznasFormReal.replace(/\./g, '')).toLocaleString('id-ID') : '0'}
+                            onChange={e => {
+                              const rawVal = e.target.value.replace(/\./g, '');
+                              setBaznasFormReal(rawVal || '0');
+                            }}
+                            className="rounded-xl bg-slate-50 border-slate-200 text-xs font-mono font-bold h-9"
+                            placeholder="Nilai Realisasi"
+                          />
+                        </div>
+                      </div>
+
+                      <Button 
+                        type="submit" 
+                        disabled={!selectedBaznasCode} 
+                        className="w-full font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-9 text-xs transition-colors"
+                      >
+                        Simpan Nilai Laporan
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* BAZNAS Print Sheet */}
+          <Card className={`rounded-3xl border border-slate-105/60 ${isExportingPDF ? 'shadow-none border-none p-0' : 'shadow-sm p-4 md:p-8'} bg-white overflow-hidden`}>
+            <div className="space-y-6">
+              {/* Report Header */}
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between border-b border-slate-200 pb-4 gap-4">
+                <div className="space-y-1">
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase">
+                    PENGGUNAAN DANA PERIODE {baznasMonth.toUpperCase()} {baznasYear}
+                  </h3>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Sekolah Cendekia BAZNAS (SCB) — REKENING {baznasAccount}</p>
+                </div>
+                <div className="shrink-0 flex items-center md:justify-end">
+                  <div className="bg-slate-950 text-white font-extrabold text-[11px] tracking-widest uppercase px-4 py-2 rounded-xl">
+                    NO. PPD {baznasNoPpd}
+                  </div>
+                </div>
+              </div>
+
+              {/* Penerimaan Block */}
+              <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50/50 p-5 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h4 className="text-[14px] font-black uppercase text-slate-900 tracking-wide">A. PENERIMAAN</h4>
+                    <p className="text-xs text-slate-500 mt-1 font-medium">Batas Anggota Pembiayaan / Uang Muka dari BAZNAS Pusat untuk periode {baznasMonth} {baznasYear}.</p>
+                  </div>
+                  <div className="text-left md:text-right">
+                    <span className="text-2xl font-black text-emerald-600 font-mono">
+                      Rp {totalAnggaran.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pengeluaran Section */}
+              <div className="space-y-3">
+                <h4 className="text-[14px] font-black uppercase text-slate-900 tracking-wide">B. PENGELUARAN</h4>
+                
+                {/* Spreadsheet Table */}
+                <div className="overflow-x-auto rounded-2xl border border-slate-200/80 shadow-sm bg-white">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider text-center border-b border-slate-800">
+                        <th className="py-3.5 px-3 border-r border-slate-700 w-16">NO.</th>
+                        <th className="py-3.5 px-4 border-r border-slate-700 text-left">URAIAN</th>
+                        <th className="py-3.5 px-4 border-r border-slate-700 text-right w-40">ANGGARAN (JUMLAH)</th>
+                        <th className="py-3.5 px-4 border-r border-slate-700 text-right w-40">REALISASI</th>
+                        <th className="py-3.5 px-4 border-r border-slate-700 text-right w-40">VARIAN</th>
+                        <th className="py-3.5 px-3 border-slate-800 text-center w-20">KET</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-[11px]">
+                      {reportItems.map((item, index) => {
+                        const isMainCategory = item.level === 0;
+                        const isSubHeader = item.level > 0 && item.isHeader;
+                        
+                        const valAnggaran = item.anggaranVal || 0;
+                        const valRealisasi = item.realisasiVal || 0;
+                        const valVarian = valAnggaran - valRealisasi;
+
+                        let rowClass = "border-b border-slate-100 hover:bg-slate-50/50";
+                        if (isMainCategory) {
+                          rowClass = "bg-slate-100/90 font-black text-slate-900 border-b border-slate-300";
+                        } else if (isSubHeader) {
+                          rowClass = "bg-slate-50/50 font-bold text-slate-800 border-b border-slate-200";
+                        }
+
+                        // Indentation of Uraian
+                        let indentStyle = {};
+                        if (item.level === 1) indentStyle = { paddingLeft: '1.25rem' };
+                        else if (item.level === 2) indentStyle = { paddingLeft: '2.5rem' };
+                        else if (item.level === 3) indentStyle = { paddingLeft: '3.75rem' };
+
+                        return (
+                          <tr key={`${item.code}-${index}`} className={rowClass}>
+                            <td className={`py-2 px-3 border-r border-b border-slate-200 text-center font-bold text-slate-700 ${isMainCategory ? 'text-[12px] text-slate-950' : ''}`}>
+                              {item.code}
+                            </td>
+                            <td style={indentStyle} className={`py-2 px-4 border-r border-b border-slate-200 ${isMainCategory ? 'text-[12px] uppercase font-black' : (isSubHeader ? 'font-bold' : 'text-slate-600')}`}>
+                              {item.name}
+                            </td>
+                            <td className="py-2 px-4 border-r border-b border-slate-200 text-right font-mono font-semibold">
+                              {valAnggaran > 0 ? valAnggaran.toLocaleString('id-ID') : '-'}
+                            </td>
+                            <td className="py-2 px-4 border-r border-b border-slate-200 text-right font-mono font-semibold">
+                              {valRealisasi > 0 ? valRealisasi.toLocaleString('id-ID') : '-'}
+                            </td>
+                            <td className={`py-2 px-4 border-r border-b border-slate-200 text-right font-mono font-semibold ${valVarian < 0 ? 'text-red-650 font-bold' : 'text-slate-700'}`}>
+                              {valVarian < 0 ? `(${Math.abs(valVarian).toLocaleString('id-ID')})` : (valVarian === 0 ? '-' : valVarian.toLocaleString('id-ID'))}
+                            </td>
+                            <td className="py-2 px-3 border-b border-slate-205 text-center text-[10px] text-slate-400">
+                              {!isExportingPDF && item.level === 3 ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  type="button"
+                                  onClick={() => setEditingBaznasItem({
+                                    code: item.code,
+                                    name: item.name,
+                                    budget: valAnggaran,
+                                    real: valRealisasi
+                                  })}
+                                  className="h-6 w-6 p-0 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg"
+                                  title="Edit Nilai"
+                                >
+                                  <Edit2 size={12} />
+                                </Button>
+                              ) : (
+                                '-'
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      {/* GRAND TOTAL ROW */}
+                      <tr className="bg-slate-900 text-white font-black text-[12px] uppercase border-t-2 border-slate-850">
+                        <td className="py-3 px-3 text-center border-r border-slate-800" colSpan={2}>
+                          GRAND TOTAL PENGELUARAN
+                        </td>
+                        <td className="py-3 px-4 text-right border-r border-slate-800 font-mono text-emerald-400">
+                          {totalAnggaran.toLocaleString('id-ID')}
+                        </td>
+                        <td className="py-3 px-4 text-right border-r border-slate-800 font-mono text-emerald-400">
+                          {totalRealisasi.toLocaleString('id-ID')}
+                        </td>
+                        <td className={`py-3 px-4 text-right border-r border-slate-800 font-mono ${totalVarian < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                          {totalVarian < 0 ? `(${Math.abs(totalVarian).toLocaleString('id-ID')})` : (totalVarian === 0 ? '-' : totalVarian.toLocaleString('id-ID'))}
+                        </td>
+                        <td className="py-3 px-3 text-center border-slate-800 text-emerald-400">
+                          -
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
           </Card>
         </div>
-      </div>
+      ) : (
+        /* ORIGINAL STANDARD REALISASI VIEW */
+        <div className={`grid grid-cols-1 ${isExportingPDF ? '' : 'lg:grid-cols-3'} gap-6 relative`}>
+          
+          {/* Input Form */}
+          {!isExportingPDF && (
+            <div className="lg:col-span-1" id="laporan-form">
+              <Card className="rounded-3xl border-slate-100 shadow-sm h-full bg-white">
+                <CardHeader>
+                  <CardTitle className="text-xl font-black text-slate-800">Input Laporan</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-500">Bulan Laporan</Label>
+                        <Select value={month} onValueChange={setMonth}>
+                          <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
+                            <SelectValue placeholder="Pilih Bulan" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MONTHS.map(m => (
+                              <SelectItem key={m} value={m}>{m}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-slate-500">Tahun</Label>
+                        <Input 
+                          type="number" 
+                          value={year} 
+                          onChange={e => setYear(e.target.value)}
+                          className="rounded-xl bg-slate-50 border-slate-200"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-slate-500">Nominal Laporan (Rp)</Label>
+                      <Input 
+                        type="number" 
+                        value={amount} 
+                        onChange={e => setAmount(e.target.value)}
+                        placeholder="Contoh: 15000000"
+                        className="rounded-xl bg-slate-50 border-slate-200"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-slate-500">Tanggal Laporan</Label>
+                      <Input 
+                        type="date" 
+                        value={reportDate} 
+                        onChange={e => setReportDate(e.target.value)}
+                        className="rounded-xl bg-slate-50 border-slate-200"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-slate-500">Link Bukti BAST</Label>
+                      <Input 
+                        type="url" 
+                        value={bastLink} 
+                        onChange={e => setBastLink(e.target.value)}
+                        placeholder="https://..."
+                        className="rounded-xl bg-slate-50 border-slate-200"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-slate-500">Keterangan Laporan</Label>
+                      <Input 
+                        value={keterangan} 
+                        onChange={e => setKeterangan(e.target.value)}
+                        placeholder="Contoh: Pembelian alat kantor..."
+                        className="rounded-xl bg-slate-50 border-slate-200"
+                      />
+                    </div>
+
+                    <Button type="submit" disabled={isSubmitting} className="w-full mt-2 font-bold bg-emerald-600 hover:bg-emerald-700 rounded-xl">
+                      {isSubmitting ? 'Menyimpan...' : (editingId ? 'Update Laporan' : 'Simpan Laporan')}
+                    </Button>
+                    {editingId && (
+                      <Button type="button" variant="outline" onClick={resetForm} disabled={isSubmitting} className="w-full mt-2 font-bold rounded-xl">
+                        Batal Edit
+                      </Button>
+                    )}
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Chart Illustration */}
+          <div className={isExportingPDF ? "w-full mb-6 relative z-10" : "lg:col-span-2 space-y-6"} id="laporan-chart">
+            <Card className="rounded-3xl border-slate-100 shadow-sm bg-white">
+              <CardHeader>
+                <CardTitle className="text-xl font-black text-slate-800 flex justify-between items-center">
+                  Bagan Realisasi Laporan {year}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[250px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: 40, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                      <XAxis 
+                        dataKey="month" 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }}
+                        dy={10}
+                      />
+                      <YAxis 
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }}
+                        tickFormatter={(value) => `Rp ${value / 1000000}Jt`}
+                        width={60}
+                      />
+                      <Tooltip 
+                        cursor={{ fill: '#F1F5F9' }}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        formatter={(value: number) => [`Rp ${value.toLocaleString('id-ID')}`, 'Total Laporan']}
+                      />
+                      <Bar 
+                        dataKey="total" 
+                        fill="#0ea5e9" // sky-500
+                        radius={[4, 4, 0, 0]} 
+                        barSize={24}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {/* Table */}
-      {!isExportingPDF && (
+      {activeTab === 'standard' && !isExportingPDF && (
         <div className="flex flex-col md:flex-row flex-wrap gap-4 mb-4 items-end" id="laporan-filters">
           <div className="w-full md:w-40">
             <Label className="text-xs font-bold text-slate-500 mb-1 block">Filter Bulan</Label>
@@ -525,110 +1202,184 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
         </div>
       )}
       
-      <Card className="rounded-3xl border-slate-100 shadow-sm bg-white">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-xl font-black text-slate-800">Daftar Laporan</CardTitle>
-          {!isExportingPDF && (
-            <div className="flex items-center gap-2" id="laporan-table-actions">
-              <input
-                type="file"
-                accept=".csv"
-                ref={fileInputRef}
-                onChange={handleImportCSV}
-                className="hidden"
-              />
-              <Button 
-                variant="outline" 
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isSubmitting}
-                className="font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl"
-              >
-                <Upload className="mr-2" size={16} /> Import
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleDownloadTemplate}
-                className="font-bold border-amber-200 text-amber-700 hover:bg-amber-50 rounded-xl"
-              >
-                <FileDown className="mr-2" size={16} /> Template
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleExportCSV}
-                className="font-bold border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl"
-                disabled={filteredData.length === 0}
-              >
-                <Download className="mr-2" size={16} /> Ekspor
-              </Button>
-            </div>
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-2xl border border-slate-100 overflow-hidden bg-white">
-            <Table>
-              <TableHeader className="bg-slate-50">
-                <TableRow>
-                  <TableHead className="font-bold text-xs text-slate-500">Bulan / Tahun</TableHead>
-                  <TableHead className="font-bold text-xs text-slate-500">Keterangan</TableHead>
-                  <TableHead className="font-bold text-xs text-slate-500">Tanggal Laporan</TableHead>
-                  <TableHead className="font-bold text-xs text-slate-500">Nominal</TableHead>
-                  <TableHead className="font-bold text-xs text-slate-500 text-center">Bukti BAST</TableHead>
-                  {!isExportingPDF && <TableHead className="font-bold text-xs text-slate-500 text-center action-cell-pdf">Aksi</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredData.map(item => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-semibold text-sm">
-                      {item.month} {item.year}
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-600">
-                      {item.keterangan || '-'}
-                    </TableCell>
-                    <TableCell className="text-sm text-slate-600">
-                      {new Date(item.date).toLocaleDateString('id-ID', {
-                        day: 'numeric', month: 'long', year: 'numeric'
-                      })}
-                    </TableCell>
-                    <TableCell className="font-bold text-sm text-slate-800">
-                      Rp {item.amount.toLocaleString('id-ID')}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <a 
-                        href={item.bastLink} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        Lihat <ExternalLink size={12} />
-                      </a>
-                    </TableCell>
-                    {!isExportingPDF && (
-                      <TableCell className="text-center action-cell-pdf">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(item)} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg shrink-0">
-                            <Edit2 size={16} />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg shrink-0">
-                            <Trash2 size={16} />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-                {filteredData.length === 0 && (
+      {activeTab === 'standard' && (
+        <Card className="rounded-3xl border-slate-100 shadow-sm bg-white">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-xl font-black text-slate-800">Daftar Laporan</CardTitle>
+            {!isExportingPDF && (
+              <div className="flex items-center gap-2" id="laporan-table-actions">
+                <input
+                  type="file"
+                  accept=".csv"
+                  ref={fileInputRef}
+                  onChange={handleImportCSV}
+                  className="hidden"
+                />
+                <Button 
+                  variant="outline" 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isSubmitting}
+                  className="font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 rounded-xl shadow-sm text-xs h-9 px-3"
+                >
+                  <Upload className="mr-2" size={14} /> Import
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleDownloadTemplate}
+                  className="font-bold border-amber-200 text-amber-700 hover:bg-amber-50 rounded-xl shadow-sm text-xs h-9 px-3"
+                >
+                  <FileDown className="mr-2" size={14} /> Template
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleExportCSV}
+                  className="font-bold border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl shadow-sm text-xs h-9 px-3"
+                  disabled={filteredData.length === 0}
+                >
+                  <Download className="mr-2" size={14} /> Ekspor
+                </Button>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-2xl border border-slate-100 overflow-hidden bg-white">
+              <Table>
+                <TableHeader className="bg-slate-50">
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-slate-500 font-medium">
-                      Belum ada data laporan.
-                    </TableCell>
+                    <TableHead className="font-bold text-xs text-slate-500">Bulan / Tahun</TableHead>
+                    <TableHead className="font-bold text-xs text-slate-500">Keterangan</TableHead>
+                    <TableHead className="font-bold text-xs text-slate-500">Tanggal Laporan</TableHead>
+                    <TableHead className="font-bold text-xs text-slate-500">Nominal</TableHead>
+                    <TableHead className="font-bold text-xs text-slate-500 text-center">Bukti BAST</TableHead>
+                    {!isExportingPDF && <TableHead className="font-bold text-xs text-slate-500 text-center action-cell-pdf">Aksi</TableHead>}
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {filteredData.map(item => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-semibold text-sm">
+                        {item.month} {item.year}
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-600">
+                        {item.keterangan || '-'}
+                      </TableCell>
+                      <TableCell className="text-sm text-slate-600">
+                        {new Date(item.date).toLocaleDateString('id-ID', {
+                          day: 'numeric', month: 'long', year: 'numeric'
+                        })}
+                      </TableCell>
+                      <TableCell className="font-bold text-sm text-slate-800">
+                        Rp {item.amount.toLocaleString('id-ID')}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <a 
+                          href={item.bastLink} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          Lihat <ExternalLink size={12} />
+                        </a>
+                      </TableCell>
+                      {!isExportingPDF && (
+                        <TableCell className="text-center action-cell-pdf">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(item)} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg shrink-0">
+                              <Edit2 size={16} />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg shrink-0">
+                              <Trash2 size={16} />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                  {filteredData.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-24 text-center text-slate-500 font-medium">
+                        Belum ada data laporan.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Dialog Edit BAZNAS */}
+      {editingBaznasItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-md rounded-3xl border border-slate-100 shadow-2xl bg-white overflow-hidden animate-in zoom-in-95 duration-200">
+            <CardHeader className="bg-slate-900 text-white p-6">
+              <CardTitle className="text-lg font-black tracking-tight uppercase flex items-center gap-2">
+                <Edit2 size={18} className="text-amber-400" />
+                Edit Nilai Anggaran & Realisasi
+              </CardTitle>
+              <p className="text-xs text-slate-300 font-medium mt-1">
+                Kode: {editingBaznasItem.code} — {editingBaznasItem.name}
+              </p>
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Anggaran (Rp)</Label>
+                <Input
+                  type="text"
+                  value={editingBaznasItem.budget.toLocaleString('id-ID')}
+                  onChange={e => {
+                    const rawVal = e.target.value.replace(/\./g, '');
+                    setEditingBaznasItem({
+                      ...editingBaznasItem,
+                      budget: parseInt(rawVal) || 0
+                    });
+                  }}
+                  className="rounded-xl bg-slate-50 border-slate-200 text-sm font-mono font-semibold h-10"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Realisasi (Rp)</Label>
+                <Input
+                  type="text"
+                  value={editingBaznasItem.real.toLocaleString('id-ID')}
+                  onChange={e => {
+                    const rawVal = e.target.value.replace(/\./g, '');
+                    setEditingBaznasItem({
+                      ...editingBaznasItem,
+                      real: parseInt(rawVal) || 0
+                    });
+                  }}
+                  className="rounded-xl bg-slate-50 border-slate-200 text-sm font-mono font-semibold h-10"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2 font-black text-xs uppercase tracking-wider">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={() => setEditingBaznasItem(null)}
+                  className="w-1/2 rounded-xl font-bold text-slate-600 border-slate-200 h-10"
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => handleSaveBaznasOverride(
+                    editingBaznasItem.code,
+                    editingBaznasItem.budget,
+                    editingBaznasItem.real
+                  )}
+                  className="w-1/2 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white h-10"
+                >
+                  Simpan Perubahan
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

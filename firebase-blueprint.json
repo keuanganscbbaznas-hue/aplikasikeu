@@ -132,6 +132,22 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "category", "fileName", "content", "createdAt"]
+    },
+    "LaporanBaznasCustomValue": {
+      "title": "LaporanBaznasCustomValue",
+      "description": "Custom budget and actual overrides for BAZNAS report items.",
+      "type": "object",
+      "properties": {
+        "month": { "type": "string" },
+        "year": { "type": "string" },
+        "account": { "type": "string", "enum": ["SMP", "SMA"] },
+        "code": { "type": "string" },
+        "budget": { "type": "number" },
+        "real": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "userUid": { "type": "string" }
+      },
+      "required": ["month", "year", "code", "budget", "real", "userUid"]
     }
   },
   "firestore": {
@@ -162,6 +178,10 @@
     "/document_templates/{templateId}": {
       "schema": "DocumentTemplate",
       "description": "Collection of document templates."
+    },
+    "/laporan_baznas_custom_values/{valueId}": {
+      "schema": "LaporanBaznasCustomValue",
+      "description": "Collection of custom budget/actual overrides for BAZNAS items."
     }
   }
 }
