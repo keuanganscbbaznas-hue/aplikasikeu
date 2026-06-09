@@ -2175,7 +2175,7 @@ export default function App() {
                         </Select>
                       </div>
                       <div className="grid gap-2 ml-1">
-                        <Label htmlFor="edit-namabank" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Nama Bank (HIMBARA) (Optional)</Label>
+                        <Label htmlFor="edit-namabank" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Nama Bank (Optional)</Label>
                         <Select 
                           value={editNamaBank} 
                           onValueChange={(v: string) => setEditNamaBank(v)}
@@ -2189,6 +2189,8 @@ export default function App() {
                             <SelectItem value="Bank Mandiri">Bank Mandiri</SelectItem>
                             <SelectItem value="Bank Negara Indonesia (BNI)">Bank Negara Indonesia (BNI)</SelectItem>
                             <SelectItem value="Bank Tabungan Negara (BTN)">Bank Tabungan Negara (BTN)</SelectItem>
+                            <SelectItem value="Bank BJB">Bank BJB</SelectItem>
+                            <SelectItem value="Bank BCA">Bank BCA</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -3039,7 +3041,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="new-namabank" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Nama Bank (HIMBARA) (Optional)</Label>
+                  <Label htmlFor="new-namabank" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Nama Bank (Optional)</Label>
                   <Select value={newNamaBank} onValueChange={(v: string) => setNewNamaBank(v)}>
                     <SelectTrigger id="new-namabank" className="h-10 rounded-xl border-slate-200 bg-white animate-fade-in">
                       <SelectValue placeholder="Pilih Bank" />
@@ -3050,6 +3052,8 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
                       <SelectItem value="Bank Mandiri">Bank Mandiri</SelectItem>
                       <SelectItem value="Bank Negara Indonesia (BNI)">Bank Negara Indonesia (BNI)</SelectItem>
                       <SelectItem value="Bank Tabungan Negara (BTN)">Bank Tabungan Negara (BTN)</SelectItem>
+                      <SelectItem value="Bank BJB">Bank BJB</SelectItem>
+                      <SelectItem value="Bank BCA">Bank BCA</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
