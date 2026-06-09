@@ -281,7 +281,7 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
       doc.setFont("helvetica", "bold");
       
       // Parse Bank account info if found or default to "Transfer Bank" if transfer
-      let bankName = config?.bankName || "BANK SYARIAH INDONESIA (BSI)";
+      let bankName = submission.namaBank || config?.bankName || "BANK SYARIAH INDONESIA (BSI)";
       let norek = submission.noRekeningPengaju || "-";
       let atasNama = submission.namaRekening || submission.picName || "Bendahara SCB";
       

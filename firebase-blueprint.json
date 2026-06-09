@@ -13,6 +13,7 @@
         "status": { "type": "string" },
         "currentStageIndex": { "type": "number" },
         "picName": { "type": "string" },
+        "namaBank": { "type": "string" },
         "sumberRekening": { "type": "string", "enum": ["SMP", "SMA"] },
         "kodeBudget": { "type": "string" },
         "noDokumen": { "type": "string" },

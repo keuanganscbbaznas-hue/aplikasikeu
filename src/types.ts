@@ -103,6 +103,7 @@ export interface Submission {
   divisi?: 'Asrama' | 'Akademik/Kesiswaan' | 'Operasional';
   noRekeningPengaju?: string;
   namaRekening?: string;
+  namaBank?: string;
   sumberRekening?: 'SMP' | 'SMA';
   kodeBudget?: string;
   noDokumen?: string;

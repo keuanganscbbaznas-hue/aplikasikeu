@@ -646,6 +646,7 @@ export default function App() {
   const [editDivisi, setEditDivisi] = useState<'Asrama' | 'Akademik/Kesiswaan' | 'Operasional' | ''>('');
   const [editNoRekeningPengaju, setEditNoRekeningPengaju] = useState('');
   const [editNamaRekening, setEditNamaRekening] = useState('');
+  const [editNamaBank, setEditNamaBank] = useState('');
   const [editSumberRekening, setEditSumberRekening] = useState<'SMP' | 'SMA' | ''>('');
   const [editKodeBudget, setEditKodeBudget] = useState('');
   const [editNoDokumen, setEditNoDokumen] = useState('');
@@ -1160,6 +1161,7 @@ export default function App() {
     setEditDivisi(submission.divisi || '');
     setEditNoRekeningPengaju(submission.noRekeningPengaju || '');
     setEditNamaRekening(submission.namaRekening || '');
+    setEditNamaBank(submission.namaBank || '');
     setEditSumberRekening(submission.sumberRekening || '');
     setEditKodeBudget(submission.kodeBudget || '');
     setEditNoDokumen(submission.noDokumen || '');
@@ -1252,6 +1254,7 @@ export default function App() {
         divisi: editDivisi || null,
         noRekeningPengaju: editNoRekeningPengaju || null,
         namaRekening: editNamaRekening || null,
+        namaBank: editNamaBank || null,
         sumberRekening: editSumberRekening || null,
         kodeBudget: editKodeBudget || null,
         noDokumen: editNoDokumen || null,
@@ -2172,6 +2175,24 @@ export default function App() {
                         </Select>
                       </div>
                       <div className="grid gap-2 ml-1">
+                        <Label htmlFor="edit-namabank" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Nama Bank (HIMBARA) (Optional)</Label>
+                        <Select 
+                          value={editNamaBank} 
+                          onValueChange={(v: string) => setEditNamaBank(v)}
+                        >
+                          <SelectTrigger id="edit-namabank" className="h-10 rounded-xl border-slate-200 bg-white">
+                            <SelectValue placeholder="Pilih Bank" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value="Bank Syariah Indonesia (BSI)">Bank Syariah Indonesia (BSI)</SelectItem>
+                            <SelectItem value="Bank Rakyat Indonesia (BRI)">Bank Rakyat Indonesia (BRI)</SelectItem>
+                            <SelectItem value="Bank Mandiri">Bank Mandiri</SelectItem>
+                            <SelectItem value="Bank Negara Indonesia (BNI)">Bank Negara Indonesia (BNI)</SelectItem>
+                            <SelectItem value="Bank Tabungan Negara (BTN)">Bank Tabungan Negara (BTN)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2 ml-1">
                         <Label htmlFor="edit-norek" className="text-[9px] font-black uppercase tracking-wider text-slate-500">No Rekening Pengaju (Optional)</Label>
                         <Input 
                           id="edit-norek" 
@@ -2762,6 +2783,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
   const [newDivisi, setNewDivisi] = useState<'Asrama' | 'Akademik/Kesiswaan' | 'Operasional' | ''>('');
   const [newNoRekeningPengaju, setNewNoRekeningPengaju] = useState('');
   const [newNamaRekening, setNewNamaRekening] = useState('');
+  const [newNamaBank, setNewNamaBank] = useState('');
   const [newSumberRekening, setNewSumberRekening] = useState<'SMP' | 'SMA' | ''>('');
   const [newKodeBudget, setNewKodeBudget] = useState('');
   const [newNoDokumen, setNewNoDokumen] = useState('');
@@ -2862,6 +2884,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
           divisi: newDivisi || null,
           noRekeningPengaju: newNoRekeningPengaju || null,
           namaRekening: newNamaRekening || null,
+          namaBank: newNamaBank || null,
           sumberRekening: newSumberRekening || null,
           kodeBudget: newKodeBudget || null,
           noDokumen: newNoDokumen || null,
@@ -2895,6 +2918,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
       setNewDivisi('');
       setNewNoRekeningPengaju('');
       setNewNamaRekening('');
+      setNewNamaBank('');
       setNewSumberRekening('');
       setNewKodeBudget('');
       setNewNoDokumen('');
@@ -3015,13 +3039,28 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
                   </Select>
                 </div>
                 <div className="grid gap-2">
+                  <Label htmlFor="new-namabank" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">Nama Bank (HIMBARA) (Optional)</Label>
+                  <Select value={newNamaBank} onValueChange={(v: string) => setNewNamaBank(v)}>
+                    <SelectTrigger id="new-namabank" className="h-10 rounded-xl border-slate-200 bg-white animate-fade-in">
+                      <SelectValue placeholder="Pilih Bank" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="Bank Syariah Indonesia (BSI)">Bank Syariah Indonesia (BSI)</SelectItem>
+                      <SelectItem value="Bank Rakyat Indonesia (BRI)">Bank Rakyat Indonesia (BRI)</SelectItem>
+                      <SelectItem value="Bank Mandiri">Bank Mandiri</SelectItem>
+                      <SelectItem value="Bank Negara Indonesia (BNI)">Bank Negara Indonesia (BNI)</SelectItem>
+                      <SelectItem value="Bank Tabungan Negara (BTN)">Bank Tabungan Negara (BTN)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
                   <Label htmlFor="new-norek" className="text-[10px] font-black uppercase tracking-wider text-slate-500 ml-1">No Rekening Pengaju (Optional)</Label>
                   <Input 
                     id="new-norek" 
                     placeholder="Contoh: BSI 1234567890" 
                     value={newNoRekeningPengaju}
                     onChange={(e) => setNewNoRekeningPengaju(e.target.value)}
-                    className="h-10 rounded-xl border-slate-200"
+                    className="h-10 rounded-xl border-slate-200 animate-fade-in"
                   />
                 </div>
                 <div className="grid gap-2">
@@ -4274,8 +4313,14 @@ function SubmissionDetailView({
                      <p className="text-[10px] font-black text-slate-900 uppercase tracking-tighter mt-0.5">{submission.noDokumen || '-'}</p>
                    </div>
                 </div>
-                {(submission.noRekeningPengaju || submission.namaRekening) && (
-                  <div className="grid grid-cols-2 gap-4 pt-4 pb-2 border-b border-slate-50">
+                {(submission.noRekeningPengaju || submission.namaRekening || submission.namaBank) && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4 pb-2 border-b border-slate-50">
+                    {submission.namaBank && (
+                      <div>
+                        <Label className="text-[10px] text-slate-400 lowercase italic">Nama Bank</Label>
+                        <p className="text-xs font-black text-slate-900 uppercase tracking-tighter mt-0.5">{submission.namaBank}</p>
+                      </div>
+                    )}
                     {submission.noRekeningPengaju && (
                       <div>
                         <Label className="text-[10px] text-slate-400 lowercase italic">No Rekening Pengaju</Label>
@@ -4283,7 +4328,7 @@ function SubmissionDetailView({
                       </div>
                     )}
                     {submission.namaRekening && (
-                      <div>
+                      <div className="col-span-2 md:col-span-1">
                         <Label className="text-[10px] text-slate-400 lowercase italic">Nama Pemilik Rekening</Label>
                         <p className="text-xs font-black text-slate-900 mt-0.5">{submission.namaRekening}</p>
                       </div>

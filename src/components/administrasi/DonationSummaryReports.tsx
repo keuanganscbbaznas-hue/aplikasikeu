@@ -90,95 +90,272 @@ const INDONESIAN_MONTHS = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
-export const CASHFLOW_DATA = {
-  smp: {
-    saldoAwal: 37512796,
-    penerimaan: {
-      danaTerikat: [
-        { name: "Titipan Uang Saku BAZNAS Daerah", amount: 30300000 },
-        { name: "Dana PIP (Program Indonesia Pintar)", amount: 12370000 },
-        { name: "Donasi Laptop", amount: 62203750 }
-      ],
-      danaTidakTerikat: [
-        { name: "Donasi Tunjangan Profesi dan Sertifikasi (PPG) Tendik", amount: 20179780 },
-        { name: "Donasi Unit Usaha", amount: 3186000 },
-        { name: "Donasi Lainnya (Infaq Tendik dll)", amount: 29325069 }
-      ]
-    },
-    pengeluaran: {
-      nonProgram: [
-        { name: "Pengambilan Titipan Uang Saku BAZNAS Daerah", amount: 38950000 }
-      ],
-      program: {
-        standarProses: [
-          { name: "Penguatan Komunitas Belajar", amount: 4500000 },
-          { name: "Penguatan Pendidikan Karakter", amount: 6273596 },
-          { name: "Pengadaan Sarana Penunjang Kegiatan KBM", amount: 11352000 },
-          { name: "Penyaluran Donasi Laptop", amount: 62000000 }
+export const ALL_CASHFLOWS = {
+  2024: {
+    smp: {
+      saldoAwal: 31200500,
+      penerimaan: {
+        danaTerikat: [
+          { name: "Titipan Uang Saku BAZNAS Daerah", amount: 26500000 },
+          { name: "Dana PIP (Program Indonesia Pintar)", amount: 10450000 },
+          { name: "Donasi Laptop", amount: 48000000 }
         ],
-        pengembanganSDM: [
-          { name: "Kegiatan Pelaksanaan Pengembangan SDM", amount: 14651500 }
-        ],
-        standarSarana: [],
-        standarPengelolaan: [
-          { name: "Biaya Transportasi", amount: 27416000 }
-        ],
-        standarPembiayaan: [
-          { name: "Administrasi Bank", amount: 120000 }
+        danaTidakTerikat: [
+          { name: "Donasi Tunjangan Profesi dan Sertifikasi (PPG) Tendik", amount: 16500000 },
+          { name: "Donasi Unit Usaha", amount: 2800000 },
+          { name: "Donasi Lainnya (Infaq Tendik dll)", amount: 21450000 }
         ]
-      }
+      },
+      pengeluaran: {
+        nonProgram: [
+          { name: "Pengambilan Titipan Uang Saku BAZNAS Daerah", amount: 31000000 }
+        ],
+        program: {
+          standarProses: [
+            { name: "Penguatan Komunitas Belajar", amount: 3800000 },
+            { name: "Penguatan Pendidikan Karakter", amount: 5200000 },
+            { name: "Pengadaan Sarana Penunjang Kegiatan KBM", amount: 9500000 },
+            { name: "Penyaluran Donasi Laptop", amount: 46000000 }
+          ],
+          pengembanganSDM: [
+            { name: "Kegiatan Pelaksanaan Pengembangan SDM", amount: 11200000 }
+          ],
+          standarSarana: [],
+          standarPengelolaan: [
+            { name: "Biaya Transportasi", amount: 21500000 }
+          ],
+          standarPembiayaan: [
+            { name: "Administrasi Bank", amount: 110000 }
+          ]
+        }
+      },
+      saldoAkhir: 22790500
     },
-    saldoAkhir: 29814299
+    sma: {
+      saldoAwal: 82400100,
+      penerimaan: {
+        danaTerikat: [
+          { name: "BOSP SMA", amount: 46800000 },
+          { name: "Donasi Bencana Sumatra", amount: 8200000 }
+        ],
+        danaTidakTerikat: [
+          { name: "BPMU", amount: 31400000 },
+          { name: "Donasi Lainnya (PPG , Infaq dll)", amount: 5120000 }
+        ]
+      },
+      pengeluaran: {
+        nonProgram: [],
+        program: {
+          standarProses: [
+            { name: "Penguatan Komunitas Belajar", amount: 0 },
+            { name: "Penguatan Pendidikan Karakter", amount: 5400000 },
+            { name: "Penyediaan Sarpras Peserta didik", amount: 28600000 },
+            { name: "Pengadaan Sarana Penunjang Kegiatan KBM", amount: 4800000 }
+          ],
+          pengembanganSDM: [
+            { name: "Kegiatan Pelaksanaan Pengembangan SDM", amount: 3200000 }
+          ],
+          standarSarana: [
+            { name: "Penyediaan atau Pembuatan Media Pembelajaran", amount: 0 },
+            { name: "Pengembangan Sekolah Sehat, Sekolah Aman", amount: 9200000 },
+            { name: "Pemeliharaan Prasarana Lahan, Bangunan dan Ruang", amount: 6400000 },
+            { name: "Pemeliharaan Perlengkapan Daya & Jasa Sekolah", amount: 10400000 },
+            { name: "Pemeliharaan Kendaraan", amount: 11200000 }
+          ],
+          standarPengelolaan: [
+            { name: "Konsumsi Rapat Kedinasan dan Tamu Sekolah", amount: 10500000 },
+            { name: "Biaya Transportasi", amount: 11800000 }
+          ],
+          standarPembiayaan: [
+            { name: "Pembayaran Honor Tenaga Penunjang atau Pelaksana", amount: 1800000 },
+            { name: "Administrasi Bank", amount: 1300000 },
+            { name: "Pembayaran daya dan/atau jasa", amount: 10800000 },
+            { name: "Penyaluran Donasi Bencana Sumatra", amount: 8200000 }
+          ]
+        }
+      },
+      saldoAkhir: 63620100
+    }
   },
-  sma: {
-    saldoAwal: 97740056,
-    penerimaan: {
-      danaTerikat: [
-        { name: "BOSP SMA", amount: 54245400 },
-        { name: "Donasi Bencana Sumatra", amount: 9405000 }
-      ],
-      danaTidakTerikat: [
-        { name: "BPMU", amount: 36955000 },
-        { name: "Donasi Lainnya (PPG , Infaq dll)", amount: 6497166 }
-      ]
-    },
-    pengeluaran: {
-      nonProgram: [],
-      program: {
-        standarProses: [
-          { name: "Penguatan Komunitas Belajar", amount: 0 },
-          { name: "Penguatan Pendidikan Karakter", amount: 6811500 },
-          { name: "Penyediaan Sarpras Peserta didik", amount: 34294135 },
-          { name: "Pengadaan Sarana Penunjang Kegiatan KBM", amount: 5600000 }
+  2025: {
+    smp: {
+      saldoAwal: 37512796,
+      penerimaan: {
+        danaTerikat: [
+          { name: "Titipan Uang Saku BAZNAS Daerah", amount: 30300000 },
+          { name: "Dana PIP (Program Indonesia Pintar)", amount: 12370000 },
+          { name: "Donasi Laptop", amount: 62203750 }
         ],
-        pengembanganSDM: [
-          { name: "Kegiatan Pelaksanaan Pengembangan SDM", amount: 3750000 }
-        ],
-        standarSarana: [
-          { name: "Penyediaan atau Pembuatan Media Pembelajaran", amount: 0 },
-          { name: "Pengembangan Sekolah Sehat, Sekolah Aman", amount: 11169896 },
-          { name: "Pemeliharaan Prasarana Lahan, Bangunan dan Ruang", amount: 7660000 },
-          { name: "Pemeliharaan Perlengkapan Daya & Jasa Sekolah", amount: 12148965 },
-          { name: "Pemeliharaan Kendaraan", amount: 14479500 }
-        ],
-        standarPengelolaan: [
-          { name: "Konsumsi Rapat Kedinasan dan Tamu Sekolah", amount: 12550500 },
-          { name: "Biaya Transportasi", amount: 14743100 }
-        ],
-        standarPembiayaan: [
-          { name: "Pembayaran Honor Tenaga Penunjang atau Pelaksana", amount: 2025000 },
-          { name: "Administrasi Bank", amount: 1522000 },
-          { name: "Pembayaran daya dan/atau jasa", amount: 12598500 },
-          { name: "Penyaluran Donasi Bencana Sumatra", amount: 9405000 }
+        danaTidakTerikat: [
+          { name: "Donasi Tunjangan Profesi dan Sertifikasi (PPG) Tendik", amount: 20179780 },
+          { name: "Donasi Unit Usaha", amount: 3186000 },
+          { name: "Donasi Lainnya (Infaq Tendik dll)", amount: 29325069 }
         ]
-      }
+      },
+      pengeluaran: {
+        nonProgram: [
+          { name: "Pengambilan Titipan Uang Saku BAZNAS Daerah", amount: 38950000 }
+        ],
+        program: {
+          standarProses: [
+            { name: "Penguatan Komunitas Belajar", amount: 4500000 },
+            { name: "Penguatan Pendidikan Karakter", amount: 6273596 },
+            { name: "Pengadaan Sarana Penunjang Kegiatan KBM", amount: 11352000 },
+            { name: "Penyaluran Donasi Laptop", amount: 62000000 }
+          ],
+          pengembanganSDM: [
+            { name: "Kegiatan Pelaksanaan Pengembangan SDM", amount: 14651500 }
+          ],
+          standarSarana: [],
+          standarPengelolaan: [
+            { name: "Biaya Transportasi", amount: 27416000 }
+          ],
+          standarPembiayaan: [
+            { name: "Administrasi Bank", amount: 120000 }
+          ]
+        }
+      },
+      saldoAkhir: 29814299
     },
-    saldoAkhir: 56084526
+    sma: {
+      saldoAwal: 97740056,
+      penerimaan: {
+        danaTerikat: [
+          { name: "BOSP SMA", amount: 54245400 },
+          { name: "Donasi Bencana Sumatra", amount: 9405000 }
+        ],
+        danaTidakTerikat: [
+          { name: "BPMU", amount: 36955000 },
+          { name: "Donasi Lainnya (PPG , Infaq dll)", amount: 6497166 }
+        ]
+      },
+      pengeluaran: {
+        nonProgram: [],
+        program: {
+          standarProses: [
+            { name: "Penguatan Komunitas Belajar", amount: 0 },
+            { name: "Penguatan Pendidikan Karakter", amount: 6811500 },
+            { name: "Penyediaan Sarpras Peserta didik", amount: 34294135 },
+            { name: "Pengadaan Sarana Penunjang Kegiatan KBM", amount: 5600000 }
+          ],
+          pengembanganSDM: [
+            { name: "Kegiatan Pelaksanaan Pengembangan SDM", amount: 3750000 }
+          ],
+          standarSarana: [
+            { name: "Penyediaan atau Pembuatan Media Pembelajaran", amount: 0 },
+            { name: "Pengembangan Sekolah Sehat, Sekolah Aman", amount: 11169896 },
+            { name: "Pemeliharaan Prasarana Lahan, Bangunan dan Ruang", amount: 7660000 },
+            { name: "Pemeliharaan Perlengkapan Daya & Jasa Sekolah", amount: 12148965 },
+            { name: "Pemeliharaan Kendaraan", amount: 14479500 }
+          ],
+          standarPengelolaan: [
+            { name: "Konsumsi Rapat Kedinasan dan Tamu Sekolah", amount: 12550500 },
+            { name: "Biaya Transportasi", amount: 14743100 }
+          ],
+          standarPembiayaan: [
+            { name: "Pembayaran Honor Tenaga Penunjang atau Pelaksana", amount: 2025000 },
+            { name: "Administrasi Bank", amount: 1522000 },
+            { name: "Pembayaran daya dan/atau jasa", amount: 12598500 },
+            { name: "Penyaluran Donasi Bencana Sumatra", amount: 9405000 }
+          ]
+        }
+      },
+      saldoAkhir: 56084526
+    }
+  },
+  2026: {
+    smp: {
+      saldoAwal: 29814299,
+      penerimaan: {
+        danaTerikat: [
+          { name: "Titipan Uang Saku BAZNAS Daerah", amount: 35000004 },
+          { name: "Dana PIP (Program Indonesia Pintar)", amount: 15000000 },
+          { name: "Donasi Laptop", amount: 75000000 }
+        ],
+        danaTidakTerikat: [
+          { name: "Donasi Tunjangan Profesi dan Sertifikasi (PPG) Tendik", amount: 25000000 },
+          { name: "Donasi Unit Usaha", amount: 4500000 },
+          { name: "Donasi Lainnya (Infaq Tendik dll)", amount: 35000000 }
+        ]
+      },
+      pengeluaran: {
+        nonProgram: [
+          { name: "Pengambilan Titipan Uang Saku BAZNAS Daerah", amount: 42000000 }
+        ],
+        program: {
+          standarProses: [
+            { name: "Penguatan Komunitas Belajar", amount: 5000000 },
+            { name: "Penguatan Pendidikan Karakter", amount: 7500000 },
+            { name: "Pengadaan Sarana Penunjang Kegiatan KBM", amount: 13000000 },
+            { name: "Penyaluran Donasi Laptop", amount: 72000000 }
+          ],
+          pengembanganSDM: [
+            { name: "Kegiatan Pelaksanaan Pengembangan SDM", amount: 18000000 }
+          ],
+          standarSarana: [],
+          standarPengelolaan: [
+            { name: "Biaya Transportasi", amount: 32000000 }
+          ],
+          standarPembiayaan: [
+            { name: "Administrasi Bank", amount: 150000 }
+          ]
+        }
+      },
+      saldoAkhir: 29164299
+    },
+    sma: {
+      saldoAwal: 56084526,
+      penerimaan: {
+        danaTerikat: [
+          { name: "BOSP SMA", amount: 62000000 },
+          { name: "Donasi Bencana Sumatra", amount: 11000000 }
+        ],
+        danaTidakTerikat: [
+          { name: "BPMU", amount: 42000000 },
+          { name: "Donasi Lainnya (PPG , Infaq dll)", amount: 8500000 }
+        ]
+      },
+      pengeluaran: {
+        nonProgram: [],
+        program: {
+          standarProses: [
+            { name: "Penguatan Komunitas Belajar", amount: 0 },
+            { name: "Penguatan Pendidikan Karakter", amount: 8200000 },
+            { name: "Penyediaan Sarpras Peserta didik", amount: 38000000 },
+            { name: "Pengadaan Sarana Penunjang Kegiatan KBM", amount: 6500000 }
+          ],
+          pengembanganSDM: [
+            { name: "Kegiatan Pelaksanaan Pengembangan SDM", amount: 4500000 }
+          ],
+          standarSarana: [
+            { name: "Penyediaan atau Pembuatan Media Pembelajaran", amount: 0 },
+            { name: "Pengembangan Sekolah Sehat, Sekolah Aman", amount: 13000000 },
+            { name: "Pemeliharaan Prasarana Lahan, Bangunan dan Ruang", amount: 9000000 },
+            { name: "Pemeliharaan Perlengkapan Daya & Jasa Sekolah", amount: 14500000 },
+            { name: "Pemeliharaan Kendaraan", amount: 16500000 }
+          ],
+          standarPengelolaan: [
+            { name: "Konsumsi Rapat Kedinasan dan Tamu Sekolah", amount: 15500000 },
+            { name: "Biaya Transportasi", amount: 18200000 }
+          ],
+          standarPembiayaan: [
+            { name: "Pembayaran Honor Tenaga Penunjang atau Pelaksana", amount: 2500000 },
+            { name: "Administrasi Bank", amount: 1800000 },
+            { name: "Pembayaran daya dan/atau jasa", amount: 14500000 },
+            { name: "Penyaluran Donasi Bencana Sumatra", amount: 11000000 }
+          ]
+        }
+      },
+      saldoAkhir: 51184526
+    }
   }
 };
 
-export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | 'sma'; setAccount: (acc: 'smp' | 'sma') => void }) => {
-  const data = CASHFLOW_DATA[account];
+export const CASHFLOW_DATA = ALL_CASHFLOWS[2025];
+
+export const CashFlowReportView = ({ account, setAccount, selectedYear }: { account: 'smp' | 'sma'; setAccount: (acc: 'smp' | 'sma') => void; selectedYear: number }) => {
+  const yearData = ALL_CASHFLOWS[selectedYear] || ALL_CASHFLOWS[2025];
+  const data = yearData[account];
 
   const sumDanaTerikat = (data.penerimaan.danaTerikat as any[]).reduce((acc: number, current: any) => acc + current.amount, 0);
   const sumDanaTidakTerikat = (data.penerimaan.danaTidakTerikat as any[]).reduce((acc: number, current: any) => acc + current.amount, 0);
@@ -470,7 +647,7 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
         heightLeft -= pdfHeight;
       }
 
-      pdf.save(`Laporan_Arus_Kas_Donasi_${account.toUpperCase()}_2025.pdf`);
+      pdf.save(`Laporan_Arus_Kas_Donasi_${account.toUpperCase()}_${selectedYear}.pdf`);
       toast.success("Laporan PDF berhasil diunduh!", { id: toastId });
     } catch (e: any) {
       console.error(e);
@@ -485,7 +662,7 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
   };
 
   const handleCopy = () => {
-    const text = `LAPORAN ARUS KAS DONASI ${account.toUpperCase()} SEKOLAH CENDEKIA BAZNAS 2025\n\n` +
+    const text = `LAPORAN ARUS KAS DONASI ${account.toUpperCase()} SEKOLAH CENDEKIA BAZNAS ${selectedYear}\n\n` +
       `● Saldo Awal: ${formatRupiah(data.saldoAwal)}\n` +
       `● Total Penerimaan: ${formatRupiah(totalPenerimaan)}\n` +
       `● Total Pengeluaran: ${formatRupiah(totalPengeluaran)}\n` +
@@ -511,7 +688,7 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
                 Sistem Laporan Keuangan SCB
               </span>
               <span className="text-[9px] font-black uppercase tracking-widest text-indigo-300 bg-indigo-500/10 px-2.5 py-1 rounded-full">
-                Tahun Buku 2025
+                Tahun Buku {selectedYear}
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight mt-2 text-white">
@@ -706,7 +883,7 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
 
             <div className="p-2.5 bg-blue-50 border border-blue-100 rounded-xl flex flex-col">
               <span className="text-[8px] font-black uppercase text-blue-750">Penyimpanan / Deposit</span>
-              <p className="text-[9px] font-extrabold text-slate-705 mt-0.5">Kas Akhir 31 Des 2025</p>
+              <p className="text-[9px] font-extrabold text-slate-705 mt-0.5">Kas Akhir 31 Des {selectedYear}</p>
               <h5 className="font-black text-xs text-blue-800 mt-1">{formatRupiah(data.saldoAkhir)}</h5>
             </div>
           </div>
@@ -812,7 +989,7 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
             SEKOLAH CENDEKIA BAZNAS
           </h3>
           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-            PERIODE 1 JANUARI - 31 DESEMBER 2025
+            PERIODE 1 JANUARI - 31 DESEMBER {selectedYear}
           </p>
         </div>
 
@@ -829,8 +1006,8 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
             <tbody className="text-xs font-semibold text-slate-750">
               
               {/* Row: Saldo Awal */}
-              <tr className="bg-slate-50 border-b border-slate-100">
-                <td className="py-3.5 px-5 font-black text-slate-950 uppercase tracking-wider">SALDO AWAL JANUARI 2025</td>
+              <tr className="bg-slate-50 border-b border-slate-100 font-bold">
+                <td className="py-3.5 px-5 font-black text-slate-950 uppercase tracking-wider">SALDO AWAL JANUARI {selectedYear}</td>
                 <td className="py-3.5 px-5"></td>
                 <td className="py-3.5 px-5 text-right font-black text-slate-950">{formatRupiah(data.saldoAwal)}</td>
               </tr>
@@ -1060,7 +1237,7 @@ export const CashFlowReportView = ({ account, setAccount }: { account: 'smp' | '
 
               {/* Row: Saldo Akhir */}
               <tr className="bg-indigo-900 text-white border-b border-indigo-950 font-black">
-                <td className="py-3.5 px-5 text-slate-105 uppercase tracking-wider text-[11px]">SALDO PER 31 DESEMBER 2025 (KAS AKTIF)</td>
+                <td className="py-3.5 px-5 text-slate-105 uppercase tracking-wider text-[11px]">SALDO PER 31 DESEMBER {selectedYear} (KAS AKTIF)</td>
                 <td className="py-3.5 px-5"></td>
                 <td className="py-3.5 px-5 text-right text-emerald-400 text-xs tracking-tight">{formatRupiah(data.saldoAkhir)}</td>
               </tr>
@@ -1281,9 +1458,9 @@ export const DonationSummaryReports = () => {
     return `${date.getFullYear()}-${m}`;
   }))).sort().reverse() as string[]; // Decending
 
-  const uniqueYears = Array.from(new Set(donations.map(d => {
+  const uniqueYears = Array.from(new Set([2024, 2025, 2026, ...donations.map(d => {
     return getDonationDate(d).getFullYear();
-  }))).sort().reverse() as number[];
+  })])).sort().reverse() as number[];
 
   // Active list based on period selection
   const monthlyDonations = donations.filter(d => {
@@ -1449,67 +1626,101 @@ export const DonationSummaryReports = () => {
 
         {/* Dynamic List Selection Sidebar */}
         {reportType === 'cashflow' ? (
-          <Card className="rounded-[2rem] border-slate-100 shadow-sm overflow-hidden bg-white">
-            <CardHeader className="bg-slate-50/50 p-4 border-b border-light/10">
-              <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                <Coins size={14} className="text-slate-500" />
-                Pilih Rekening
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-2 space-y-2">
-              <button
-                onClick={() => setCashflowAccount('smp')}
-                className={`w-full flex flex-col p-4 rounded-2xl transition-all text-left border ${
-                  cashflowAccount === 'smp'
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-md shadow-indigo-900/20'
-                    : 'bg-white hover:bg-slate-50 hover:text-slate-900 text-slate-650 border-slate-100'
-                }`}
-              >
-                <div className="flex items-center gap-2 w-full">
-                  <div className={`p-1.5 rounded-lg ${cashflowAccount === 'smp' ? 'bg-white/10 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
-                    <Building2 size={13} />
-                  </div>
-                  <span className="text-xs font-black uppercase tracking-tight">Donasi SMP</span>
-                </div>
-                <span className={`text-[9px] font-bold ${cashflowAccount === 'smp' ? 'text-slate-300' : 'text-slate-400'} mt-2`}>
-                  No Rek: 1032913357
-                </span>
-                <div className={`h-[1px] w-full bg-current opacity-10 my-2`} />
-                <div className="flex items-center justify-between w-full mt-1">
-                  <span className="text-[8px] uppercase tracking-wider opacity-60">Sisa Saldo</span>
-                  <span className={`text-xs font-extrabold ${cashflowAccount === 'smp' ? 'text-emerald-300' : 'text-emerald-600'}`}>
-                    Rp {CASHFLOW_DATA.smp.saldoAkhir.toLocaleString('id-ID')}
-                  </span>
-                </div>
-              </button>
+          <div className="space-y-4">
+            {/* Year Selector Card */}
+            <Card className="rounded-[2rem] border-slate-100 shadow-sm overflow-hidden bg-white">
+              <CardHeader className="bg-slate-50/50 p-4 border-b border-light/10">
+                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                  <Calendar size={14} className="text-slate-500" />
+                  Pilih Tahun Arus Kas
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-2 gap-1 flex flex-col bg-white">
+                {[2024, 2025, 2026].map(yr => {
+                  const isActive = yr === selectedYear;
+                  return (
+                    <button
+                      key={yr}
+                      onClick={() => setSelectedYear(yr)}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl transition-all text-left ${
+                        isActive 
+                          ? 'bg-slate-900 text-white shadow-md shadow-slate-900/10' 
+                          : 'bg-white hover:bg-slate-50 text-slate-650 hover:text-slate-900'
+                      }`}
+                    >
+                      <span className="text-xs font-black tracking-tight">Tahun Buku {yr}</span>
+                      <Badge variant={isActive ? "secondary" : "outline"} className={`text-[9px] font-black uppercase ${isActive ? 'bg-emerald-500 border-none text-white' : ''}`}>
+                        {isActive ? "Aktif" : "Pilih"}
+                      </Badge>
+                    </button>
+                  );
+                })}
+              </CardContent>
+            </Card>
 
-              <button
-                onClick={() => setCashflowAccount('sma')}
-                className={`w-full flex flex-col p-4 rounded-2xl transition-all text-left border ${
-                  cashflowAccount === 'sma'
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-md shadow-indigo-900/20'
-                    : 'bg-white hover:bg-slate-50 hover:text-slate-900 text-slate-650 border-slate-100'
-                }`}
-              >
-                <div className="flex items-center gap-2 w-full">
-                  <div className={`p-1.5 rounded-lg ${cashflowAccount === 'sma' ? 'bg-white/10 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
-                    <Building2 size={13} />
+            {/* Account Selector Card */}
+            <Card className="rounded-[2rem] border-slate-100 shadow-sm overflow-hidden bg-white">
+              <CardHeader className="bg-slate-50/50 p-4 border-b border-light/10">
+                <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                  <Coins size={14} className="text-slate-500" />
+                  Pilih Rekening
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-2 space-y-2 bg-white">
+                <button
+                  onClick={() => setCashflowAccount('smp')}
+                  className={`w-full flex flex-col p-4 rounded-2xl transition-all text-left border ${
+                    cashflowAccount === 'smp'
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-md shadow-indigo-900/20'
+                      : 'bg-white hover:bg-slate-50 hover:text-slate-900 text-slate-650 border-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <div className={`p-1.5 rounded-lg ${cashflowAccount === 'smp' ? 'bg-white/10 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
+                      <Building2 size={13} />
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-tight">Donasi SMP</span>
                   </div>
-                  <span className="text-xs font-black uppercase tracking-tight">Donasi SMA</span>
-                </div>
-                <span className={`text-[9px] font-bold ${cashflowAccount === 'sma' ? 'text-slate-300' : 'text-slate-400'} mt-2`}>
-                  No Rek: 1054796605
-                </span>
-                <div className={`h-[1px] w-full bg-current opacity-10 my-2`} />
-                <div className="flex items-center justify-between w-full mt-1">
-                  <span className="text-[8px] uppercase tracking-wider opacity-60">Sisa Saldo</span>
-                  <span className={`text-xs font-extrabold ${cashflowAccount === 'sma' ? 'text-emerald-300' : 'text-emerald-600'}`}>
-                    Rp {CASHFLOW_DATA.sma.saldoAkhir.toLocaleString('id-ID')}
+                  <span className={`text-[9px] font-bold ${cashflowAccount === 'smp' ? 'text-slate-300' : 'text-slate-400'} mt-2`}>
+                    No Rek: 1032913357
                   </span>
-                </div>
-              </button>
-            </CardContent>
-          </Card>
+                  <div className={`h-[1px] w-full bg-current opacity-10 my-2`} />
+                  <div className="flex items-center justify-between w-full mt-1">
+                    <span className="text-[8px] uppercase tracking-wider opacity-60">Sisa Saldo</span>
+                    <span className={`text-xs font-extrabold ${cashflowAccount === 'smp' ? 'text-emerald-300' : 'text-emerald-600'}`}>
+                      Rp {(ALL_CASHFLOWS[selectedYear] || ALL_CASHFLOWS[2025]).smp.saldoAkhir.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setCashflowAccount('sma')}
+                  className={`w-full flex flex-col p-4 rounded-2xl transition-all text-left border ${
+                    cashflowAccount === 'sma'
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-md shadow-indigo-900/20'
+                      : 'bg-white hover:bg-slate-50 hover:text-slate-900 text-slate-650 border-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 w-full">
+                    <div className={`p-1.5 rounded-lg ${cashflowAccount === 'sma' ? 'bg-white/10 text-white' : 'bg-emerald-50 text-emerald-600'}`}>
+                      <Building2 size={13} />
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-tight">Donasi SMA</span>
+                  </div>
+                  <span className={`text-[9px] font-bold ${cashflowAccount === 'sma' ? 'text-slate-300' : 'text-slate-400'} mt-2`}>
+                    No Rek: 1054796605
+                  </span>
+                  <div className={`h-[1px] w-full bg-current opacity-10 my-2`} />
+                  <div className="flex items-center justify-between w-full mt-1">
+                    <span className="text-[8px] uppercase tracking-wider opacity-60">Sisa Saldo</span>
+                    <span className={`text-xs font-extrabold ${cashflowAccount === 'sma' ? 'text-emerald-300' : 'text-emerald-600'}`}>
+                      Rp {(ALL_CASHFLOWS[selectedYear] || ALL_CASHFLOWS[2025]).sma.saldoAkhir.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </button>
+              </CardContent>
+            </Card>
+          </div>
         ) : (
           <Card className="rounded-[2rem] border-slate-100 shadow-sm overflow-hidden bg-white">
             <CardHeader className="bg-slate-50/50 p-4 border-b border-light/10">
@@ -1600,7 +1811,7 @@ export const DonationSummaryReports = () => {
       {/* 2. Right Reports Dashboard Area */}
       <div className="lg:col-span-3 space-y-6">
         {reportType === 'cashflow' ? (
-          <CashFlowReportView account={cashflowAccount} setAccount={setCashflowAccount} />
+          <CashFlowReportView account={cashflowAccount} setAccount={setCashflowAccount} selectedYear={selectedYear} />
         ) : (
           <>
         {/* Summary Metrics Cards */}
