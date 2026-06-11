@@ -826,3 +826,286 @@ export const DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026: BaznasRincianItem[] = [
     ]
   }
 ];
+
+export const DEFAULT_BAZNAS_RINCIAN_SMA_JAN_2026: BaznasRincianItem[] = [
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'K1.1.7',
+    noDoc: 1,
+    noBukti: 'B.07.220126',
+    tanggalBudget: '22-Jan-26',
+    keterangan: 'Klaim Kesehatan an Ust Siswadi',
+    details: [
+      { noBuktiDetail: 'a', keteranganDetail: 'Pengobatan', qty: 1, hargaSatuan: 1316460 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O1.1.11',
+    noDoc: 2,
+    noBukti: 'B.06.160126',
+    tanggalBudget: '16-Jan-26',
+    keterangan: 'Klaim Kesehatan an Ust Roni',
+    details: [
+      { noBuktiDetail: 'a', keteranganDetail: 'Pembelian Obat & Berobat', qty: 1, hargaSatuan: 3762601 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O1.1.11',
+    noDoc: 3,
+    noBukti: 'B.09.220126',
+    tanggalBudget: '22-Jan-26',
+    keterangan: 'Klaim Kesehatan an Ustzh Suci',
+    details: [
+      { noBuktiDetail: '1', keteranganDetail: 'Perlengkapan', qty: 1, hargaSatuan: 624897 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.5',
+    noDoc: 4,
+    noBukti: 'KK.05.220126',
+    tanggalBudget: '22-Jan-26',
+    keterangan: 'Lampu 10 Watt',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '21-Jan-26', keteranganDetail: 'Noci - Lampu 10W Led', qty: 1, hargaSatuan: 518000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.5',
+    noDoc: 5,
+    noBukti: 'KK.01.300126',
+    tanggalBudget: '30-Jan-26',
+    keterangan: 'Busi dan Oli Mesin R',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '30-Dec-25', keteranganDetail: 'Besi 2t Dll', qty: 1, hargaSatuan: 245000 },
+      { noBuktiDetail: '2', keteranganDetail: 'SPBU - Bensin Pertalite', qty: 1, hargaSatuan: 36000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.5',
+    noDoc: 6,
+    noBukti: 'KK.02.300126',
+    tanggalBudget: '30-Jan-26',
+    keterangan: 'BBM Mobil OPS',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '15-Jan-26', keteranganDetail: 'SPBU - Bensin Pertalite', qty: 1, hargaSatuan: 300000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.5',
+    noDoc: 7,
+    noBukti: 'KK.03.300126',
+    tanggalBudget: '30-Jan-26',
+    keterangan: 'BBM Mobil APV',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '13-Jan-26', keteranganDetail: 'SPBU - Bensin Pertalite', qty: 1, hargaSatuan: 400000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.5',
+    noDoc: 8,
+    noBukti: 'KK.04.300126',
+    tanggalBudget: '30-Jan-26',
+    keterangan: 'BBM Mobil APV Bandara',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '17-Jan-26', keteranganDetail: 'SPBU - Bensin Pertalite', qty: 1, hargaSatuan: 400000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.5',
+    noDoc: 9,
+    noBukti: 'KK.06.300126',
+    tanggalBudget: '30-Jan-26',
+    keterangan: 'BBM Mobil OPS APV',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '10-Jan-26', keteranganDetail: 'SPBU - Bensin Pertalite', qty: 1, hargaSatuan: 200000 },
+      { noBuktiDetail: '2', tanggalDetail: '6-Jan-26', keteranganDetail: 'SPBU - Bensin Bio Solar', qty: 1, hargaSatuan: 300000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.5',
+    noDoc: 10,
+    noBukti: 'KK.07.300126',
+    tanggalBudget: '30-Jan-26',
+    keterangan: 'BBM Mobil OP Dramaga',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '10-Jan-26', keteranganDetail: 'SPBU - Bensin Bio Solar', qty: 1, hargaSatuan: 200000 },
+      { noBuktiDetail: '2', tanggalDetail: '10-Jan-26', keteranganDetail: 'SPBU - Bensin Pertalite', qty: 1, hargaSatuan: 300000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.5',
+    noDoc: 11,
+    noBukti: 'KK.08.300126',
+    tanggalBudget: '30-Jan-26',
+    keterangan: 'BBM Mobil ELF',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '9-Jan-26', keteranganDetail: 'SPBU - Bensin Bio Solar', qty: 1, hargaSatuan: 200000 },
+      { noBuktiDetail: '2', tanggalDetail: '8-Jan-26', keteranganDetail: 'SPBU - Bensin Bio Solar', qty: 1, hargaSatuan: 300000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.5',
+    noDoc: 12,
+    noBukti: 'KK.09.300126',
+    tanggalBudget: '30-Jan-26',
+    keterangan: 'BBM dan Tol BAZNAS',
+    details: [
+      { noBuktiDetail: 'a', keteranganDetail: 'Transportasi', qty: 1, hargaSatuan: 508000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.7',
+    noDoc: 13,
+    noBukti: 'B.06.220126',
+    tanggalBudget: '22-Jan-26',
+    keterangan: 'Tunj Komunikasi Adiwiyata Januari 2026',
+    details: [
+      { noBuktiDetail: '1', keteranganDetail: 'Bacth Transfer BSI', qty: 1, hargaSatuan: 995000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.12',
+    noDoc: 14,
+    noBukti: 'B.08.221026',
+    tanggalBudget: '22-Jan-26',
+    keterangan: 'Pulsa HP Admin Januari 2026',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '19-Jan-02', keteranganDetail: 'Transfer SeaBank Kartu Halo', qty: 1, hargaSatuan: 202300 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.13',
+    noDoc: 15,
+    noBukti: 'B.03.090126',
+    tanggalBudget: '9-Jan-26',
+    keterangan: 'PDAM Desember 2025',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '9-Jan-26', keteranganDetail: 'Transfer BSI a.n Sekolah Cendikia Baznas', qty: 1, hargaSatuan: 356950 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.14',
+    noDoc: 16,
+    noBukti: 'B.04.090126',
+    tanggalBudget: '9-Jan-26',
+    keterangan: 'Megavision Januari 26',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '9-Jan-26', keteranganDetail: 'Transfer BSI a.n SMP Cendekia BAZNAS', qty: 1, hargaSatuan: 438450 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.14',
+    noDoc: 17,
+    noBukti: 'B.05.160126',
+    tanggalBudget: '16-Jan-26',
+    keterangan: 'Indihome Januari 2026',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '16-Jan-26', keteranganDetail: 'Transfer BSI a.n Smp Cendekia Baznas', qty: 1, hargaSatuan: 1040350 },
+      { noBuktiDetail: '2', tanggalDetail: '16-Jan-26', keteranganDetail: 'Transfer BSI a.n Smp Cendekia Baznas', qty: 1, hargaSatuan: 640750 },
+      { noBuktiDetail: '3', tanggalDetail: '16-Jan-26', keteranganDetail: 'Transfer BSI a.n Smp Cendekia Baznas', qty: 1, hargaSatuan: 578590 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.15',
+    noDoc: 18,
+    noBukti: 'KK.04.220126',
+    tanggalBudget: '22-Jan-26',
+    keterangan: 'Gembok Besar Kunci',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '19-Jan-26', keteranganDetail: 'TB. Arinda Jaya - Gembok 24', qty: 1, hargaSatuan: 386000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.15',
+    noDoc: 19,
+    noBukti: 'KK.10.300126',
+    tanggalBudget: '30-Jan-26',
+    keterangan: 'Handle Pintu Klinik',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '20-Jan-26', keteranganDetail: "TB. Arinda Jaya - Batang Pipa 2'' Dll", qty: 1, hargaSatuan: 270000 },
+      { noBuktiDetail: '2', tanggalDetail: '11-Jan-26', keteranganDetail: 'TB. Arinda Jaya - Handle Pintu', qty: 1, hargaSatuan: 240000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O2.1.17',
+    noDoc: 20,
+    noBukti: 'B.01.300126',
+    tanggalBudget: '30-Jan-26',
+    keterangan: 'Iuran Sampah Januari 2026',
+    details: [
+      { noBuktiDetail: '1', keteranganDetail: 'DKP Galuga - Jasa Angkutan Sampah', qty: 1, hargaSatuan: 250000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Januari',
+    year: '2026',
+    kodeBudget: 'O3.1.3',
+    noDoc: 21,
+    noBukti: 'KK.05.300126',
+    tanggalBudget: '30-Jan-26',
+    keterangan: 'Sok Drat Kran',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '16-Jan-26', keteranganDetail: 'TB. Arinda Jaya - Keramik Dll', qty: 1, hargaSatuan: 483000 }
+    ]
+  }
+];

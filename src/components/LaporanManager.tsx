@@ -8,12 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { FileText, Plus, Search, ExternalLink, Download, Upload, Trash2, Edit2, FileDown, Calendar, Printer, RefreshCw } from 'lucide-react';
+import { FileText, Plus, Search, ExternalLink, Download, Upload, Trash2, Edit2, FileDown, Calendar, Printer, RefreshCw, BarChart2, Settings } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
-import { DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026, BaznasRincianItem, RincianDetailItem } from './baznasDefaultRincian';
+import { DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026, DEFAULT_BAZNAS_RINCIAN_SMA_JAN_2026, BaznasRincianItem, RincianDetailItem } from './baznasDefaultRincian';
 
 const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
@@ -222,6 +223,10 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   } | null>(null);
 
   const [baznasAccount, setBaznasAccount] = useState<'SMP' | 'SMA'>('SMP');
+  const [showBaznasChart, setShowBaznasChart] = useState(true);
+  const [isRincianFormOpen, setIsRincianFormOpen] = useState(false);
+  const [isChartDialogOpen, setIsChartDialogOpen] = useState(false);
+  const [isBudgetDialogOpen, setIsBudgetDialogOpen] = useState(false);
   const currentTemplates = baznasAccount === 'SMP' ? BAZNAS_SMP_BUDGET_TEMPLATES : BAZNAS_SMA_BUDGET_TEMPLATES;
   const [selectedBaznasCode, setSelectedBaznasCode] = useState<string>('');
   const [baznasFormBudget, setBaznasFormBudget] = useState<string>('');
@@ -334,8 +339,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
          r.account.toLowerCase() === baznasAccount.toLowerCase()
   );
 
-  const rincianItems: BaznasRincianItem[] = (currentDbRincian.length === 0 && baznasMonth === 'Januari' && baznasYear === '2026' && baznasAccount === 'SMP')
-    ? DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026
+  const rincianItems: BaznasRincianItem[] = (currentDbRincian.length === 0 && baznasMonth === 'Januari' && baznasYear === '2026')
+    ? (baznasAccount === 'SMP' ? DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026 : DEFAULT_BAZNAS_RINCIAN_SMA_JAN_2026)
     : currentDbRincian;
 
   const sortedRincianItems = [...rincianItems].sort((a, b) => (a.noDoc || 0) - (b.noDoc || 0));
@@ -349,11 +354,12 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
 
   const ensureRincianCollection = async () => {
     const currentDbItems = dbRincianList.filter(
-      r => r.month === 'Januari' && r.year === '2026' && r.account === 'SMP'
+      r => r.month === 'Januari' && r.year === '2026' && r.account === baznasAccount
     );
     if (currentDbItems.length === 0) {
-      toast.info("Menginisialisasi data rincian default ke database...");
-      for (const item of DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026) {
+      const defaultToLoad = baznasAccount === 'SMP' ? DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026 : DEFAULT_BAZNAS_RINCIAN_SMA_JAN_2026;
+      toast.info(`Menginisialisasi data rincian default ${baznasAccount} ke database...`);
+      for (const item of defaultToLoad) {
         await addDoc(collection(db, 'laporan_baznas_rincian_docs'), {
           ...item,
           userUid,
@@ -381,7 +387,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
       }));
 
       // If modifying a static entry, populate the DB first
-      if (editingRincianId === 'default_static' || (!editingRincianId && baznasMonth === 'Januari' && baznasYear === '2026' && baznasAccount === 'SMP')) {
+      if (editingRincianId === 'default_static' || (!editingRincianId && baznasMonth === 'Januari' && baznasYear === '2026' && (baznasAccount === 'SMP' || baznasAccount === 'SMA'))) {
         await ensureRincianCollection();
       }
 
@@ -432,6 +438,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
       }
       
       resetRincianForm();
+      setIsRincianFormOpen(false);
     } catch (err) {
       console.error(err);
       toast.error("Gagal menyimpan rincian");
@@ -441,7 +448,9 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   };
 
   const handleLoadDefaults = async () => {
-    if (!window.confirm("Apakah Anda yakin ingin me-reset data rincian untuk periode ini kembali ke Data Default (61 transaksi)? Data custom untuk periode ini akan terhapus.")) return;
+    const isSMP = baznasAccount === 'SMP';
+    const numItems = isSMP ? 61 : 21;
+    if (!window.confirm(`Apakah Anda yakin ingin me-reset data rincian untuk periode ini kembali ke Data Default (${numItems} transaksi)? Data custom untuk periode ini akan terhapus.`)) return;
     
     setIsResettingDefault(true);
     try {
@@ -456,8 +465,10 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
         await deleteDoc(doc(db, 'laporan_baznas_rincian_docs', item.id));
       }
 
+      const defaultToLoad = isSMP ? DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026 : DEFAULT_BAZNAS_RINCIAN_SMA_JAN_2026;
+
       toast.info("Mengunggah data rincian default...");
-      for (const item of DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026) {
+      for (const item of defaultToLoad) {
         await addDoc(collection(db, 'laporan_baznas_rincian_docs'), {
           ...item,
           account: baznasAccount,
@@ -468,7 +479,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
         });
       }
       
-      toast.success("Berhasil memuat 61 transaksi default!");
+      toast.success(`Berhasil memuat ${numItems} transaksi default!`);
     } catch (err) {
       console.error(err);
       toast.error("Gagal memuat rincian default");
@@ -487,7 +498,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
       } else {
         setIsSubmitting(true);
         toast.info("Menginisialisasi data rincian ke database...");
-        for (const defaultItem of DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026) {
+        const defaultItems = baznasAccount === 'SMP' ? DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026 : DEFAULT_BAZNAS_RINCIAN_SMA_JAN_2026;
+        for (const defaultItem of defaultItems) {
           if (defaultItem.noDoc === item.noDoc) continue;
           await addDoc(collection(db, 'laporan_baznas_rincian_docs'), {
             ...defaultItem,
@@ -512,12 +524,14 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
     setRFormNoBukti(item.noBukti);
     setRFormTanggalBudget(item.tanggalBudget);
     setRFormKeterangan(item.keterangan);
-    setRFormDetails(item.details && item.details.length > 0 ? [...item.details] : [{ noBuktiDetail: '1', keteranganDetail: '', qty: 1, hargaSatuan: 0 }]);
+    setRFormDetails(item.details && item.details.length > 0 ? [...item.details] : [{ noBuktiDetail: 'a', keteranganDetail: '', qty: 1, hargaSatuan: 0 }]);
     
-    const formElement = document.getElementById("rincian-input-card");
-    if (formElement) {
-      formElement.scrollIntoView({ behavior: 'smooth' });
-    }
+    setIsRincianFormOpen(true);
+  };
+
+  const handleOpenAddRincian = () => {
+    resetRincianForm();
+    setIsRincianFormOpen(true);
   };
 
   const resetRincianForm = () => {
@@ -624,6 +638,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
     setSelectedBaznasCode('');
     setBaznasFormBudget('');
     setBaznasFormReal('');
+    setIsBudgetDialogOpen(false);
   };
 
   const computeReportData = (targetMonth: string, targetYear: string) => {
@@ -634,8 +649,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
            r.account.toLowerCase() === baznasAccount.toLowerCase()
     );
 
-    const targetRincian = (targetDbRincian.length === 0 && targetMonth === 'Januari' && targetYear === '2026' && baznasAccount === 'SMP')
-      ? DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026
+    const targetRincian = (targetDbRincian.length === 0 && targetMonth === 'Januari' && targetYear === '2026')
+      ? (baznasAccount === 'SMP' ? DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026 : DEFAULT_BAZNAS_RINCIAN_SMA_JAN_2026)
       : targetDbRincian;
 
     const hasRincian = targetRincian.length > 0;
@@ -746,6 +761,17 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   const totalAnggaran = reportItems.filter(item => item.level === 0).reduce((acc, c) => acc + c.anggaranVal, 0);
   const totalRealisasi = reportItems.filter(item => item.level === 0).reduce((acc, c) => acc + c.realisasiVal, 0);
   const totalVarian = totalAnggaran - totalRealisasi;
+
+  const activeExpenditures = reportItems
+    .filter(item => item.level === 3 && item.realisasiVal > 0)
+    .map(item => ({
+      code: item.code,
+      name: item.name,
+      amount: item.realisasiVal,
+      formattedAmount: `Rp ${item.realisasiVal.toLocaleString('id-ID')}`,
+      displayName: `${item.code} - ${item.name.length > 28 ? item.name.substring(0, 28) + '...' : item.name}`
+    }))
+    .sort((a, b) => b.amount - a.amount);
 
   useEffect(() => {
     if (!userUid) return;
@@ -1058,70 +1084,74 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
       {activeTab === 'baznas' ? (
         /* BAZNAS FORMAT VIEW */
         <div className="space-y-6">
-          {/* Controls & Input Form Grid - Hides on PDF export */}
+          {/* Controls & Mini Menu Bar - Hides on PDF export */}
           {!isExportingPDF && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="baznas-controls-and-form">
-              {/* Controls */}
-              <div className="lg:col-span-2">
-                <Card className="rounded-3xl border border-slate-100 shadow-sm bg-white h-full">
-                  <CardContent className="pt-6 h-full flex flex-col justify-between space-y-4">
-                    <div>
-                      <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-3">Filter Laporan BAZNAS</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Bulan</Label>
-                          <Select value={baznasMonth} onValueChange={setBaznasMonth}>
-                            <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
-                              <SelectValue placeholder="Pilih Bulan" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {MONTHS.map(m => (
-                                <SelectItem key={m} value={m}>{m}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Tahun</Label>
-                          <Input
-                            type="number"
-                            value={baznasYear}
-                            onChange={e => setBaznasYear(e.target.value)}
-                            className="rounded-xl bg-slate-50 border-slate-200 h-10 font-bold"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Rekening</Label>
-                          <Select value={baznasAccount} onValueChange={(val: 'SMP' | 'SMA') => {
-                            setBaznasAccount(val);
-                            if (val === 'SMA') {
-                              setBaznasNoPpd('137911');
-                            } else {
-                              setBaznasNoPpd('137910');
-                            }
-                          }}>
-                            <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
-                              <SelectValue placeholder="Pilih Rekening" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="SMP">Rekening SMP</SelectItem>
-                              <SelectItem value="SMA">Rekening SMA</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">No. PPD</Label>
-                          <Input
-                            type="text"
-                            value={baznasNoPpd}
-                            onChange={e => setBaznasNoPpd(e.target.value)}
-                            className="rounded-xl bg-slate-50 border-slate-200 h-10 font-bold"
-                            placeholder="Contoh: 137910"
-                          />
-                        </div>
+            <div className="space-y-4" id="baznas-controls-and-form">
+              {/* COMPACT HORIZONTAL FILTER BAR */}
+              <Card className="rounded-3xl border border-slate-100 shadow-sm bg-white overflow-hidden">
+                <CardContent className="p-4 md:p-5">
+                  <div className="flex flex-wrap items-end gap-3 justify-between">
+                    <div className="flex flex-wrap items-end gap-3 flex-1 min-w-[280px]">
+                      {/* Month */}
+                      <div className="space-y-1.5 w-36">
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Bulan</Label>
+                        <Select value={baznasMonth} onValueChange={setBaznasMonth}>
+                          <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200 text-xs h-9">
+                            <SelectValue placeholder="Pilih Bulan" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MONTHS.map(m => (
+                              <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    </div>
-                    <div className="flex gap-2 pt-2 border-t border-slate-100">
+
+                      {/* Year */}
+                      <div className="space-y-1.5 w-24">
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Tahun</Label>
+                        <Input
+                          type="number"
+                          value={baznasYear}
+                          onChange={e => setBaznasYear(e.target.value)}
+                          className="rounded-xl bg-slate-50 border-slate-200 text-xs h-9 font-bold text-center"
+                        />
+                      </div>
+
+                      {/* Rekening / Account Select */}
+                      <div className="space-y-1.5 w-44">
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Rekening Sumber</Label>
+                        <Select value={baznasAccount} onValueChange={(val: 'SMP' | 'SMA') => {
+                          setBaznasAccount(val);
+                          if (val === 'SMA') {
+                            setBaznasNoPpd('137911');
+                          } else {
+                            setBaznasNoPpd('137910');
+                          }
+                        }}>
+                          <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200 text-xs h-9 font-semibold">
+                            <SelectValue placeholder="Pilih Rekening" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="SMP" className="text-xs">Rekening SMP (SCB)</SelectItem>
+                            <SelectItem value="SMA" className="text-xs">Rekening SMA (SCB)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* No. PPD */}
+                      <div className="space-y-1.5 w-32">
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">No. PPD</Label>
+                        <Input
+                          type="text"
+                          value={baznasNoPpd}
+                          onChange={e => setBaznasNoPpd(e.target.value)}
+                          className="rounded-xl bg-slate-50 border-slate-200 text-xs h-9 font-mono font-bold text-center"
+                          placeholder="Contoh: 137910"
+                        />
+                      </div>
+
+                      {/* Reset Button */}
                       <Button
                         variant="outline"
                         type="button"
@@ -1132,82 +1162,72 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                           setBaznasAccount('SMP');
                           toast.success("Parameter diset kembali ke Januari 2026 Rekening SMP.");
                         }}
-                        className="rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border-none h-10 px-4"
+                        className="rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border-none h-9 px-3.5 text-xs transition-all mt-auto"
+                        title="Kembalikan filter ke nilai asal"
                       >
-                        <RefreshCw size={14} className="mr-1.5" />
+                        <RefreshCw size={13} className="mr-1" />
                         Reset Filter
                       </Button>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-              {/* BAZNAS Custom Value Input Form */}
-              <div className="lg:col-span-1">
-                <Card className="rounded-3xl border border-slate-100 shadow-sm bg-white">
-                  <CardContent className="pt-6 space-y-4">
-                    <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                      <Plus size={16} className="text-emerald-600" />
-                      Input & Sesuaikan Anggaran / Realisasi
-                    </h3>
-                    <form onSubmit={handleSaveBaznasForm} className="space-y-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Pos Budget (Level 3)</Label>
-                        <Select value={selectedBaznasCode} onValueChange={setSelectedBaznasCode}>
-                          <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200 text-xs">
-                            <SelectValue placeholder="Pilih Pos Budget" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-60">
-                            {currentTemplates.filter(item => item.level === 3).map(item => (
-                              <SelectItem key={item.code} value={item.code} className="text-xs">
-                                {item.code} - {item.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+              {/* SLICK PREMIUM ACTION MENU BAR / TOOLBAR */}
+              <div className="flex flex-wrap items-center gap-2 bg-slate-900 border border-slate-800 rounded-2xl p-2 shadow-md">
+                <div className="px-3 py-1 flex items-center gap-2 border-r border-slate-800 text-slate-400 hidden sm:flex">
+                  <span className="text-[10px] font-black tracking-widest text-slate-400 uppercase">MENU PERTUM:</span>
+                </div>
+                
+                {/* Button 1: Tambah Rincian */}
+                <Button
+                  onClick={handleOpenAddRincian}
+                  className="rounded-xl font-black bg-emerald-600 hover:bg-emerald-500 text-white text-xs h-9 px-4 shadow-sm transition-all flex items-center gap-1.5"
+                >
+                  <Plus size={14} className="stroke-[3]" />
+                  Tambah Rincian Transaksi
+                </Button>
 
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Anggaran (Rp)</Label>
-                          <Input
-                            type="text"
-                            disabled={!selectedBaznasCode}
-                            value={baznasFormBudget ? parseInt(baznasFormBudget.replace(/\./g, '')).toLocaleString('id-ID') : '0'}
-                            onChange={e => {
-                              const rawVal = e.target.value.replace(/\./g, '');
-                              setBaznasFormBudget(rawVal || '0');
-                            }}
-                            className="rounded-xl bg-slate-50 border-slate-200 text-xs font-mono font-bold h-9"
-                            placeholder="Nilai Anggaran"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Realisasi (Rp)</Label>
-                          <Input
-                            type="text"
-                            disabled={!selectedBaznasCode}
-                            value={baznasFormReal ? parseInt(baznasFormReal.replace(/\./g, '')).toLocaleString('id-ID') : '0'}
-                            onChange={e => {
-                              const rawVal = e.target.value.replace(/\./g, '');
-                              setBaznasFormReal(rawVal || '0');
-                            }}
-                            className="rounded-xl bg-slate-50 border-slate-200 text-xs font-mono font-bold h-9"
-                            placeholder="Nilai Realisasi"
-                          />
-                        </div>
-                      </div>
+                {/* Button 2: Lihat Grafik */}
+                <Button
+                  onClick={() => setIsChartDialogOpen(true)}
+                  className="rounded-xl font-bold bg-slate-800 hover:bg-slate-750 text-white border border-slate-700 text-xs h-9 px-4 transition-all flex items-center gap-1.5"
+                >
+                  <BarChart2 size={14} className="text-emerald-400" />
+                  Visualisasi & Grafik Belanja
+                </Button>
 
-                      <Button 
-                        type="submit" 
-                        disabled={!selectedBaznasCode} 
-                        className="w-full font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-9 text-xs transition-colors"
-                      >
-                        Simpan Nilai Laporan
-                      </Button>
-                    </form>
-                  </CardContent>
-                </Card>
+                {/* Button 3: Sesuaikan Target Anggaran */}
+                <Button
+                  onClick={() => setIsBudgetDialogOpen(true)}
+                  className="rounded-xl font-bold bg-slate-800 hover:bg-slate-750 text-white border border-slate-700 text-xs h-9 px-4 transition-all flex items-center gap-1.5"
+                >
+                  <Settings size={14} className="text-blue-400" />
+                  Pagu Target Anggaran
+                </Button>
+
+                {/* Divider */}
+                <div className="h-6 w-[1px] bg-slate-800 mx-1 hidden md:block" />
+
+                {/* Button 4: Muat Rincian Default */}
+                <Button
+                  onClick={handleLoadDefaults}
+                  className="rounded-xl font-medium bg-transparent hover:bg-slate-800 text-slate-300 hover:text-white text-xs h-9 px-3 transition-all flex items-center gap-1.5 border border-dashed border-slate-700"
+                >
+                  <RefreshCw size={12} className="text-rose-400" />
+                  Muat Rincian Default
+                </Button>
+
+                {/* Button 5: Unduh Laporan PDF */}
+                <div className="ml-auto pr-1">
+                  <Button
+                    onClick={handleDownloadPDF}
+                    className="rounded-xl font-black bg-slate-800 hover:bg-slate-750 text-white hover:text-emerald-400 border border-slate-700 text-xs h-9 px-4 shadow-sm transition-all flex items-center gap-1.5"
+                  >
+                    <FileDown size={14} />
+                    Unduh PDF
+                  </Button>
+                </div>
               </div>
             </div>
           )}
@@ -1244,6 +1264,213 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                   </div>
                 </div>
               </div>
+
+              {/* DIALOG DETAILS FOR MENU BAR */}
+              {!isExportingPDF && (
+                <>
+                  {/* DIALOG CHART VISUALISASI */}
+                  <Dialog open={isChartDialogOpen} onOpenChange={setIsChartDialogOpen}>
+                    <DialogContent className="max-w-4xl rounded-3xl p-6 bg-slate-50 border border-slate-200">
+                      <DialogHeader className="border-b pb-4 mb-2">
+                        <DialogTitle className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                          <BarChart2 className="text-emerald-600" size={18} />
+                          Visualisasi & Distribusi Pengeluaran ({baznasMonth} {baznasYear})
+                        </DialogTitle>
+                        <p className="text-xs text-slate-500 font-medium -mt-1">
+                          Bagan rincian pos anggaran berdasarkan pengeluaran riil di rekening {baznasAccount}.
+                        </p>
+                      </DialogHeader>
+                      
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
+                        <div className="lg:col-span-2 bg-white p-4 rounded-2xl border border-slate-150 shadow-xs h-[300px]">
+                          {activeExpenditures.length === 0 ? (
+                            <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
+                              <FileText size={40} className="stroke-[1.5] text-slate-300" />
+                              <p className="text-xs font-bold uppercase tracking-wider">Belum Ada Pengeluaran Riil</p>
+                              <p className="text-[10px] text-slate-400">Silakan input data realisasi rincian terlebih dahulu.</p>
+                            </div>
+                          ) : (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={activeExpenditures} margin={{ top: 20, right: 10, left: 20, bottom: 10 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis 
+                                  dataKey="code" 
+                                  axisLine={false}
+                                  tickLine={false}
+                                  tick={{ fontSize: 10, fill: '#64748b', fontWeight: 700 }}
+                                />
+                                <YAxis 
+                                  axisLine={false}
+                                  tickLine={false}
+                                  tick={{ fontSize: 10, fill: '#64748b', fontWeight: 600 }}
+                                  tickFormatter={(value) => `Rp ${(value / 1000).toLocaleString('id-ID')}rb`}
+                                  width={75}
+                                />
+                                <Tooltip 
+                                  cursor={{ fill: '#f8fafc' }}
+                                  contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.05)' }}
+                                  content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                      const data = payload[0].payload;
+                                      const percent = totalRealisasi > 0 ? ((data.amount / totalRealisasi) * 100).toFixed(1) : 0;
+                                      return (
+                                        <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-lg text-[11px] space-y-1">
+                                          <p className="font-bold text-slate-900 text-xs">{data.code} - {data.name}</p>
+                                          <div className="flex justify-between gap-4 text-slate-500 pt-1 border-t border-slate-100">
+                                            <span>Pengeluaran:</span>
+                                            <span className="font-bold text-emerald-600 font-mono">{data.formattedAmount}</span>
+                                          </div>
+                                          <div className="flex justify-between gap-4 text-slate-500">
+                                            <span>Porsi belanja:</span>
+                                            <span className="font-bold text-slate-700 font-mono">{percent}%</span>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Bar 
+                                  dataKey="amount" 
+                                  fill="#10b981" 
+                                  radius={[6, 6, 0, 0]} 
+                                  barSize={32}
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          )}
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="bg-white p-5 rounded-2xl border border-slate-150 shadow-xs flex flex-col justify-between h-full">
+                            <span className="text-[11px] font-black tracking-wider text-slate-400 uppercase block mb-3">Analisis Ringkas Belanja</span>
+                            
+                            <div className="space-y-4 py-2 flex-grow">
+                              <div>
+                                <span className="text-xs text-slate-400 font-semibold block">Total Penerimaan</span>
+                                <span className="text-lg font-black text-slate-800 font-mono">Rp {totalAnggaran.toLocaleString('id-ID')}</span>
+                              </div>
+                              
+                              <div>
+                                <span className="text-xs text-slate-400 font-semibold block">Total Pengeluaran</span>
+                                <span className="text-lg font-black text-emerald-600 font-mono">Rp {totalRealisasi.toLocaleString('id-ID')}</span>
+                              </div>
+
+                              <div>
+                                <span className="text-xs text-slate-400 font-semibold block">Efisiensi (Sisa Saldo)</span>
+                                <span className={`text-lg font-black font-slate-800 font-mono ${totalVarian < 0 ? 'text-rose-500' : 'text-blue-600'}`}>
+                                  Rp {totalVarian.toLocaleString('id-ID')}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-slate-100 mt-4">
+                              <div className="flex justify-between text-xs font-bold text-slate-600">
+                                <span>Rasio Penyerapan</span>
+                                <span>{totalAnggaran > 0 ? ((totalRealisasi / totalAnggaran) * 100).toFixed(1) : 0}%</span>
+                              </div>
+                              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-1.5">
+                                <div 
+                                  className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+                                  style={{ width: `${Math.min(100, totalAnggaran > 0 ? (totalRealisasi / totalAnggaran) * 100 : 0)}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <DialogFooter className="mt-4 pt-4 border-t gap-2 flex justify-end">
+                        <Button onClick={() => setIsChartDialogOpen(false)} className="rounded-xl px-5 font-bold h-10 text-xs bg-slate-900 hover:bg-slate-800 text-white transition-all">
+                          Selesai & Tutup
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* DIALOG SESUAIKAN TARGET ANGGARAN / REALISASI */}
+                  <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen}>
+                    <DialogContent className="max-w-md rounded-3xl p-6 bg-white border border-slate-100">
+                      <DialogHeader className="border-b pb-4 mb-3">
+                        <DialogTitle className="text-sm font-black text-slate-905 uppercase tracking-tight flex items-center gap-1.5">
+                          <Settings className="text-emerald-605" size={18} />
+                          Input & Sesuaikan Anggaran / Realisasi
+                        </DialogTitle>
+                        <p className="text-xs text-slate-500 font-medium -mt-1">
+                          Atur pagu anggaran RKAT dan realisasi langsung untuk pos budget Level 3 perekonomian.
+                        </p>
+                      </DialogHeader>
+                      
+                      <form onSubmit={handleSaveBaznasForm} className="space-y-4">
+                        <div className="space-y-1.5 text-left">
+                          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Pilih Pos Budget (Level 3)</Label>
+                          <Select value={selectedBaznasCode} onValueChange={setSelectedBaznasCode}>
+                            <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200 text-xs h-10">
+                              <SelectValue placeholder="Pilih Pos Budget" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60">
+                              {currentTemplates.filter(item => item.level === 3).map(item => (
+                                <SelectItem key={item.code} value={item.code} className="text-xs">
+                                  {item.code} - {item.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 text-left">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Anggaran (Rp)</Label>
+                            <Input
+                              type="text"
+                              disabled={!selectedBaznasCode}
+                              value={baznasFormBudget ? parseInt(baznasFormBudget.replace(/\./g, '')).toLocaleString('id-ID') : '0'}
+                              onChange={e => {
+                                const rawVal = e.target.value.replace(/\./g, '');
+                                setBaznasFormBudget(rawVal || '0');
+                              }}
+                              className="rounded-xl bg-slate-50 border-slate-200 text-xs font-mono font-bold h-10"
+                              placeholder="Nilai Anggaran"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Realisasi (Rp)</Label>
+                            <Input
+                              type="text"
+                              disabled={!selectedBaznasCode}
+                              value={baznasFormReal ? parseInt(baznasFormReal.replace(/\./g, '')).toLocaleString('id-ID') : '0'}
+                              onChange={e => {
+                                const rawVal = e.target.value.replace(/\./g, '');
+                                setBaznasFormReal(rawVal || '0');
+                              }}
+                              className="rounded-xl bg-slate-50 border-slate-200 text-xs font-mono font-bold h-10"
+                              placeholder="Nilai Realisasi"
+                            />
+                          </div>
+                        </div>
+
+                        <DialogFooter className="pt-4 border-t gap-2 flex justify-end">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setIsBudgetDialogOpen(false)} 
+                            className="rounded-xl font-bold h-10 px-4 text-xs"
+                          >
+                            Batal
+                          </Button>
+                          <Button 
+                            type="submit" 
+                            disabled={!selectedBaznasCode} 
+                            className="font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-10 px-5 text-xs transition-colors"
+                          >
+                            Simpan Nilai Laporan
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </>
+              )}
 
               {/* Pengeluaran Section */}
               <div className="space-y-3">
@@ -1516,19 +1743,25 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
             </div>
           </Card>
 
-          {/* FORM INPUT DETAIL TRANSAKSI */}
+          {/* DIALOG TAMBAH / EDIT RINCIAN TRANSAKSI */}
           {!isExportingPDF && (
-            <Card id="rincian-input-card" className="rounded-3xl border border-slate-100 shadow-sm bg-white overflow-hidden mt-6">
-              <CardHeader className="bg-emerald-50/50 border-b border-emerald-100">
-                <CardTitle className="text-lg font-black text-slate-800 flex items-center gap-2">
-                  <Plus className="text-emerald-600" size={18} />
-                  {editingRincianId ? 'Edit Rincian Transaksi PertUM' : 'Tambah Rincian Transaksi PertUM'}
-                </CardTitle>
-                <p className="text-xs text-slate-500 font-medium">
-                  Lengkapi formulir untuk memasukkan transaksi rincian uang muka. Pengeluaran rincian ini akan otomatis merefleksikan nilai realisasi di Laporan Format BAZNAS di atas.
-                </p>
-              </CardHeader>
-              <CardContent className="pt-6">
+            <Dialog open={isRincianFormOpen} onOpenChange={(val) => {
+              setIsRincianFormOpen(val);
+              if (!val) {
+                resetRincianForm();
+              }
+            }}>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 bg-white border border-slate-100 text-left">
+                <DialogHeader className="border-b pb-4 mb-4">
+                  <DialogTitle className="text-lg font-black text-slate-800 flex items-center gap-2">
+                    <Plus className="text-emerald-600" size={18} />
+                    {editingRincianId ? 'Edit Rincian Transaksi PertUM' : 'Tambah Rincian Transaksi PertUM'}
+                  </DialogTitle>
+                  <p className="text-xs text-slate-500 font-medium -mt-1">
+                    Lengkapi formulir untuk memasukkan transaksi rincian uang muka. Pengeluaran rincian ini akan otomatis merefleksikan nilai realisasi di Laporan Format BAZNAS.
+                  </p>
+                </DialogHeader>
+                
                 <form onSubmit={handleSaveRincian} className="space-y-6">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* LEFT SIDE: Parent Transaction Header */}
@@ -1732,10 +1965,13 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={resetRincianForm}
+                      onClick={() => {
+                        resetRincianForm();
+                        setIsRincianFormOpen(false);
+                      }}
                       className="rounded-xl font-bold border-slate-200 text-slate-600 h-10 px-5 text-xs"
                     >
-                      Batal / Bersihkan
+                      Batal / Tutup
                     </Button>
                     <Button
                       type="submit"
@@ -1746,8 +1982,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                     </Button>
                   </div>
                 </form>
-              </CardContent>
-            </Card>
+              </DialogContent>
+            </Dialog>
           )}
         </div>
       ) : (
