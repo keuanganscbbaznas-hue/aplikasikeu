@@ -1834,6 +1834,8 @@ export default function App() {
                         <TabsList className="bg-white p-1 shadow-lg shadow-slate-200/40 rounded-xl border border-slate-100 h-10 w-full md:w-auto overflow-x-auto gap-1">
                           <TabsTrigger value="all" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-emerald-600 data-[state=active]:text-white uppercase tracking-tight">Semua Data</TabsTrigger>
                           <TabsTrigger value="pending" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-amber-500 data-[state=active]:text-white uppercase tracking-tight">Waiting Approval</TabsTrigger>
+                          <TabsTrigger value="transfer" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-violet-600 data-[state=active]:text-white uppercase tracking-tight">Waiting Transfer</TabsTrigger>
+                          <TabsTrigger value="waiting_settled" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-indigo-600 data-[state=active]:text-white uppercase tracking-tight">Waiting Settled</TabsTrigger>
                           <TabsTrigger value="completed" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white uppercase tracking-tight">Settled</TabsTrigger>
                         </TabsList>
                         
@@ -1887,8 +1889,44 @@ export default function App() {
                       <TabsContent value="pending">
                         <SubmissionGrid 
                           items={filteredSubmissions.filter(s => {
+                            return s.currentStageIndex !== undefined && s.currentStageIndex >= 0 && s.currentStageIndex <= 2;
+                          })} 
+                          onApprove={handleApprove} 
+                          onReject={handleReject} 
+                          onDelete={(id) => setDeletingId(id)}
+                          onEdit={openEditDialog}
+                          userRole={isAdmin ? 'admin' : (profile?.role || 'staff')} 
+                          currentUser={user}
+                          selectedSubmissions={selectedSubmissions}
+                          onToggle={toggleSelection}
+                          onBukukan={isTrackingAdmin ? handleBukukan : undefined}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="transfer">
+                        <SubmissionGrid 
+                          items={filteredSubmissions.filter(s => {
                             const stages = getStagesByType(s.type);
-                            return s.currentStageIndex < stages.length - 1;
+                            const currentStage = s.currentStageIndex !== undefined ? (stages[s.currentStageIndex] || '') : '';
+                            return currentStage === "Dalam Antrian Transfer";
+                          })} 
+                          onApprove={handleApprove} 
+                          onReject={handleReject} 
+                          onDelete={(id) => setDeletingId(id)}
+                          onEdit={openEditDialog}
+                          userRole={isAdmin ? 'admin' : (profile?.role || 'staff')} 
+                          currentUser={user}
+                          selectedSubmissions={selectedSubmissions}
+                          onToggle={toggleSelection}
+                          onBukukan={isTrackingAdmin ? handleBukukan : undefined}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="waiting_settled">
+                        <SubmissionGrid 
+                          items={filteredSubmissions.filter(s => {
+                            const stages = getStagesByType(s.type);
+                            return s.currentStageIndex !== undefined && s.currentStageIndex >= 4 && s.currentStageIndex < stages.length - 1;
                           })} 
                           onApprove={handleApprove} 
                           onReject={handleReject} 
@@ -1906,7 +1944,7 @@ export default function App() {
                         <SubmissionGrid 
                           items={filteredSubmissions.filter(s => {
                             const stages = getStagesByType(s.type);
-                            return s.currentStageIndex === stages.length - 1;
+                            return s.currentStageIndex !== undefined && s.currentStageIndex === stages.length - 1;
                           })} 
                           onApprove={handleApprove} 
                           onReject={handleReject} 
