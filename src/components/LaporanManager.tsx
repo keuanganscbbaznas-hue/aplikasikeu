@@ -985,33 +985,160 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
 
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const pdfContainerRef = useRef<HTMLDivElement>(null);
+  const penggunaanDanaRef = useRef<HTMLDivElement>(null);
+  const rincianLaporanRef = useRef<HTMLDivElement>(null);
+  const [isPDFSelectionOpen, setIsPDFSelectionOpen] = useState(false);
 
+  // Standard (BAST & Realisasi Standard) PDF Downloader with multi-page & clean rendering
   const handleDownloadPDF = async () => {
     if (!pdfContainerRef.current) return;
     setIsExportingPDF(true);
     toast.info('Menyiapkan file PDF...', { duration: 2000 });
     
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(pdfContainerRef.current, {
+      const element = pdfContainerRef.current;
+      const originalStyle = element.style.cssText;
+      
+      element.style.width = '1050px';
+      element.style.minWidth = '1050px';
+      element.style.maxWidth = '1050px';
+      element.style.height = 'auto';
+      element.style.overflow = 'visible';
+      
+      const dataUrl = await toPng(element, {
         pixelRatio: 2,
         backgroundColor: '#ffffff',
         cacheBust: true,
+        style: {
+          width: '1050px',
+          height: 'auto',
+          overflow: 'visible',
+          transform: 'none',
+        }
+      });
+      
+      element.style.cssText = originalStyle;
+      
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((resolve) => {
+        img.onload = resolve;
       });
       
       const pdfWidth = 210; // A4 width in mm
-      const elWidth = pdfContainerRef.current.offsetWidth;
-      const elHeight = pdfContainerRef.current.offsetHeight;
-      const pdfHeight = (elHeight * pdfWidth) / elWidth;
+      const pageHeight = 295; // A4 height in mm
+      const imgWidth = img.width;
+      const imgHeight = img.height;
+      const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
       
+      let heightLeft = pdfHeight;
+      let position = 0;
+      let pageNum = 1;
+
+      pdf.addImage(dataUrl, 'PNG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+      
+      while (heightLeft > 0) {
+        position = -(pageHeight * pageNum);
+        pdf.addPage();
+        pdf.addImage(dataUrl, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+        pageNum++;
+      }
+      
+      const fileName = `Laporan_Realisasi_BAZNAS_${year}.pdf`;
+      pdf.save(fileName);
+      toast.success('Berhasil mendownload PDF');
+    } catch (error) {
+      console.error('PDF export error:', error);
+      toast.error('Gagal mendownload PDF');
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
+
+  // Dedicated high-quality BAZNAS reports exporter with fixed-width scaling and automated multi-page slicing
+  const handleDownloadPDFType = async (type: 'penggunaan_dana' | 'rincian_pertum') => {
+    setIsPDFSelectionOpen(false);
+    
+    const targetRef = type === 'penggunaan_dana' ? penggunaanDanaRef : rincianLaporanRef;
+    if (!targetRef.current) return;
+    
+    setIsExportingPDF(true);
+    toast.info('Menyiapkan file PDF...', { duration: 2500 });
+    
+    try {
+      // Allow state update to propagate so buttons and edit-actions are fully hidden
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      const { toPng } = await import('html-to-image');
+      const element = targetRef.current;
+      
+      // Store current style state
+      const originalStyle = element.style.cssText;
+      
+      // Override style during conversion to ensure it is in full print mode regardless of user viewport
+      element.style.width = '1050px';
+      element.style.minWidth = '1050px';
+      element.style.maxWidth = '1050px';
+      element.style.height = 'auto';
+      element.style.overflow = 'visible';
+      element.style.position = 'relative';
+      element.style.backgroundColor = '#ffffff';
+      
+      const dataUrl = await toPng(element, {
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+        style: {
+          width: '1050px',
+          height: 'auto',
+          overflow: 'visible',
+          transform: 'none',
+        }
+      });
+      
+      // Restore original Styles
+      element.style.cssText = originalStyle;
+
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
       
-      const fileName = activeTab === 'baznas' 
-        ? `Laporan_PertUM_Format_BAZNAS_${baznasMonth}_${baznasYear}.pdf`
-        : `Laporan_Realisasi_BAZNAS_${year}.pdf`;
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
+      
+      const pdfWidth = 210; // A4 width in mm
+      const pageHeight = 295; // A4 height in mm
+      const imgWidth = img.width;
+      const imgHeight = img.height;
+      const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
+      
+      let heightLeft = pdfHeight;
+      let position = 0;
+      let pageNum = 1;
+
+      // Add first page
+      pdf.addImage(dataUrl, 'PNG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+      
+      // Add subsequent pages if height is more than 1 page
+      while (heightLeft > 0) {
+        position = -(pageHeight * pageNum);
+        pdf.addPage();
+        pdf.addImage(dataUrl, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+        pageNum++;
+      }
+      
+      const titleLabel = type === 'penggunaan_dana' ? 'Penggunaan_Dana' : 'Rincian_PertUM';
+      const fileName = `Laporan_BAZNAS_${titleLabel}_${baznasMonth}_${baznasYear}.pdf`;
         
       pdf.save(fileName);
       toast.success('Berhasil mendownload PDF');
@@ -1067,13 +1194,13 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
               : 'Kelola dan pantau laporan realisasi anggaran.'}
           </p>
         </div>
-        {!isExportingPDF && (
+        {!isExportingPDF && activeTab === 'standard' && (
           <div className="flex items-center gap-2" id="laporan-header-actions">
              <Button 
               variant="outline" 
               onClick={handleDownloadPDF}
               className="font-bold border-rose-200 text-rose-700 hover:bg-rose-50 rounded-xl shadow-sm transition-all text-xs h-10 px-4"
-              disabled={isExportingPDF || (activeTab === 'standard' && data.length === 0)}
+              disabled={isExportingPDF || data.length === 0}
             >
               <FileDown className="mr-2" size={16} /> {isExportingPDF ? 'Memproses...' : 'Unduh PDF'}
              </Button>
@@ -1221,7 +1348,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                 {/* Button 5: Unduh Laporan PDF */}
                 <div className="ml-auto pr-1">
                   <Button
-                    onClick={handleDownloadPDF}
+                    onClick={() => setIsPDFSelectionOpen(true)}
                     className="rounded-xl font-black bg-slate-800 hover:bg-slate-750 text-white hover:text-emerald-400 border border-slate-700 text-xs h-9 px-4 shadow-sm transition-all flex items-center gap-1.5"
                   >
                     <FileDown size={14} />
@@ -1233,7 +1360,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
           )}
 
           {/* BAZNAS Print Sheet */}
-          <Card className={`rounded-3xl border border-slate-105/60 ${isExportingPDF ? 'shadow-none border-none p-0' : 'shadow-sm p-4 md:p-8'} bg-white overflow-hidden`}>
+          <div ref={penggunaanDanaRef} className={isExportingPDF ? "bg-white p-2" : ""}>
+            <Card className={`rounded-3xl border border-slate-105/60 ${isExportingPDF ? 'shadow-none border-none p-0' : 'shadow-sm p-4 md:p-8'} bg-white overflow-hidden`}>
             <div className="space-y-6">
               {/* Report Header */}
               <div className="flex flex-col md:flex-row md:items-start md:justify-between border-b border-slate-200 pb-4 gap-4">
@@ -1469,6 +1597,70 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                       </form>
                     </DialogContent>
                   </Dialog>
+
+                  {/* DIALOG SELEKSI UNDUH PDF */}
+                  <Dialog open={isPDFSelectionOpen} onOpenChange={setIsPDFSelectionOpen}>
+                    <DialogContent className="w-[96vw] sm:max-w-md rounded-3xl p-6 bg-white border border-slate-150 text-left">
+                      <DialogHeader className="border-b pb-4 mb-4">
+                        <DialogTitle className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                          <FileDown className="text-emerald-600" size={18} />
+                          PILIH LAPORAN UNTUK DIUNDUH
+                        </DialogTitle>
+                        <p className="text-xs text-slate-500 font-medium -mt-1">
+                          Pilih format dokumen laporan BAZNAS Periode {baznasMonth} {baznasYear}.
+                        </p>
+                      </DialogHeader>
+
+                      <div className="space-y-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadPDFType('penggunaan_dana')}
+                          className="w-full text-left p-4 rounded-2xl border border-slate-150 hover:border-emerald-500 hover:bg-emerald-50/10 transition-all group flex items-start gap-3"
+                        >
+                          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700 group-hover:bg-emerald-100 transition-colors mt-0.5">
+                            <FileText size={18} />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide group-hover:text-emerald-800 transition-colors">
+                              1. Laporan Penggunaan Dana BAZNAS
+                            </h4>
+                            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                              Unduh rekapitulasi realisasi anggaran per pos budget utama (Format BAZNAS).
+                            </p>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadPDFType('rincian_pertum')}
+                          className="w-full text-left p-4 rounded-2xl border border-slate-150 hover:border-emerald-500 hover:bg-emerald-50/10 transition-all group flex items-start gap-3"
+                        >
+                          <div className="p-2 rounded-xl bg-blue-50 text-blue-700 group-hover:bg-blue-105 transition-colors mt-0.5">
+                            <Calendar size={18} />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide group-hover:text-emerald-800 transition-colors">
+                              2. Rincian Laporan PertUM (Buku Pembantu)
+                            </h4>
+                            <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                              Unduh buku pembantu detail transaksi pengeluaran riil terperinci untuk periode {baznasMonth} {baznasYear}.
+                            </p>
+                          </div>
+                        </button>
+                      </div>
+
+                      <DialogFooter className="mt-4 pt-4 border-t gap-2 flex justify-end">
+                        <Button 
+                          type="button"
+                          variant="outline" 
+                          onClick={() => setIsPDFSelectionOpen(false)} 
+                          className="rounded-xl px-4 font-bold h-10 text-xs"
+                        >
+                          Batal
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                 </>
               )}
 
@@ -1577,8 +1769,10 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
               </div>
             </div>
           </Card>
+        </div>
 
-          {/* RINCIAN LAPORAN PERTUM TABLE CARD */}
+        {/* RINCIAN LAPORAN PERTUM TABLE CARD */}
+        <div ref={rincianLaporanRef} className={isExportingPDF ? "bg-white p-2" : ""}>
           <Card className={`rounded-3xl border border-slate-100 bg-white ${isExportingPDF ? 'shadow-none border-none p-0' : 'shadow-sm p-4 md:p-8'}`}>
             <div className="space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 pb-4 gap-4">
@@ -1742,8 +1936,9 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
               </div>
             </div>
           </Card>
+        </div>
 
-          {/* DIALOG TAMBAH / EDIT RINCIAN TRANSAKSI */}
+        {/* DIALOG TAMBAH / EDIT RINCIAN TRANSAKSI */}
           {!isExportingPDF && (
             <Dialog open={isRincianFormOpen} onOpenChange={(val) => {
               setIsRincianFormOpen(val);
