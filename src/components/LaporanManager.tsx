@@ -13,6 +13,7 @@ import { FileText, Plus, Search, ExternalLink, Download, Upload, Trash2, Edit2, 
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
+import { DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026, BaznasRincianItem, RincianDetailItem } from './baznasDefaultRincian';
 
 const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
@@ -243,6 +244,35 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
 
+  // Rincian (Detail) states
+  const [dbRincianList, setDbRincianList] = useState<any[]>([]);
+  const [rFormBudgetCode, setRFormBudgetCode] = useState<string>('');
+  const [rFormNoDoc, setRFormNoDoc] = useState<number>(1);
+  const [rFormNoBukti, setRFormNoBukti] = useState<string>('');
+  const [rFormTanggalBudget, setRFormTanggalBudget] = useState<string>('');
+  const [rFormKeterangan, setRFormKeterangan] = useState<string>('');
+  const [rFormDetails, setRFormDetails] = useState<RincianDetailItem[]>([
+    { noBuktiDetail: 'a', keteranganDetail: '', qty: 1, hargaSatuan: 0 }
+  ]);
+  const [editingRincianId, setEditingRincianId] = useState<string | null>(null);
+  const [isResettingDefault, setIsResettingDefault] = useState(false);
+
+  // Subscribe to BAZNAS detailed transactions (rincian)
+  useEffect(() => {
+    if (!userUid) return;
+    const q = query(collection(db, 'laporan_baznas_rincian_docs'), orderBy('noDoc', 'asc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records: any[] = [];
+      snapshot.forEach((docSnap) => {
+        records.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      setDbRincianList(records);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'laporan_baznas_rincian_docs');
+    });
+    return () => unsubscribe();
+  }, [userUid]);
+
   // Fetch submissions to calculate dynamic BAZNAS realisasi
   useEffect(() => {
     if (!userUid) return;
@@ -295,6 +325,210 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
       console.error("Error saving BAZNAS override:", err);
       toast.error("Gagal menyimpan perubahan");
     }
+  };
+
+  // Rincian (Detail ledger) computed arrays & helpers
+  const currentDbRincian = dbRincianList.filter(
+    r => r.month.toLowerCase() === baznasMonth.toLowerCase() &&
+         r.year === baznasYear &&
+         r.account.toLowerCase() === baznasAccount.toLowerCase()
+  );
+
+  const rincianItems: BaznasRincianItem[] = (currentDbRincian.length === 0 && baznasMonth === 'Januari' && baznasYear === '2026' && baznasAccount === 'SMP')
+    ? DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026
+    : currentDbRincian;
+
+  const sortedRincianItems = [...rincianItems].sort((a, b) => (a.noDoc || 0) - (b.noDoc || 0));
+
+  useEffect(() => {
+    if (!editingRincianId) {
+      const nextNoDoc = (sortedRincianItems.length > 0 ? Math.max(...sortedRincianItems.map(r => r.noDoc || 0)) + 1 : 1);
+      setRFormNoDoc(nextNoDoc);
+    }
+  }, [sortedRincianItems, editingRincianId]);
+
+  const ensureRincianCollection = async () => {
+    const currentDbItems = dbRincianList.filter(
+      r => r.month === 'Januari' && r.year === '2026' && r.account === 'SMP'
+    );
+    if (currentDbItems.length === 0) {
+      toast.info("Menginisialisasi data rincian default ke database...");
+      for (const item of DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026) {
+        await addDoc(collection(db, 'laporan_baznas_rincian_docs'), {
+          ...item,
+          userUid,
+          updatedAt: serverTimestamp()
+        });
+      }
+    }
+  };
+
+  const handleSaveRincian = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rFormBudgetCode || !rFormNoBukti || !rFormTanggalBudget || !rFormKeterangan) {
+      toast.error("Mohon lengkapi semua field utama rincian transaksi");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const validatedDetails = rFormDetails.map(d => ({
+        noBuktiDetail: d.noBuktiDetail || 'a',
+        tanggalDetail: d.tanggalDetail || '',
+        keteranganDetail: d.keteranganDetail || '',
+        qty: parseFloat(d.qty.toString()) || 1,
+        hargaSatuan: parseInt(d.hargaSatuan.toString().replace(/\./g, '')) || 0
+      }));
+
+      // If modifying a static entry, populate the DB first
+      if (editingRincianId === 'default_static' || (!editingRincianId && baznasMonth === 'Januari' && baznasYear === '2026' && baznasAccount === 'SMP')) {
+        await ensureRincianCollection();
+      }
+
+      if (editingRincianId && editingRincianId !== 'default_static') {
+        const docRef = doc(db, 'laporan_baznas_rincian_docs', editingRincianId);
+        await updateDoc(docRef, {
+          kodeBudget: rFormBudgetCode,
+          noDoc: rFormNoDoc,
+          noBukti: rFormNoBukti,
+          tanggalBudget: rFormTanggalBudget,
+          keterangan: rFormKeterangan,
+          details: validatedDetails,
+          updatedAt: serverTimestamp()
+        });
+        toast.success("Berhasil memperbarui rincian transaksi");
+      } else {
+        const currentDbItems = dbRincianList.filter(
+          r => r.month === baznasMonth && r.year === baznasYear && r.account === baznasAccount
+        );
+        const existingDoc = currentDbItems.find(r => r.noDoc === rFormNoDoc);
+        if (existingDoc) {
+          const docRef = doc(db, 'laporan_baznas_rincian_docs', existingDoc.id);
+          await updateDoc(docRef, {
+            kodeBudget: rFormBudgetCode,
+            noBukti: rFormNoBukti,
+            tanggalBudget: rFormTanggalBudget,
+            keterangan: rFormKeterangan,
+            details: validatedDetails,
+            updatedAt: serverTimestamp()
+          });
+          toast.success("Berhasil memperbarui rincian transaksi");
+        } else {
+          await addDoc(collection(db, 'laporan_baznas_rincian_docs'), {
+            account: baznasAccount,
+            month: baznasMonth,
+            year: baznasYear,
+            kodeBudget: rFormBudgetCode,
+            noDoc: rFormNoDoc,
+            noBukti: rFormNoBukti,
+            tanggalBudget: rFormTanggalBudget,
+            keterangan: rFormKeterangan,
+            details: validatedDetails,
+            userUid,
+            updatedAt: serverTimestamp()
+          });
+          toast.success("Berhasil menyimpan rincian transaksi");
+        }
+      }
+      
+      resetRincianForm();
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal menyimpan rincian");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleLoadDefaults = async () => {
+    if (!window.confirm("Apakah Anda yakin ingin me-reset data rincian untuk periode ini kembali ke Data Default (61 transaksi)? Data custom untuk periode ini akan terhapus.")) return;
+    
+    setIsResettingDefault(true);
+    try {
+      const currentDbItems = dbRincianList.filter(
+        r => r.month.toLowerCase() === baznasMonth.toLowerCase() &&
+             r.year === baznasYear &&
+             r.account.toLowerCase() === baznasAccount.toLowerCase()
+      );
+      
+      toast.info("Menghapus data rincian lama...");
+      for (const item of currentDbItems) {
+        await deleteDoc(doc(db, 'laporan_baznas_rincian_docs', item.id));
+      }
+
+      toast.info("Mengunggah data rincian default...");
+      for (const item of DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026) {
+        await addDoc(collection(db, 'laporan_baznas_rincian_docs'), {
+          ...item,
+          account: baznasAccount,
+          month: baznasMonth,
+          year: baznasYear,
+          userUid,
+          updatedAt: serverTimestamp()
+        });
+      }
+      
+      toast.success("Berhasil memuat 61 transaksi default!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal memuat rincian default");
+    } finally {
+      setIsResettingDefault(false);
+    }
+  };
+
+  const handleDeleteRincian = async (item: any) => {
+    if (!window.confirm("Yakin ingin menghapus rincian transaksi ini?")) return;
+    
+    try {
+      if (item.id) {
+        await deleteDoc(doc(db, 'laporan_baznas_rincian_docs', item.id));
+        toast.success("Berhasil menghapus rincian");
+      } else {
+        setIsSubmitting(true);
+        toast.info("Menginisialisasi data rincian ke database...");
+        for (const defaultItem of DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026) {
+          if (defaultItem.noDoc === item.noDoc) continue;
+          await addDoc(collection(db, 'laporan_baznas_rincian_docs'), {
+            ...defaultItem,
+            userUid,
+            updatedAt: serverTimestamp()
+          });
+        }
+        toast.success("Transaksi berhasil dihapus");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Gagal menghapus rincian");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEditRincian = (item: any) => {
+    setEditingRincianId(item.id || 'default_static');
+    setRFormBudgetCode(item.kodeBudget);
+    setRFormNoDoc(item.noDoc || 1);
+    setRFormNoBukti(item.noBukti);
+    setRFormTanggalBudget(item.tanggalBudget);
+    setRFormKeterangan(item.keterangan);
+    setRFormDetails(item.details && item.details.length > 0 ? [...item.details] : [{ noBuktiDetail: '1', keteranganDetail: '', qty: 1, hargaSatuan: 0 }]);
+    
+    const formElement = document.getElementById("rincian-input-card");
+    if (formElement) {
+      formElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const resetRincianForm = () => {
+    setRFormBudgetCode('');
+    const nextNoDoc = (sortedRincianItems.length > 0 ? Math.max(...sortedRincianItems.map(r => r.noDoc || 0)) + 1 : 1);
+    setRFormNoDoc(nextNoDoc);
+    setRFormNoBukti('');
+    setRFormTanggalBudget('');
+    setRFormKeterangan('');
+    setRFormDetails([{ noBuktiDetail: 'a', keteranganDetail: '', qty: 1, hargaSatuan: 0 }]);
+    setEditingRincianId(null);
   };
 
   const getSubmissionMonthAndYear = (sub: any) => {
@@ -393,47 +627,83 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   };
 
   const computeReportData = (targetMonth: string, targetYear: string) => {
+    // Determine the relevant rincian items for the target period
+    const targetDbRincian = dbRincianList.filter(
+      r => r.month.toLowerCase() === targetMonth.toLowerCase() &&
+           r.year === targetYear &&
+           r.account.toLowerCase() === baznasAccount.toLowerCase()
+    );
+
+    const targetRincian = (targetDbRincian.length === 0 && targetMonth === 'Januari' && targetYear === '2026' && baznasAccount === 'SMP')
+      ? DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026
+      : targetDbRincian;
+
+    const hasRincian = targetRincian.length > 0;
+
     const leafCalculated = currentTemplates.map(item => {
       if (item.level === 3) {
-        const matches = submissions.filter(sub => {
-          const my = getSubmissionMonthAndYear(sub);
-          if (!my) return false;
-          
-          const codeMatches = sub.kodeBudget === item.code;
-          const periodMatches = my.month.toLowerCase() === targetMonth.toLowerCase() && my.year === targetYear;
-          const isValidStage = (sub.currentStageIndex >= 4 || sub.status === 'APPROVED' || sub.status === 'approved') && sub.status !== 'REJECTED' && sub.status !== 'rejected';
-          
-          // Check Account
-          const subAccount = sub.sumberRekening || 'SMP';
-          const accountMatches = baznasAccount === 'SMP'
-            ? (subAccount === 'SMP' || subAccount === 'Donasi SMP')
-            : (subAccount === 'SMA' || subAccount === 'Donasi SMA');
+        if (hasRincian) {
+          // Calculate sum of credit in details for this code
+          const totalRincianReal = targetRincian
+            .filter(r => r.kodeBudget === item.code)
+            .reduce((sum, r) => sum + (r.details?.reduce((s: number, d: any) => s + ((d.qty || 0) * (d.hargaSatuan || 0)), 0) || 0), 0);
+
+          // Find if there is custom budget override
+          const customOverride = customBaznasValues.find(v => 
+            v.month.toLowerCase() === targetMonth.toLowerCase() &&
+            v.year === targetYear &&
+            v.code === item.code &&
+            (v.account ? v.account.toLowerCase() === baznasAccount.toLowerCase() : baznasAccount.toLowerCase() === 'smp')
+          );
+
+          const budgetAsi = customOverride && customOverride.budget !== undefined ? customOverride.budget : item.budget;
+
+          return {
+            ...item,
+            anggaranVal: budgetAsi,
+            realisasiVal: totalRincianReal
+          };
+        } else {
+          const matches = submissions.filter(sub => {
+            const my = getSubmissionMonthAndYear(sub);
+            if (!my) return false;
             
-          return codeMatches && periodMatches && isValidStage && accountMatches;
-        });
-        
-        const sum = matches.reduce((acc, sub) => acc + (sub.amount || 0), 0);
-        
-        let initialReal = sum;
-        if (sum === 0 && targetMonth === 'Januari' && targetYear === '2026') {
-          initialReal = item.realDefault;
-        }
-
-        const customOverride = customBaznasValues.find(v => 
-          v.month.toLowerCase() === targetMonth.toLowerCase() &&
-          v.year === targetYear &&
-          v.code === item.code &&
-          (v.account ? v.account.toLowerCase() === baznasAccount.toLowerCase() : baznasAccount.toLowerCase() === 'smp')
-        );
-
-        const realAsi = customOverride && customOverride.real !== undefined ? customOverride.real : initialReal;
-        const budgetAsi = customOverride && customOverride.budget !== undefined ? customOverride.budget : item.budget;
+            const codeMatches = sub.kodeBudget === item.code;
+            const periodMatches = my.month.toLowerCase() === targetMonth.toLowerCase() && my.year === targetYear;
+            const isValidStage = (sub.currentStageIndex >= 4 || sub.status === 'APPROVED' || sub.status === 'approved') && sub.status !== 'REJECTED' && sub.status !== 'rejected';
+            
+            // Check Account
+            const subAccount = sub.sumberRekening || 'SMP';
+            const accountMatches = baznasAccount === 'SMP'
+              ? (subAccount === 'SMP' || subAccount === 'Donasi SMP')
+              : (subAccount === 'SMA' || subAccount === 'Donasi SMA');
+              
+            return codeMatches && periodMatches && isValidStage && accountMatches;
+          });
           
-        return {
-          ...item,
-          anggaranVal: budgetAsi,
-          realisasiVal: realAsi
-        };
+          const sum = matches.reduce((acc, sub) => acc + (sub.amount || 0), 0);
+          
+          let initialReal = sum;
+          if (sum === 0 && targetMonth === 'Januari' && targetYear === '2026') {
+            initialReal = item.realDefault;
+          }
+
+          const customOverride = customBaznasValues.find(v => 
+            v.month.toLowerCase() === targetMonth.toLowerCase() &&
+            v.year === targetYear &&
+            v.code === item.code &&
+            (v.account ? v.account.toLowerCase() === baznasAccount.toLowerCase() : baznasAccount.toLowerCase() === 'smp')
+          );
+
+          const realAsi = customOverride && customOverride.real !== undefined ? customOverride.real : initialReal;
+          const budgetAsi = customOverride && customOverride.budget !== undefined ? customOverride.budget : item.budget;
+            
+          return {
+            ...item,
+            anggaranVal: budgetAsi,
+            realisasiVal: realAsi
+          };
+        }
       }
       
       return {
@@ -1080,6 +1350,405 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
               </div>
             </div>
           </Card>
+
+          {/* RINCIAN LAPORAN PERTUM TABLE CARD */}
+          <Card className={`rounded-3xl border border-slate-100 bg-white ${isExportingPDF ? 'shadow-none border-none p-0' : 'shadow-sm p-4 md:p-8'}`}>
+            <div className="space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 pb-4 gap-4">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight uppercase flex items-center gap-2">
+                    RINCIAN LAPORAN PERTUM PERIODE {baznasMonth.toUpperCase()} {baznasYear}
+                  </h3>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">
+                    Buku Pembantu Pengeluaran Riil (Sub-Ledger Detail) — REKENING {baznasAccount}
+                  </p>
+                </div>
+                {!isExportingPDF && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      type="button"
+                      onClick={handleLoadDefaults}
+                      disabled={isResettingDefault}
+                      className="rounded-xl font-bold border-amber-200 text-amber-700 hover:bg-amber-50 h-10 px-4 text-xs"
+                    >
+                      <RefreshCw size={14} className={`mr-1.5 ${isResettingDefault ? 'animate-spin' : ''}`} />
+                      Muat Default Jan 2026
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById("rincian-input-card");
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white h-10 px-4 text-xs"
+                    >
+                      <Plus size={14} className="mr-1.5" />
+                      Tambah Transaksi Baru
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm bg-white">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider text-center border-b border-slate-800">
+                      <th className="py-3 px-2 border-r border-slate-700 w-12 bg-slate-900">NO DOC</th>
+                      <th className="py-3 px-3 border-r border-slate-700 w-28 bg-slate-900 text-center">KODE BUDGET</th>
+                      <th className="py-3 px-3 border-r border-slate-700 w-32 bg-slate-900 text-center">NO. BUKTI</th>
+                      <th className="py-3 px-3 border-r border-slate-700 w-24 bg-slate-900 text-center">TANGGAL</th>
+                      <th className="py-3 px-4 border-r border-slate-700 text-left bg-slate-900">KETERANGAN & RINCIAN DETAIL</th>
+                      <th className="py-3 px-3 border-r border-slate-700 text-right w-24 bg-slate-900">QTY</th>
+                      <th className="py-3 px-3 border-r border-slate-700 text-right w-32 bg-slate-900">HARGA SATUAN</th>
+                      <th className="py-3 px-3 border-r border-slate-700 text-right w-32 bg-slate-900">JUMLAH (CREDIT)</th>
+                      {!isExportingPDF && <th className="py-3 px-2 text-center w-20 bg-slate-900">AKSI</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="text-[11px]">
+                    {sortedRincianItems.length === 0 ? (
+                      <tr>
+                        <td colSpan={isExportingPDF ? 8 : 9} className="py-8 text-center text-slate-400 font-bold text-xs bg-slate-50/50">
+                          Tidak ada data rincian transaksi untuk periode ini. Silakan input baru atau klik "Muat Default Jan 2026".
+                        </td>
+                      </tr>
+                    ) : (
+                      (() => {
+                        let runningTotal = 0;
+                        return sortedRincianItems.flatMap((item, itemIdx) => {
+                          const totalItemCredit = item.details?.reduce((sum, d) => sum + ((d.qty || 0) * (d.hargaSatuan || 0)), 0) || 0;
+                          
+                          return [
+                            // TRANSACTION HEADER ROW
+                            <tr key={`h-${item.id || itemIdx}`} className="bg-slate-50/70 border-b border-slate-200 font-bold text-slate-800">
+                              <td className="py-2.5 px-2 border-r border-slate-200 text-center text-slate-900 text-xs font-black">
+                                {item.noDoc}
+                              </td>
+                              <td className="py-2.5 px-3 border-r border-slate-200 text-center font-mono text-xs font-bold text-emerald-700 bg-emerald-50/10">
+                                {item.kodeBudget}
+                              </td>
+                              <td className="py-2.5 px-3 border-r border-slate-200 text-center font-mono text-xs">
+                                {item.noBukti || '-'}
+                              </td>
+                              <td className="py-2.5 px-3 border-r border-slate-200 text-center text-xs">
+                                {item.tanggalBudget || '-'}
+                              </td>
+                              <td className="py-2.5 px-4 border-r border-slate-200 text-xs font-black tracking-tight text-slate-900" colSpan={3}>
+                                {item.keterangan}
+                              </td>
+                              <td className="py-2.5 px-3 border-r border-slate-200 text-right font-mono font-bold text-slate-900 text-xs bg-slate-50">
+                                Rp {totalItemCredit.toLocaleString('id-ID')}
+                              </td>
+                              {!isExportingPDF && (
+                                <td className="py-1 px-2 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      type="button"
+                                      onClick={() => handleEditRincian(item)}
+                                      className="h-7 w-7 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg"
+                                      title="Edit Rincian"
+                                    >
+                                      <Edit2 size={13} />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      type="button"
+                                      onClick={() => handleDeleteRincian(item)}
+                                      className="h-7 w-7 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg"
+                                      title="Hapus"
+                                    >
+                                      <Trash2 size={13} />
+                                    </Button>
+                                  </div>
+                                </td>
+                              )}
+                            </tr>,
+                            // SUB-ITEMS DETAIL ROWS
+                            ...(item.details || []).map((detail, detIdx) => {
+                              const lineTotal = (detail.qty || 0) * (detail.hargaSatuan || 0);
+                              return (
+                                <tr key={`d-${item.id || itemIdx}-${detIdx}`} className="border-b border-slate-100 hover:bg-slate-50/30 text-slate-600 text-[10.5px]">
+                                  <td className="py-1.5 px-2 border-r border-slate-200 bg-white"></td>
+                                  <td className="py-1.5 px-3 border-r border-slate-200 bg-white"></td>
+                                  <td className="py-1.5 px-3 border-r border-slate-200 bg-white"></td>
+                                  <td className="py-1.5 px-3 border-r border-slate-200 text-center text-slate-400 font-mono">
+                                    {detail.noBuktiDetail || String.fromCharCode(97 + detIdx)}
+                                  </td>
+                                  <td className="py-1.5 px-4 border-r border-slate-200 pl-6 italic text-slate-650">
+                                    {detail.keteranganDetail || '-'}
+                                  </td>
+                                  <td className="py-1.5 px-3 border-r border-slate-200 text-right font-mono">
+                                    {detail.qty}
+                                  </td>
+                                  <td className="py-1.5 px-3 border-r border-slate-200 text-right font-mono text-slate-500">
+                                    {detail.hargaSatuan > 0 ? detail.hargaSatuan.toLocaleString('id-ID') : '-'}
+                                  </td>
+                                  <td className="py-1.5 px-3 border-r border-slate-200 text-right font-mono text-slate-600 bg-slate-50/20">
+                                    {lineTotal > 0 ? lineTotal.toLocaleString('id-ID') : '-'}
+                                  </td>
+                                  {!isExportingPDF && <td className="py-1.5 px-2 bg-white"></td>}
+                                </tr>
+                              );
+                            })
+                          ];
+                        });
+                      })()
+                    )}
+                    {/* TOTAL SUMMARY LEDGER ROW */}
+                    <tr className="bg-slate-900 text-white font-black text-xs uppercase border-t-2 border-slate-800">
+                      <td className="py-3 px-3 text-center border-r border-slate-800" colSpan={4}>
+                        TOTAL RINCIAN PENGELUARAN PERTUM
+                      </td>
+                      <td className="py-3 px-4 border-r border-slate-800"></td>
+                      <td className="py-3 px-3 border-r border-slate-800"></td>
+                      <td className="py-3 px-3 border-r border-slate-800"></td>
+                      <td className="py-3 px-3 text-right border-r border-slate-800 font-mono text-emerald-400 text-xs">
+                        Rp {sortedRincianItems.reduce((acc, item) => acc + (item.details?.reduce((sum, d) => sum + ((d.qty || 0) * (d.hargaSatuan || 0)), 0) || 0), 0).toLocaleString('id-ID')}
+                      </td>
+                      {!isExportingPDF && <td className="py-3 px-2 text-center"></td>}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </Card>
+
+          {/* FORM INPUT DETAIL TRANSAKSI */}
+          {!isExportingPDF && (
+            <Card id="rincian-input-card" className="rounded-3xl border border-slate-100 shadow-sm bg-white overflow-hidden mt-6">
+              <CardHeader className="bg-emerald-50/50 border-b border-emerald-100">
+                <CardTitle className="text-lg font-black text-slate-800 flex items-center gap-2">
+                  <Plus className="text-emerald-600" size={18} />
+                  {editingRincianId ? 'Edit Rincian Transaksi PertUM' : 'Tambah Rincian Transaksi PertUM'}
+                </CardTitle>
+                <p className="text-xs text-slate-500 font-medium">
+                  Lengkapi formulir untuk memasukkan transaksi rincian uang muka. Pengeluaran rincian ini akan otomatis merefleksikan nilai realisasi di Laporan Format BAZNAS di atas.
+                </p>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <form onSubmit={handleSaveRincian} className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* LEFT SIDE: Parent Transaction Header */}
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest border-b pb-2">1. Data Utama Transaksi</h4>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5 flex flex-col justify-end">
+                          <Label className="text-xs font-bold text-slate-500 uppercase">Pilih Pos Budget (Level 3) <span className="text-red-500">*</span></Label>
+                          <Select value={rFormBudgetCode} onValueChange={setRFormBudgetCode}>
+                            <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200">
+                              <SelectValue placeholder="Pilih Pos Budget" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60">
+                              {currentTemplates.filter(item => item.level === 3).map(item => (
+                                <SelectItem key={item.code} value={item.code} className="text-xs">
+                                  {item.code} — {item.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-bold text-slate-500 uppercase">No. Urut Dokumen (No Doc) <span className="text-red-500">*</span></Label>
+                          <Input
+                            type="number"
+                            value={rFormNoDoc}
+                            onChange={e => setRFormNoDoc(parseInt(e.target.value) || 1)}
+                            className="rounded-xl bg-slate-50 border-slate-200 h-10 font-bold"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-bold text-slate-500 uppercase">No. Bukti Transaksi <span className="text-red-500">*</span></Label>
+                          <Input
+                            type="text"
+                            value={rFormNoBukti}
+                            onChange={e => setRFormNoBukti(e.target.value)}
+                            placeholder="Contoh: B.01.160126"
+                            className="rounded-xl bg-slate-50 border-slate-200 h-10"
+                            required
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-bold text-slate-500 uppercase">Tanggal Dokumen <span className="text-red-500">*</span></Label>
+                          <Input
+                            type="text"
+                            value={rFormTanggalBudget}
+                            onChange={e => setRFormTanggalBudget(e.target.value)}
+                            placeholder="Contoh: 16-Jan-26"
+                            className="rounded-xl bg-slate-50 border-slate-200 h-10"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-slate-500 uppercase">Keterangan Utama Transaksi <span className="text-red-500">*</span></Label>
+                        <Input
+                          type="text"
+                          value={rFormKeterangan}
+                          onChange={e => setRFormKeterangan(e.target.value)}
+                          placeholder="Contoh: Klaim Kesehatan an Ust Nanang"
+                          className="rounded-xl bg-slate-50 border-slate-200 h-10"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* RIGHT SIDE: Sub-items Array Editor */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest">2. Rincian Unit / Detail Pengeluaran</h4>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setRFormDetails([...rFormDetails, { noBuktiDetail: 'a', keteranganDetail: '', qty: 1, hargaSatuan: 0 }])}
+                          className="rounded-xl text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-none font-bold text-xs h-7 px-3"
+                        >
+                          <Plus size={12} className="mr-1" />
+                          Tambah Baris Detail
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                        {rFormDetails.map((detail, index) => (
+                          <div key={index} className="p-4 rounded-2xl bg-slate-50/70 border border-slate-100 space-y-3 relative">
+                            {rFormDetails.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = [...rFormDetails];
+                                  updated.splice(index, 1);
+                                  setRFormDetails(updated);
+                                }}
+                                className="absolute top-2 right-2 text-rose-500 hover:text-rose-700 p-1"
+                                title="Hapus baris ini"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                            
+                            <div className="grid grid-cols-4 gap-2">
+                              <div className="col-span-1 space-y-1">
+                                <Label className="text-[10px] font-bold text-slate-400 uppercase">No/Kode</Label>
+                                <Input
+                                  type="text"
+                                  value={detail.noBuktiDetail}
+                                  onChange={e => {
+                                    const updated = [...rFormDetails];
+                                    updated[index].noBuktiDetail = e.target.value;
+                                    setRFormDetails(updated);
+                                  }}
+                                  placeholder="a"
+                                  className="rounded-lg border-slate-200 text-xs h-8"
+                                />
+                              </div>
+                              <div className="col-span-3 space-y-1">
+                                <Label className="text-[10px] font-bold text-slate-400 uppercase">Keterangan / Item Penerima <span className="text-red-500">*</span></Label>
+                                <Input
+                                  type="text"
+                                  value={detail.keteranganDetail}
+                                  onChange={e => {
+                                    const updated = [...rFormDetails];
+                                    updated[index].keteranganDetail = e.target.value;
+                                    setRFormDetails(updated);
+                                  }}
+                                  placeholder="Pengobatan / Pembelian obat"
+                                  className="rounded-lg border-slate-200 text-xs h-8"
+                                  required
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-bold text-slate-400 uppercase">Bulan/Tgl</Label>
+                                <Input
+                                  type="text"
+                                  value={detail.tanggalDetail || ''}
+                                  onChange={e => {
+                                    const updated = [...rFormDetails];
+                                    updated[index].tanggalDetail = e.target.value;
+                                    setRFormDetails(updated);
+                                  }}
+                                  placeholder="16-Jan-26"
+                                  className="rounded-lg border-slate-200 text-xs h-8"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-bold text-slate-400 uppercase">Qty <span className="text-red-500">*</span></Label>
+                                <Input
+                                  type="number"
+                                  step="any"
+                                  value={detail.qty}
+                                  onChange={e => {
+                                    const updated = [...rFormDetails];
+                                    updated[index].qty = Math.max(0, parseFloat(e.target.value) || 0);
+                                    setRFormDetails(updated);
+                                  }}
+                                  className="rounded-lg border-slate-200 text-xs h-8 font-semibold"
+                                  required
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px] font-bold text-slate-400 uppercase">Harga Satuan (Rp) <span className="text-red-500">*</span></Label>
+                                <Input
+                                  type="text"
+                                  value={detail.hargaSatuan ? parseInt(detail.hargaSatuan.toString().replace(/\./g, '')).toLocaleString('id-ID') : '0'}
+                                  onChange={e => {
+                                    const rawVal = e.target.value.replace(/\./g, '');
+                                    const updated = [...rFormDetails];
+                                    updated[index].hargaSatuan = parseInt(rawVal) || 0;
+                                    setRFormDetails(updated);
+                                  }}
+                                  className="rounded-lg border-slate-200 text-xs h-8 font-mono font-semibold"
+                                  required
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="p-4 rounded-2xl bg-emerald-55 bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
+                        <span className="text-xs font-black text-slate-700 uppercase">Total Unit Credit Entry</span>
+                        <span className="text-lg font-black font-mono text-emerald-700">
+                          Rp {rFormDetails.reduce((sum, d) => sum + ((d.qty || 0) * (d.hargaSatuan || 0)), 0).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-4 border-t justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={resetRincianForm}
+                      className="rounded-xl font-bold border-slate-200 text-slate-600 h-10 px-5 text-xs"
+                    >
+                      Batal / Bersihkan
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white h-10 px-6 text-xs"
+                    >
+                      {isSubmitting ? 'Menyimpan...' : (editingRincianId ? 'Simpan Perubahan' : 'Simpan Transaksi Rincian')}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
         </div>
       ) : (
         /* ORIGINAL STANDARD REALISASI VIEW */

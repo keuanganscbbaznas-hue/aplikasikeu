@@ -160,6 +160,11 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
+    match /laporan_baznas_rincian_docs/{rincianId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
     match /berkas_digital/{berkasId} {
       allow read: if true;
       allow write: if isSignedIn();

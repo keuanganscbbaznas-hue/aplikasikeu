@@ -2080,7 +2080,7 @@ export default function App() {
       </AlertDialog>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-6xl max-h-[95vh] flex flex-col rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
+        <DialogContent className="max-w-6xl sm:max-w-6xl w-[90vw] md:w-[95vw] h-[90vh] max-h-[90vh] flex flex-col rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl bg-white">
           <form onSubmit={handleUpdate} className="flex flex-col flex-1 overflow-hidden">
             <div className="p-6 border-b border-slate-50 bg-white shrink-0">
               <DialogHeader>
@@ -2091,7 +2091,7 @@ export default function App() {
               </DialogHeader>
             </div>
             
-            <ScrollArea className="flex-1 min-h-0 bg-slate-50/30">
+            <ScrollArea className="flex-1 w-full h-full min-h-0 bg-slate-50/30">
               <div className="p-8">
                 <div className="grid gap-12 lg:grid-cols-12">
                 <div className="lg:col-span-7 space-y-8">
@@ -2957,7 +2957,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
           </Button>
         }
       />
-      <DialogContent className="max-w-4xl max-h-[95vh] flex flex-col rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
+      <DialogContent className="max-w-4xl sm:max-w-4xl w-[90vw] md:w-[95vw] h-[90vh] max-h-[90vh] flex flex-col rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl bg-white">
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           <div className="p-6 border-b border-slate-50 bg-white shrink-0">
             <DialogHeader>
@@ -2968,7 +2968,7 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
             </DialogHeader>
           </div>
           
-          <ScrollArea className="flex-1 min-h-0 bg-slate-50/30">
+          <ScrollArea className="flex-1 w-full h-full min-h-0 bg-slate-50/30">
             <div className="p-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
               <div className="space-y-4">
