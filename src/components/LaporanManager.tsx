@@ -1270,7 +1270,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                 <>
                   {/* DIALOG CHART VISUALISASI */}
                   <Dialog open={isChartDialogOpen} onOpenChange={setIsChartDialogOpen}>
-                    <DialogContent className="max-w-4xl rounded-3xl p-6 bg-slate-50 border border-slate-200">
+                    <DialogContent className="w-[96vw] sm:max-w-[92vw] md:max-w-4xl lg:max-w-5xl xl:max-w-6xl rounded-3xl p-6 bg-slate-50 border border-slate-200">
                       <DialogHeader className="border-b pb-4 mb-2">
                         <DialogTitle className="text-sm font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
                           <BarChart2 className="text-emerald-600" size={18} />
@@ -1282,7 +1282,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                       </DialogHeader>
                       
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-2">
-                        <div className="lg:col-span-2 bg-white p-4 rounded-2xl border border-slate-150 shadow-xs h-[300px]">
+                        <div className="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-150 shadow-sm h-[320px] sm:h-[400px]">
                           {activeExpenditures.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-2">
                               <FileText size={40} className="stroke-[1.5] text-slate-300" />
@@ -1390,7 +1390,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
 
                   {/* DIALOG SESUAIKAN TARGET ANGGARAN / REALISASI */}
                   <Dialog open={isBudgetDialogOpen} onOpenChange={setIsBudgetDialogOpen}>
-                    <DialogContent className="max-w-md rounded-3xl p-6 bg-white border border-slate-100">
+                    <DialogContent className="w-[96vw] sm:max-w-md rounded-3xl p-6 bg-white border border-slate-100">
                       <DialogHeader className="border-b pb-4 mb-3">
                         <DialogTitle className="text-sm font-black text-slate-905 uppercase tracking-tight flex items-center gap-1.5">
                           <Settings className="text-emerald-605" size={18} />
@@ -1751,7 +1751,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                 resetRincianForm();
               }
             }}>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 bg-white border border-slate-100 text-left">
+              <DialogContent className="w-[96vw] sm:max-w-[92vw] md:max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 bg-white border border-slate-100 text-left">
                 <DialogHeader className="border-b pb-4 mb-4">
                   <DialogTitle className="text-lg font-black text-slate-800 flex items-center gap-2">
                     <Plus className="text-emerald-600" size={18} />
