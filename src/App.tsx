@@ -524,6 +524,7 @@ export default function App() {
   const [filterPIC, setFilterPIC] = useState('');
   const [filterMonth, setFilterMonth] = useState<string>('all');
   const [filterYear, setFilterYear] = useState<string>('all');
+  const [filterSumberRekening, setFilterSumberRekening] = useState<string>('all');
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -1378,9 +1379,14 @@ export default function App() {
       const matchesMonth = filterMonth === 'all' ? true : (subDate.getMonth() + 1).toString() === filterMonth;
       const matchesYear = filterYear === 'all' ? true : subDate.getFullYear().toString() === filterYear;
 
-      return globalSearch && matchesPIC && matchesType && matchesMin && matchesMax && matchesStatus && matchesMonth && matchesYear;
+      // Sumber Rekening Filter
+      const matchesSumberRekening = filterSumberRekening === 'all' 
+        ? true 
+        : (sub.sumberRekening || '').toLowerCase() === filterSumberRekening.toLowerCase();
+
+      return globalSearch && matchesPIC && matchesType && matchesMin && matchesMax && matchesStatus && matchesMonth && matchesYear && matchesSumberRekening;
     });
-  }, [submissions, deferredSearchQuery, deferredFilterPIC, filterType, minAmount, maxAmount, filterStatuses, filterMonth, filterYear]);
+  }, [submissions, deferredSearchQuery, deferredFilterPIC, filterType, minAmount, maxAmount, filterStatuses, filterMonth, filterYear, filterSumberRekening]);
 
   if (loading) {
     return (
@@ -1690,55 +1696,71 @@ export default function App() {
                             </Button>
                          </div>
                        </div>
-                    </div>
+                      </div>
 
-                     <Card className="border-slate-100 shadow-lg shadow-slate-200/30 rounded-2xl overflow-hidden mb-4">
-  <CardContent className="p-3 bg-white">
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                           <div className="space-y-1.5 sm:col-span-2">
-                             <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Pencarian</Label>
-<div className="relative group">
-  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" size={14} />
-  <DebouncedInput 
-    placeholder="Cari..." 
-    className="pl-9 h-8 bg-slate-50 border-none rounded-lg text-[11px] font-bold focus-visible:ring-2 focus-visible:ring-emerald-500/20 transition-all placeholder:text-slate-300"
-                                 value={searchQuery}
-                                 onChange={(val) => setSearchQuery(val)}
-                               />
-                             </div>
-                           </div>
-                           
-                           <div className="space-y-1.5">
-                             <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Jenis</Label>
-<Select value={filterType} onValueChange={setFilterType}>
-  <SelectTrigger className="h-8 bg-slate-50 border-none rounded-lg text-[11px] font-bold focus:ring-2 focus:ring-emerald-500/20 transition-all">
-                                 <div className="flex items-center gap-2">
-                                   <Filter size={14} className="text-slate-400" />
-                                   <SelectValue placeholder="Semua Tipe" />
-                                 </div>
-                               </SelectTrigger>
-                               <SelectContent className="rounded-xl border-slate-100">
-                                 <SelectItem value="all" className="text-xs font-bold">SEMUA TIPE</SelectItem>
-                                 <SelectItem value="uang_muka" className="text-xs font-bold">UANG MUKA</SelectItem>
-                                 <SelectItem value="reimburse" className="text-xs font-bold">REIMBURSE</SelectItem>
-                                 <SelectItem value="pembiayaan" className="text-xs font-bold">PEMBIAYAAN</SelectItem>
-                               </SelectContent>
-                             </Select>
-                           </div>
+                      <Card className="border-slate-100 shadow-lg shadow-slate-200/30 rounded-2xl overflow-hidden mb-4">
+                        <CardContent className="p-3 bg-white">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                            <div className="space-y-1.5 sm:col-span-2">
+                              <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Pencarian</Label>
+                              <div className="relative group">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" size={14} />
+                                <DebouncedInput 
+                                  placeholder="Cari..." 
+                                  className="pl-9 h-8 bg-slate-50 border-none rounded-lg text-[11px] font-bold focus-visible:ring-2 focus-visible:ring-emerald-500/20 transition-all placeholder:text-slate-300"
+                                  value={searchQuery}
+                                  onChange={(val) => setSearchQuery(val)}
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-1.5">
+                              <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Jenis</Label>
+                              <Select value={filterType} onValueChange={setFilterType}>
+                                <SelectTrigger className="h-8 bg-slate-50 border-none rounded-lg text-[11px] font-bold focus:ring-2 focus:ring-emerald-500/20 transition-all">
+                                  <div className="flex items-center gap-2">
+                                    <Filter size={14} className="text-slate-400" />
+                                    <SelectValue placeholder="Semua Tipe" />
+                                  </div>
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-slate-100">
+                                  <SelectItem value="all" className="text-xs font-bold">SEMUA TIPE</SelectItem>
+                                  <SelectItem value="uang_muka" className="text-xs font-bold">UANG MUKA</SelectItem>
+                                  <SelectItem value="reimburse" className="text-xs font-bold">REIMBURSE</SelectItem>
+                                  <SelectItem value="pembiayaan" className="text-xs font-bold">PEMBIAYAAN</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
 
-                           <div className="space-y-1.5">
-                             <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</Label>
-<StatusMultiSelect
+                            <div className="space-y-1.5">
+                              <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</Label>
+                              <StatusMultiSelect
                                 allStatuses={Array.from(new Set([...UM_STAGES, ...TRANSACTION_STAGES]))}
                                 selectedStatuses={filterStatuses}
                                 onChange={setFilterStatuses}
                               />
+                            </div>
 
+                            <div className="space-y-1.5">
+                              <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Sumber Rekening</Label>
+                              <Select value={filterSumberRekening} onValueChange={setFilterSumberRekening}>
+                                <SelectTrigger className="h-8 bg-slate-50 border-none rounded-lg text-[11px] font-bold focus:ring-2 focus:ring-emerald-500/20 transition-all">
+                                  <div className="flex items-center gap-2">
+                                    <Filter size={14} className="text-slate-400" />
+                                    <SelectValue placeholder="Semua Sumber" />
+                                  </div>
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl border-slate-100">
+                                  <SelectItem value="all" className="text-xs font-bold">SEMUA SUMBER</SelectItem>
+                                  <SelectItem value="smp" className="text-xs font-bold">SMP</SelectItem>
+                                  <SelectItem value="sma" className="text-xs font-bold">SMA</SelectItem>
+                                  <SelectItem value="donasi smp" className="text-xs font-bold">DONASI SMP</SelectItem>
+                                  <SelectItem value="donasi sma" className="text-xs font-bold">DONASI SMA</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
 
-
-                           </div>
-
-                           <div className="space-y-1.5">
+                            <div className="space-y-1.5">
                              <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">PIC</Label>
 <div className="relative group">
   <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" size={14} />
@@ -1815,7 +1837,8 @@ export default function App() {
                         minAmount !== '' || 
                         maxAmount !== '' ||
                         filterMonth !== 'all' ||
-                        filterYear !== 'all'
+                        filterYear !== 'all' ||
+                        filterSumberRekening !== 'all'
                       }
                       filters={{
                         search: searchQuery,
@@ -1825,7 +1848,8 @@ export default function App() {
                         month: filterMonth,
                         year: filterYear,
                         min: minAmount,
-                        max: maxAmount
+                        max: maxAmount,
+                        sumberRekening: filterSumberRekening
                       }}
                     />
 
@@ -2543,6 +2567,7 @@ function FilteredResultsSummary({
     year: string;
     min: string;
     max: string;
+    sumberRekening?: string;
   }
 }) {
   if (!isFiltered) return null;
@@ -2560,6 +2585,7 @@ function FilteredResultsSummary({
       parts.push(`"Bulan" "${monthName}"`);
     }
     if (filters.year !== 'all') parts.push(`"Tahun" "${filters.year}"`);
+    if (filters.sumberRekening && filters.sumberRekening !== 'all') parts.push(`"Sumber Rekening" "${filters.sumberRekening.toUpperCase()}"`);
     if (filters.min || filters.max) parts.push(`"Nominal" ${filters.min ? 'min Rp'+Number(filters.min).toLocaleString('id-ID') : ''}${filters.min && filters.max ? ' s/d ' : ''}${filters.max ? 'max Rp'+Number(filters.max).toLocaleString('id-ID') : ''}`);
     
     return parts.length > 0 ? parts.join(", ") : "Terfilter";
