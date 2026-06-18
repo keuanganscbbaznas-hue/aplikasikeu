@@ -4357,7 +4357,7 @@ function SubmissionDetailView({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
         <div className="space-y-6">
           {/* Detail Card */}
           <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
@@ -5017,10 +5017,10 @@ Wassalamu'alaikum Wr. Wb.
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm h-full">
+        <div className="space-y-6 md:h-full flex flex-col">
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex-1 flex flex-col h-full">
             <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Riwayat Aktivitas (Chronology)</h4>
-            <ScrollArea className="h-[450px] pr-4">
+            <ScrollArea className="flex-grow min-h-[450px] lg:min-h-[550px] xl:min-h-[600px] h-0 pr-4">
               <div className="relative space-y-6 pl-6 before:absolute before:left-2 before:top-2 before:h-[calc(100%-16px)] before:w-0.5 before:bg-slate-100">
                 {fullChronology.map((item, i) => (
                   <div key={i} className="relative">
