@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import cookieParser from "cookie-parser";
 import { google } from "googleapis";
 import { Readable } from "stream";
+import { GoogleGenAI, Type } from "@google/genai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -48,6 +49,87 @@ async function startServer() {
   app.get("/api/system/sync/status", (req, res) => {
     const hasCreds = !!(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY);
     res.json({ ready: hasCreds, serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || null });
+  });
+
+  app.post("/api/gemini/parse-donation", async (req, res) => {
+    try {
+      const { base64Data } = req.body;
+      if (!base64Data) {
+        return res.status(400).json({ error: "Missing image/document data" });
+      }
+
+      if (!process.env.GEMINI_API_KEY) {
+        // Fallback or explicit warning
+        return res.status(500).json({ error: "Kunci API Gemini (GEMINI_API_KEY) tidak terkonfigurasi di server." });
+      }
+
+      // Initialize GoogleGenAI as required for telemetry or server standard
+      const ai = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      // Extract raw base64 and mime type
+      const match = base64Data.match(/^data:([^;]+);base64,(.*)$/);
+      let mimeType = "image/png";
+      let cleanBase64 = base64Data;
+      if (match) {
+        mimeType = match[1];
+        cleanBase64 = match[2];
+      }
+
+      const imagePart = {
+        inlineData: {
+          mimeType: mimeType,
+          data: cleanBase64,
+        },
+      };
+
+      const promptPart = {
+        text: "Please analyze this Indonesian bank transfer or donation payment receipt. Extract the donation transfer amount (nominal) in Rupiah (IDR). Re-verify numbers carefully. Also extract any relevant transaction info into a short Indonesian note.",
+      };
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: { parts: [imagePart, promptPart] },
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              success: {
+                type: Type.BOOLEAN,
+                description: "True if a valid bank statement/proof/receipt was parsed successfully."
+              },
+              amount: {
+                type: Type.NUMBER,
+                description: "The total transfer amount numeric value (in IDR). Exclude fee if possible. Example: 150000. If not found or failed, return 0."
+              },
+              notes: {
+                type: Type.STRING,
+                description: "A short Indonesian transaction note detailing the bank name, date, or sender if readable."
+              }
+            },
+            required: ["success", "amount", "notes"]
+          }
+        }
+      });
+
+      const responseText = response.text;
+      if (!responseText) {
+        throw new Error("No response output text received from Gemini API");
+      }
+
+      const parsed = JSON.parse(responseText.trim());
+      res.json(parsed);
+    } catch (error: any) {
+      console.error("Error parsing donation receipt with Gemini:", error);
+      res.status(500).json({ error: error.message || "Gagal memproses bukti transfer otomatis" });
+    }
   });
 
   let scbLogoCache: Buffer | null = null;

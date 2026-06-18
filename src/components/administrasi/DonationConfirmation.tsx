@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,12 +13,15 @@ import {
   Banknote, 
   CreditCard,
   User,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, auth } from '../../firebase';
+import { collection, addDoc, getDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 import { getApiUrl } from '../../lib/utils';
 
 const SHEET_ID = '1VmjYCnvWO0vrX5PinazbqR3jSIDnEoVAVfyMdvDs4VM';
@@ -26,6 +29,8 @@ const SHEET_ID = '1VmjYCnvWO0vrX5PinazbqR3jSIDnEoVAVfyMdvDs4VM';
 export const DonationConfirmation = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisNote, setAnalysisNote] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     donaturName: '',
     contact: '',
@@ -36,11 +41,77 @@ export const DonationConfirmation = () => {
   });
   const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
 
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            const profileData = userDoc.data();
+            setFormData(prev => ({ 
+              ...prev, 
+              donaturName: profileData.displayName || profileData.name || firebaseUser.displayName || 'Donatur',
+              contact: profileData.email || firebaseUser.email || ''
+            }));
+          } else {
+            setFormData(prev => ({ 
+              ...prev, 
+              donaturName: firebaseUser.displayName || 'Donatur',
+              contact: firebaseUser.email || '' 
+            }));
+          }
+        } catch (e) {
+          console.error("Error setting donatur name:", e);
+          setFormData(prev => ({ 
+            ...prev, 
+            donaturName: firebaseUser.displayName || 'Donatur',
+            contact: firebaseUser.email || '' 
+          }));
+        }
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const analyzeReceipt = async (base64String: string) => {
+    setIsAnalyzing(true);
+    setAnalysisNote(null);
+    const toastId = toast.loading("Menganalisis bukti transfer via AI Gemini...");
+    try {
+      const response = await fetch(getApiUrl('/api/gemini/parse-donation'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64Data: base64String })
+      });
+
+      if (!response.ok) {
+        throw new Error("Gagal terhubung ke modul AI");
+      }
+
+      const data = await response.json();
+      if (data && data.success && data.amount > 0) {
+        setFormData(prev => ({ 
+          ...prev, 
+          amount: String(data.amount),
+        }));
+        setAnalysisNote(data.notes || "Bukti transfer donasi terbaca sukses!");
+        toast.success(`Jumlah transfer donasi terdeteksi otomatis: Rp ${Number(data.amount).toLocaleString('id-ID')}`, { id: toastId });
+      } else {
+        toast.warning("Sistem tidak berhasil mendeteksi nominal donasi otomatis. Silakan periksa kembali dan isi secara manual.", { id: toastId });
+      }
+    } catch (err) {
+      console.error("Error analyzing receipt:", err);
+      toast.error("Gagal melakukan analisis otomatis. Silkan isi nominal secara manual.", { id: toastId });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 700 * 1024) {
-        toast.error("Ukuran file maksimal 700KB untuk upload bukti donasi.");
+      if (file.size > 1500 * 1024) { // Let's raise the limit a bit (1.5MB) to handle mobile photo uploads easily 
+        toast.error("Ukuran file maksimal 1.5MB untuk upload bukti donasi.");
         return;
       }
 
@@ -49,6 +120,7 @@ export const DonationConfirmation = () => {
         const base64String = reader.result as string;
         setEvidencePreview(base64String);
         setFormData(prev => ({ ...prev, evidenceUrl: base64String }));
+        analyzeReceipt(base64String);
       };
       reader.readAsDataURL(file);
     }
@@ -217,88 +289,44 @@ export const DonationConfirmation = () => {
           </CardHeader>
           <CardContent className="p-8 md:p-10">
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Nama Lengkap Donatur</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <Input 
-                      placeholder="Contoh: Bpk. Ahmad" 
-                      className="pl-10 h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" 
-                      value={formData.donaturName}
-                      onChange={(e) => setFormData({...formData, donaturName: e.target.value})}
-                      required 
-                    />
-                  </div>
+              {/* Account Profile Badge */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100/80 flex items-center gap-4">
+                <div className="h-12 w-12 bg-slate-900 text-white rounded-full flex items-center justify-center font-black text-sm">
+                  {formData.donaturName ? formData.donaturName.slice(0, 2).toUpperCase() : <User size={18} />}
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Email / No. HP</Label>
-                  <Input 
-                    placeholder="Contoh: ahmad@email.com" 
-                    className="h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" 
-                    value={formData.contact}
-                    onChange={(e) => setFormData({...formData, contact: e.target.value})}
-                    required 
-                  />
+                <div>
+                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">Akun Donatur Terbaca</p>
+                  <p className="text-sm font-black text-slate-800">{formData.donaturName || 'Mencari akun...'}</p>
+                  <p className="text-[11px] text-slate-500 font-bold">{formData.contact || 'Email belum terhubung'}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Jumlah Donasi (Nominal)</Label>
-                  <div className="relative">
-                    <Banknote className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                    <Input 
-                      type="number" 
-                      placeholder="Rp. 0" 
-                      className="pl-10 h-12 rounded-xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" 
-                      value={formData.amount}
-                      onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                      required 
-                    />
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Rekening Tujuan</Label>
-                  <Select 
-                    required 
-                    value={formData.targetAccount}
-                    onValueChange={(val) => setFormData({...formData, targetAccount: val})}
-                  >
-                    <SelectTrigger className="h-12 rounded-xl bg-slate-50/50 border-slate-200 shadow-none focus:ring-primary/20">
-                      <SelectValue placeholder="Pilih Rekening" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="smp">SMP: 1032913357 (SMP CENDEKIA BAZNAS)</SelectItem>
-                      <SelectItem value="sma">SMA: 1054796605 (SMA CENDEKIA BAZNAS)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
+              {/* Big prominent file upload wrapper */}
               <div className="space-y-3">
-                <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Bukti Transfer</Label>
+                <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Unggah Bukti Transfer Donasi</Label>
                 <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full min-h-32 border-2 border-slate-200 border-dashed rounded-2xl cursor-pointer bg-slate-50/50 hover:bg-white hover:border-primary/50 transition-all overflow-hidden relative">
+                  <label className="flex flex-col items-center justify-center w-full min-h-48 border-2 border-slate-200 border-dashed rounded-2xl cursor-pointer bg-slate-50/50 hover:bg-white hover:border-emerald-500 transition-all overflow-hidden relative group">
                     {evidencePreview ? (
-                      <div className="w-full h-full p-2">
+                      <div className="w-full h-full p-2 flex flex-col justify-center items-center">
                         {evidencePreview.startsWith('data:application/pdf') ? (
                           <div className="flex flex-col items-center p-4">
-                            <ClipboardCheck className="w-12 h-12 text-blue-500 mb-2" />
+                            <ClipboardCheck className="w-16 h-16 text-emerald-600 mb-2" />
                             <p className="text-xs font-bold text-slate-600">File PDF Terunggah</p>
                           </div>
                         ) : (
-                          <img src={evidencePreview} alt="Preview" className="w-full max-h-64 object-contain rounded-xl" />
+                          <img src={evidencePreview} alt="Preview Bukti Donasi" className="w-full max-h-64 object-contain rounded-xl" />
                         )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity rounded-2xl">
-                          <p className="text-white text-xs font-black uppercase tracking-widest">Ganti File</p>
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-2xl">
+                          <p className="text-white text-xs font-black uppercase tracking-widest">Ganti Bukti Transfer</p>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Upload className="w-8 h-8 mb-3 text-slate-400" />
-                        <p className="mb-2 text-sm text-slate-500"><span className="font-bold">Klik untuk upload</span> atau drag and drop</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">PNG, JPG atau PDF (MAX. 5MB)</p>
+                      <div className="flex flex-col items-center justify-center pt-8 pb-8 text-center px-4">
+                        <Upload className="w-12 h-12 mb-4 text-emerald-600 animate-bounce" />
+                        <p className="mb-2 text-sm text-slate-600 font-medium">
+                          <span className="font-bold text-emerald-600">Klik untuk memilih</span> atau drag-and-drop bukti transfer di sini
+                        </p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">PNG, JPG, JPEG atau PDF (MAX. 1.5MB)</p>
                       </div>
                     )}
                     <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleFileChange} />
@@ -306,20 +334,95 @@ export const DonationConfirmation = () => {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Keterangan / Doa (Opsional)</Label>
+              {/* Dynamic Analysis, Amount reading, and Account Selection details */}
+              {evidencePreview && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-5 rounded-2xl border border-slate-100 bg-slate-50/50 space-y-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2">
+                      <Sparkles size={14} className="text-amber-500 fill-amber-500" />
+                      Pembacaan Bukti Otomatis (AI)
+                    </span>
+                    {isAnalyzing && (
+                      <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5 animate-pulse">
+                        <Loader2 size={12} className="animate-spin" />
+                        Memindai...
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Amount Input */}
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center justify-between">
+                        <span>Jumlah Transfer Donasi</span>
+                        {formData.amount && !isAnalyzing && (
+                          <span className="text-[9px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-black animate-pulse">TERBACA OTOMATIS</span>
+                        )}
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">Rp</span>
+                        <Input 
+                          type="number" 
+                          placeholder="Nilai transfer donasi" 
+                          className="pl-10 h-12 font-black text-slate-800 rounded-xl bg-white border-slate-200" 
+                          value={formData.amount}
+                          onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                          required 
+                        />
+                      </div>
+                    </div>
+
+                    {/* Target Account Select */}
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rekening Tujuan</Label>
+                      <Select 
+                        required 
+                        value={formData.targetAccount}
+                        onValueChange={(val) => setFormData({...formData, targetAccount: val})}
+                      >
+                        <SelectTrigger className="h-12 rounded-xl bg-white border-slate-200 shadow-none">
+                          <SelectValue placeholder="Pilih Rekening" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="smp">SMP: 1032913357 (SMP CENDEKIA BAZNAS)</SelectItem>
+                          <SelectItem value="sma">SMA: 1054796605 (SMA CENDEKIA BAZNAS)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* AI Note detail */}
+                  {analysisNote && (
+                    <div className="text-xs bg-emerald-50 text-slate-700 p-3 rounded-xl border border-emerald-100/50 leading-relaxed font-semibold">
+                      <span className="font-extrabold text-emerald-800 block mb-0.5">Detail Deteksi Penerimaan:</span>
+                      {analysisNote}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Confirmation Explanation text area */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-black uppercase tracking-widest text-slate-500 ml-1">Keterangan Konfirmasi</Label>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Membantu Akurasi</span>
+                </div>
                 <Textarea 
-                  placeholder="Tuliskan pesan atau doa anda..." 
-                  className="min-h-[100px] rounded-2xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none" 
+                  placeholder="Opsional: Tuliskan pesan, keterangan tambahan, atau doa Anda..." 
+                  className="min-h-[100px] rounded-2xl bg-slate-50/50 border-slate-200 focus:bg-white transition-all shadow-none placeholder:text-slate-400" 
                   value={formData.notes}
                   onChange={(e) => setFormData({...formData, notes: e.target.value})}
                 />
               </div>
 
-              <Button type="submit" disabled={loading} className="w-full h-14 bg-slate-900 hover:bg-emerald-600 transition-all text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-[0.98]">
+              <Button type="submit" disabled={loading || isAnalyzing} className="w-full h-14 bg-slate-900 hover:bg-emerald-600 transition-all text-white rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-slate-900/10 active:scale-[0.98]">
                 {loading ? (
                   <span className="flex items-center gap-2">
-                    <div className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     MEMPROSES...
                   </span>
                 ) : (
