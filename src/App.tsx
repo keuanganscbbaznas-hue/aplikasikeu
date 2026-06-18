@@ -652,6 +652,7 @@ export default function App() {
   const [editKodeBudget, setEditKodeBudget] = useState('');
   const [editNoDokumen, setEditNoDokumen] = useState('');
   const [editNoDokumenLaporan, setEditNoDokumenLaporan] = useState('');
+  const [editLpjUrl, setEditLpjUrl] = useState('');
   const [editEvidenceUrl, setEditEvidenceUrl] = useState('');
   const [editEvidenceBase64, setEditEvidenceBase64] = useState('');
   const [editEvidenceMimeType, setEditEvidenceMimeType] = useState('');
@@ -1167,6 +1168,7 @@ export default function App() {
     setEditKodeBudget(submission.kodeBudget || '');
     setEditNoDokumen(submission.noDokumen || '');
     setEditNoDokumenLaporan(submission.noDokumenLaporan || '');
+    setEditLpjUrl(submission.lpjUrl || '');
     setEditEvidenceUrl(submission.evidenceUrl || '');
     setEditEvidenceBase64('');
     setEditEvidenceMimeType('');
@@ -1260,6 +1262,7 @@ export default function App() {
         kodeBudget: editKodeBudget || null,
         noDokumen: editNoDokumen || null,
         noDokumenLaporan: editNoDokumenLaporan || null,
+        lpjUrl: editLpjUrl || null,
         evidenceUrl: finalEvidenceUrl,
         createdAt: Timestamp.fromDate(new Date(editCreatedAt)),
         history: editHistory,
@@ -2323,16 +2326,28 @@ export default function App() {
                         />
                       </div>
                       {editType === 'uang_muka' && (
-                        <div className="grid gap-2 ml-1 md:col-span-2">
-                          <Label htmlFor="edit-nodokumen-laporan" className="text-[9px] font-black uppercase tracking-wider text-slate-500">No. Doc Laporan (LPJ)</Label>
-                          <Input 
-                            id="edit-nodokumen-laporan" 
-                            value={editNoDokumenLaporan}
-                            onChange={(e) => setEditNoDokumenLaporan(e.target.value)}
-                            placeholder="Contoh: LPJ.01.020626"
-                            className="h-10 rounded-xl border-slate-200 bg-white"
-                          />
-                        </div>
+                        <>
+                          <div className="grid gap-2 ml-1">
+                            <Label htmlFor="edit-nodokumen-laporan" className="text-[9px] font-black uppercase tracking-wider text-slate-500">No. Doc Laporan (LPJ)</Label>
+                            <Input 
+                              id="edit-nodokumen-laporan" 
+                              value={editNoDokumenLaporan}
+                              onChange={(e) => setEditNoDokumenLaporan(e.target.value)}
+                              placeholder="Contoh: LPJ.01.020626"
+                              className="h-10 rounded-xl border-slate-200 bg-white"
+                            />
+                          </div>
+                          <div className="grid gap-2 ml-1">
+                            <Label htmlFor="edit-lpj-url-dialog" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Link Dokumen/Bukti Laporan (LPJ)</Label>
+                            <Input 
+                              id="edit-lpj-url-dialog" 
+                              value={editLpjUrl}
+                              onChange={(e) => setEditLpjUrl(e.target.value)}
+                              placeholder="Contoh: https://drive.google.com/..."
+                              className="h-10 rounded-xl border-slate-200 bg-white"
+                            />
+                          </div>
+                        </>
                       )}
                       <div className="grid gap-2 ml-1">
                         <Label htmlFor="edit-status" className="text-[9px] font-black uppercase tracking-wider text-slate-500">Status Alur (Admin)</Label>
@@ -4157,6 +4172,7 @@ function SubmissionDetailView({
   const [alokasiEdit, setAlokasiEdit] = useState('');
   const [penggunaanEdit, setPenggunaanEdit] = useState('');
   const [noDokumenLaporanEdit, setNoDokumenLaporanEdit] = useState('');
+  const [lpjUrlEdit, setLpjUrlEdit] = useState('');
   const [picSigEdit, setPicSigEdit] = useState('');
   const [hdSigEdit, setHdSigEdit] = useState('');
   const [isLpjSignPicOpen, setIsLpjSignPicOpen] = useState(false);
@@ -4176,6 +4192,7 @@ function SubmissionDetailView({
       setAlokasiEdit(submission.alokasiPeruntukan || '');
       setPenggunaanEdit(submission.penggunaanDana || '');
       setNoDokumenLaporanEdit(submission.noDokumenLaporan || '');
+      setLpjUrlEdit(submission.lpjUrl || '');
       setPicSigEdit(submission.signatures?.pic?.signature || '');
       setHdSigEdit(submission.signatures?.headDept?.signature || '');
       setWaReminderPhone(submission.picWhatsapp || '');
@@ -4195,6 +4212,7 @@ function SubmissionDetailView({
         alokasiPeruntukan: alokasiEdit || null,
         penggunaanDana: penggunaanEdit || null,
         noDokumenLaporan: noDokumenLaporanEdit || null,
+        lpjUrl: lpjUrlEdit || null,
       };
 
       // Handle signatures safely if changed
@@ -4602,6 +4620,17 @@ function SubmissionDetailView({
                       </div>
 
                       <div className="space-y-1">
+                        <Label className="text-[9px] font-black text-slate-400 uppercase">Link Dokumen/Bukti Laporan</Label>
+                        <Input 
+                          id="edit-lpj-url"
+                          value={lpjUrlEdit} 
+                          onChange={(e) => setLpjUrlEdit(e.target.value)} 
+                          placeholder="Contoh: https://drive.google.com/..."
+                          className="h-9 rounded-xl border-slate-200 bg-white text-xs font-medium"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
                         <Label className="text-[9px] font-black text-slate-400 uppercase">Penggunaan Dana (Rincian)</Label>
                         <textarea 
                           id="edit-lpj-penggunaan"
@@ -4753,6 +4782,27 @@ function SubmissionDetailView({
                         <p className="text-xs font-medium text-slate-700 mt-0.5 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100/50 italic">
                           "{submission.penggunaanDana || 'Tidak ada uraian rincian penggunaan.'}"
                         </p>
+                      </div>
+
+                      <div>
+                        <Label className="text-[9px] text-slate-400 lowercase italic">Link Dokumen/Bukti Laporan</Label>
+                        {submission.lpjUrl ? (
+                          <div className="mt-1">
+                            <a 
+                              href={submission.lpjUrl} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100/80 text-emerald-700 hover:text-emerald-800 text-xs font-bold transition-all border border-emerald-100/50 mt-1"
+                            >
+                              <ExternalLink size={12} />
+                              Buka Dokumen/Bukti LPJ
+                            </a>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400 italic mt-0.5">
+                            Belum ada dokumen/bukti laporan yang dilampirkan.
+                          </p>
+                        )}
                       </div>
 
                       {sisaDanaVal > 0 && (
