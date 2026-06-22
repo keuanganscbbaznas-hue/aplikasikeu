@@ -88,7 +88,13 @@ export const DonationConfirmation = () => {
         throw new Error("Gagal terhubung ke modul AI");
       }
 
-      const data = await response.json();
+      const textData = await response.text();
+      let data;
+      try {
+        data = JSON.parse(textData);
+      } catch {
+        throw new Error("Respons tidak sesuai format JSON (mungkin karena file terlalu besar / 413 Entity Too Large)");
+      }
       if (data && data.success && data.amount > 0) {
         setFormData(prev => ({ 
           ...prev, 

@@ -1375,7 +1375,8 @@ export const DonationSummaryReports = () => {
       });
 
       if (!res.ok) {
-        const errData = await res.json();
+        let errData;
+        try { errData = await res.json(); } catch { errData = { message: `HTTP Error ${res.status}: ${res.status === 413 ? 'Payload terlalu besar' : 'Terjadi kesalahan sistem'}` }; }
         throw new Error(errData.message || errData.error || 'Gagal sinkronisasi');
       }
 

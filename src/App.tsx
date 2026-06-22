@@ -873,7 +873,8 @@ export default function App() {
       });
 
       if (!response.ok) {
-        const errData = await response.json();
+        let errData;
+        try { errData = await response.json(); } catch { errData = { message: `HTTP Error ${response.status}: ${response.status === 413 ? 'Payload terlalu besar' : 'Terjadi kesalahan sistem'}` }; }
         throw new Error(errData.message || errData.error || 'Gagal sinkronisasi');
       }
 
@@ -922,7 +923,8 @@ export default function App() {
         })
       }).then(async res => {
         if(!res.ok) {
-          const err = await res.json();
+          let err;
+          try { err = await res.json(); } catch { err = { message: `HTTP Error ${res.status}: ${res.status === 413 ? 'Payload terlalu besar' : 'Terjadi kesalahan sistem'}` }; }
           throw new Error(err.message || err.error || 'Gagal menambah ke Google Sheets');
         }
         return res.json();
