@@ -44,6 +44,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { CashFlowBoard } from './components/CashFlowBoard';
 import { GlobalBalanceSummary } from './components/GlobalBalanceSummary';
 import { StatusMultiSelect } from './components/StatusMultiSelect';
+import { GenericMultiSelect } from './components/GenericMultiSelect';
 import { UM_STAGES, TRANSACTION_STAGES } from './types';
 import { BaznasBudgetManager } from './components/BaznasBudgetManager';
 import { LaporanManager } from './components/LaporanManager';
@@ -519,7 +520,7 @@ export default function App() {
   const [isAuthReady, setIsAuthReady] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<string>('all');
+  const [filterType, setFilterType] = useState<string[]>([]);
   const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
   const [filterPIC, setFilterPIC] = useState('');
   const [filterMonth, setFilterMonth] = useState<string>('all');
@@ -1364,7 +1365,7 @@ export default function App() {
     return submissions.filter(sub => {
       const matchesTitle = (sub.title || '').toLowerCase().includes(deferredSearchQuery.toLowerCase());
       const matchesPIC = deferredFilterPIC ? (sub.picName && sub.picName.toLowerCase().includes(deferredFilterPIC.toLowerCase())) : true;
-      const matchesType = filterType === 'all' ? true : sub.type === filterType;
+      const matchesType = filterType.length === 0 ? true : filterType.includes(sub.type || '');
       
       const amount = sub.amount || 0;
       const matchesMin = minAmount ? amount >= Number(minAmount) : true;
@@ -1719,20 +1720,18 @@ export default function App() {
                             
                             <div className="space-y-1.5">
                               <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Jenis</Label>
-                              <Select value={filterType} onValueChange={setFilterType}>
-                                <SelectTrigger className="h-8 bg-slate-50 border-none rounded-lg text-[11px] font-bold focus:ring-2 focus:ring-emerald-500/20 transition-all">
-                                  <div className="flex items-center gap-2">
-                                    <Filter size={14} className="text-slate-400" />
-                                    <SelectValue placeholder="Semua Tipe" />
-                                  </div>
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-slate-100">
-                                  <SelectItem value="all" className="text-xs font-bold">SEMUA TIPE</SelectItem>
-                                  <SelectItem value="uang_muka" className="text-xs font-bold">UANG MUKA</SelectItem>
-                                  <SelectItem value="reimburse" className="text-xs font-bold">REIMBURSE</SelectItem>
-                                  <SelectItem value="pembiayaan" className="text-xs font-bold">PEMBIAYAAN</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <GenericMultiSelect
+                                title="Filter Jenis"
+                                subtitle="Tipe Transaksi"
+                                placeholder="Pilih Tipe"
+                                options={[
+                                  { id: 'uang_muka', label: 'UANG MUKA' },
+                                  { id: 'reimburse', label: 'REIMBURSE' },
+                                  { id: 'pembiayaan', label: 'PEMBIAYAAN' }
+                                ]}
+                                selectedValues={filterType}
+                                onChange={setFilterType}
+                              />
                             </div>
 
                             <div className="space-y-1.5">
@@ -1836,7 +1835,7 @@ export default function App() {
                         searchQuery !== '' || 
                         filterStatuses.length > 0 || 
                         filterPIC !== '' || 
-                        filterType !== 'all' || 
+                        filterType.length > 0 || 
                         minAmount !== '' || 
                         maxAmount !== '' ||
                         filterMonth !== 'all' ||
@@ -2577,7 +2576,7 @@ function FilteredResultsSummary({
     search: string;
     statuses: string[];
     pic: string;
-    type: string;
+    type: string[];
     month: string;
     year: string;
     min: string;
@@ -2594,7 +2593,10 @@ function FilteredResultsSummary({
     if (filters.search) parts.push(`"Judul" "${filters.search}"`);
     if (filters.statuses.length > 0) parts.push(`"Status" "${filters.statuses.join(', ')}"`);
     if (filters.pic) parts.push(`"PIC" "${filters.pic}"`);
-    if (filters.type !== 'all') parts.push(`"Jenis" "${filters.type === 'uang_muka' ? 'Uang Muka' : filters.type === 'reimburse' ? 'Reimburse' : 'Pembiayaan'}"`);
+    if (filters.type.length > 0) {
+      const typeLabels = filters.type.map(t => t === 'uang_muka' ? 'Uang Muka' : t === 'reimburse' ? 'Reimburse' : 'Pembiayaan');
+      parts.push(`"Jenis" "${typeLabels.join(', ')}"`);
+    }
     if (filters.month !== 'all') {
       const monthName = format(new Date(2000, parseInt(filters.month) - 1), 'MMMM', { locale: id });
       parts.push(`"Bulan" "${monthName}"`);
