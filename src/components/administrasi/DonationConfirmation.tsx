@@ -73,86 +73,25 @@ export const DonationConfirmation = () => {
     return () => unsub();
   }, []);
 
-  const analyzeReceipt = async (base64String: string) => {
-    setIsAnalyzing(true);
-    setAnalysisNote(null);
-    const toastId = toast.loading("Menganalisis bukti transfer via AI Gemini...");
-    try {
-      const response = await fetch(getApiUrl('/api/gemini/parse-donation'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64Data: base64String })
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal terhubung ke modul AI");
-      }
-
-      const textData = await response.text();
-      let data;
-      try {
-        data = JSON.parse(textData);
-      } catch {
-        throw new Error("Respons tidak sesuai format JSON (mungkin karena file terlalu besar / 413 Entity Too Large)");
-      }
-      if (data && data.success && data.amount > 0) {
-        setFormData(prev => ({ 
-          ...prev, 
-          amount: String(data.amount),
-        }));
-        setAnalysisNote(data.notes || "Bukti transfer donasi terbaca sukses!");
-        toast.success(`Jumlah transfer donasi terdeteksi otomatis: Rp ${Number(data.amount).toLocaleString('id-ID')}`, { id: toastId });
-      } else {
-        toast.warning("Sistem tidak berhasil mendeteksi nominal donasi otomatis. Silakan periksa kembali dan isi secara manual.", { id: toastId });
-      }
-    } catch (err) {
-      console.error("Error analyzing receipt:", err);
-      toast.error("Gagal melakukan analisis otomatis. Silkan isi nominal secara manual.", { id: toastId });
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 1500 * 1024) { // Let's raise the limit a bit (1.5MB) to handle mobile photo uploads easily 
-        toast.error("Ukuran file maksimal 1.5MB untuk upload bukti donasi.");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setEvidencePreview(base64String);
-        setFormData(prev => ({ ...prev, evidenceUrl: base64String }));
-        analyzeReceipt(base64String);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitDonation = async (dataToSubmit: typeof formData) => {
     setLoading(true);
-    
     try {
-      let finalEvidenceUrl = formData.evidenceUrl;
+      let finalEvidenceUrl = dataToSubmit.evidenceUrl;
       let driveLink = "";
 
       // 1. Upload to local server FIRST to get a high-performance, non-base64 fallback
-      if (formData.evidenceUrl && formData.evidenceUrl.startsWith('data:')) {
+      if (dataToSubmit.evidenceUrl && dataToSubmit.evidenceUrl.startsWith('data:')) {
         try {
-          const mimeType = formData.evidenceUrl.split(';')[0].split(':')[1];
+          const mimeType = dataToSubmit.evidenceUrl.split(';')[0].split(':')[1];
           const extension = mimeType.split('/')[1] || 'png';
-          const filename = `bukti_donasi_${formData.donaturName.replace(/\s+/g, '_')}_${Date.now()}.${extension}`;
+          const filename = `bukti_donasi_${dataToSubmit.donaturName.replace(/\s+/g, '_')}_${Date.now()}.${extension}`;
           
           const localRes = await fetch(getApiUrl('/api/gallery/upload'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               filename,
-              base64Data: formData.evidenceUrl,
+              base64Data: dataToSubmit.evidenceUrl,
               mimeType
             })
           });
@@ -168,18 +107,18 @@ export const DonationConfirmation = () => {
       }
 
       // 2. Upload to Google Drive if evidence exists (use the original base64 to ensure full quality transfer)
-      if (formData.evidenceUrl) {
+      if (dataToSubmit.evidenceUrl) {
         try {
-          const mimeType = formData.evidenceUrl.split(';')[0].split(':')[1];
+          const mimeType = dataToSubmit.evidenceUrl.split(';')[0].split(':')[1];
           const extension = mimeType.split('/')[1] || 'png';
-          const filename = `bukti_donasi_${formData.donaturName.replace(/\s+/g, '_')}_${Date.now()}.${extension}`;
+          const filename = `bukti_donasi_${dataToSubmit.donaturName.replace(/\s+/g, '_')}_${Date.now()}.${extension}`;
           
           const uploadRes = await fetch(getApiUrl('/api/drive/upload'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               filename,
-              base64Data: formData.evidenceUrl,
+              base64Data: dataToSubmit.evidenceUrl,
               mimeType
             })
           });
@@ -207,9 +146,9 @@ export const DonationConfirmation = () => {
 
       // 3. Save to Firestore (Internal App Database)
       const donationRef = await addDoc(collection(db, 'donations'), {
-        ...formData,
+        ...dataToSubmit,
         evidenceUrl: finalEvidenceUrl,
-        amount: Number(formData.amount),
+        amount: Number(dataToSubmit.amount),
         status: 'pending',
         createdAt: serverTimestamp(),
       });
@@ -218,13 +157,13 @@ export const DonationConfirmation = () => {
       const sheetData = [[
         donationRef.id,
         new Date().toLocaleString('id-ID'),
-        formData.donaturName,
-        formData.contact,
-        formData.amount,
-        formData.targetAccount,
-        formData.notes,
+        dataToSubmit.donaturName,
+        dataToSubmit.contact,
+        dataToSubmit.amount,
+        dataToSubmit.targetAccount,
+        dataToSubmit.notes,
         'Pending',
-        driveLink || (formData.evidenceUrl ? "[Internal Image]" : "Tidak Ada Bukti")
+        driveLink || (dataToSubmit.evidenceUrl ? "[Internal Image]" : "Tidak Ada Bukti")
       ]];
 
       const sheetRes = await fetch(getApiUrl('/api/sheets/append'), {
@@ -249,6 +188,92 @@ export const DonationConfirmation = () => {
       toast.error("Gagal mengirim konfirmasi: " + error.message);
       setLoading(false);
     }
+  };
+
+  const analyzeReceipt = async (base64String: string) => {
+    setIsAnalyzing(true);
+    setAnalysisNote(null);
+    const toastId = toast.loading("Menganalisis & menyimpan bukti transfer otomatis via AI Gemini...");
+    try {
+      const response = await fetch(getApiUrl('/api/gemini/parse-donation'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ base64Data: base64String })
+      });
+
+      if (!response.ok) {
+        throw new Error("Gagal terhubung ke modul AI");
+      }
+
+      const textData = await response.text();
+      let data;
+      try {
+        data = JSON.parse(textData);
+      } catch {
+        throw new Error("Respons tidak sesuai format JSON (mungkin karena file terlalu besar / 413 Entity Too Large)");
+      }
+      if (data && data.success && data.amount > 0) {
+        const detectedName = data.senderName || formData.donaturName || 'Donatur';
+        const detectedTarget = data.targetAccount === 'smp' || data.targetAccount === 'sma' ? data.targetAccount : 'smp';
+        const detectedNotes = data.notes || "Otomatis terbaca via AI.";
+
+        const updatedData = {
+          ...formData,
+          amount: String(data.amount),
+          donaturName: detectedName,
+          targetAccount: detectedTarget,
+          notes: detectedNotes,
+          evidenceUrl: base64String
+        };
+
+        setFormData(updatedData);
+        setAnalysisNote(detectedNotes);
+        
+        toast.success(`Terbaca otomatis! Jumlah: Rp ${Number(data.amount).toLocaleString('id-ID')}. Menyimpan konfirmasi donasi otomatis...`, { id: toastId });
+        
+        // Save immediately and automatically
+        await submitDonation(updatedData);
+      } else {
+        toast.warning("Sistem tidak berhasil mendeteksi nominal donasi otomatis. Silakan periksa kembali dan isi secara manual.", { id: toastId });
+      }
+    } catch (err) {
+      console.error("Error analyzing receipt:", err);
+      toast.error("Gagal melakukan analisis otomatis. Silakan isi nominal secara manual.", { id: toastId });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 1500 * 1024) { // Let's raise the limit a bit (1.5MB) to handle mobile photo uploads easily 
+        toast.error("Ukuran file maksimal 1.5MB untuk upload bukti donasi.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setEvidencePreview(base64String);
+        setFormData(prev => ({ ...prev, evidenceUrl: base64String }));
+        analyzeReceipt(base64String);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.amount) {
+      toast.error("Silakan isi jumlah nominal donasi.");
+      return;
+    }
+    if (!formData.targetAccount) {
+      toast.error("Silakan pilih rekening tujuan.");
+      return;
+    }
+    await submitDonation(formData);
   };
 
   if (isSubmitted) {

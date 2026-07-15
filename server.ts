@@ -90,7 +90,7 @@ async function startServer() {
       };
 
       const promptPart = {
-        text: "Please analyze this Indonesian bank transfer or donation payment receipt. Extract the donation transfer amount (nominal) in Rupiah (IDR). Re-verify numbers carefully. Also extract any relevant transaction info into a short Indonesian note.",
+        text: "Please analyze this Indonesian bank transfer or donation payment receipt. Extract the donation transfer amount (nominal) in Rupiah (IDR). Re-verify numbers carefully. Also extract any relevant transaction info into a short Indonesian note. Identify the destination account to determine if it is for SMP (1032913357) or SMA (1054796605). Find the sender's name if readable.",
       };
 
       const response = await ai.models.generateContent({
@@ -112,9 +112,17 @@ async function startServer() {
               notes: {
                 type: Type.STRING,
                 description: "A short Indonesian transaction note detailing the bank name, date, or sender if readable."
+              },
+              targetAccount: {
+                type: Type.STRING,
+                description: "Detect destination account. If the destination account number has '1032913357' or mentions 'SMP', return 'smp'. If the destination account number has '1054796605' or mentions 'SMA', return 'sma'. Otherwise return ''."
+              },
+              senderName: {
+                type: Type.STRING,
+                description: "The sender/donor name (pengirim) if clearly visible on the receipt. Otherwise return ''."
               }
             },
-            required: ["success", "amount", "notes"]
+            required: ["success", "amount", "notes", "targetAccount", "senderName"]
           }
         }
       });

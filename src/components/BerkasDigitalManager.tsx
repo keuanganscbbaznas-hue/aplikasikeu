@@ -90,9 +90,9 @@ export const BerkasDigitalManager = () => {
     })
     .sort((a, b) => {
       if (a.tahun !== b.tahun) {
-        return parseInt(a.tahun) - parseInt(b.tahun);
+        return parseInt(b.tahun) - parseInt(a.tahun);
       }
-      return MONTHS.indexOf(a.bulan) - MONTHS.indexOf(b.bulan);
+      return MONTHS.indexOf(b.bulan) - MONTHS.indexOf(a.bulan);
     });
 
   const handleExport = (type: 'xlsx' | 'csv') => {
