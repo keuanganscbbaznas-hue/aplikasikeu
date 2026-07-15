@@ -68,6 +68,7 @@ import {
   Filter,
   LogOut, 
   CheckCircle2, 
+  XCircle,
   Clock, 
   AlertCircle, 
   FileText, 
@@ -389,14 +390,22 @@ function SubmissionCard({
       <td className="px-6 py-4 w-80">
         <div className="space-y-2 w-full">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-['Times_New_Roman'] px-2 py-0.5 rounded-md text-[10px] bg-emerald-50 text-emerald-700 flex items-center font-black uppercase tracking-tighter line-clamp-1">
-              {stages[submission.currentStageIndex]}
+            <span className={`font-['Times_New_Roman'] px-2 py-0.5 rounded-md text-[10px] flex items-center font-black uppercase tracking-tighter line-clamp-1 ${
+              submission.status === 'REJECTED' || submission.status === 'rejected'
+                ? 'bg-red-50 text-red-700' 
+                : 'bg-emerald-50 text-emerald-700'
+            }`}>
+              {submission.status === 'REJECTED' || submission.status === 'rejected' ? 'REJECTED' : stages[submission.currentStageIndex]}
             </span>
             <span className="text-[9px] font-bold text-slate-300 shrink-0">
-              {submission.currentStageIndex + 1}/{stages.length}
+              {submission.status === 'REJECTED' || submission.status === 'rejected' ? 'REJECTED' : `${submission.currentStageIndex + 1}/${stages.length}`}
             </span>
           </div>
-          <WorkflowProgressBar stages={stages} currentIdx={submission.currentStageIndex} />
+          <WorkflowProgressBar 
+            stages={stages} 
+            currentIdx={submission.currentStageIndex} 
+            isRejected={submission.status === 'REJECTED' || submission.status === 'rejected'} 
+          />
           {submission.isBooked && (
             <div className="flex items-center gap-1 text-[9px] font-black text-blue-600 bg-blue-50/70 border border-blue-100 px-2 py-0.5 rounded-md w-max tracking-wider">
                <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
@@ -1038,6 +1047,7 @@ export default function App() {
       };
 
       await updateDoc(doc(db, 'submissions', submission.id), {
+        status: 'REJECTED',
         updatedAt: serverTimestamp(),
         history: [...submission.history, historyEntry]
       });
@@ -1376,7 +1386,7 @@ export default function App() {
       const globalSearch = deferredSearchQuery ? (matchesTitle || (sub.picName && sub.picName.toLowerCase().includes(deferredSearchQuery.toLowerCase()))) : true;
 
       const stages = getStagesByType(sub.type);
-      const currentStatus = stages[sub.currentStageIndex] || sub.status;
+      const currentStatus = (sub.status === 'REJECTED' || sub.status === 'rejected') ? 'REJECTED' : (stages[sub.currentStageIndex] || sub.status);
       const matchesStatus = filterStatuses.length === 0 ? true : filterStatuses.includes(currentStatus);
 
       // Month & Year Filter
@@ -1739,7 +1749,7 @@ export default function App() {
                             <div className="space-y-1.5">
                               <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</Label>
                               <StatusMultiSelect
-                                allStatuses={Array.from(new Set([...UM_STAGES, ...TRANSACTION_STAGES]))}
+                                allStatuses={Array.from(new Set([...UM_STAGES, ...TRANSACTION_STAGES, "REJECTED"]))}
                                 selectedStatuses={filterStatuses}
                                 onChange={setFilterStatuses}
                               />
@@ -1864,6 +1874,7 @@ export default function App() {
                           <TabsTrigger value="pending" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-amber-500 data-[state=active]:text-white uppercase tracking-tight">Waiting Approval</TabsTrigger>
                           <TabsTrigger value="transfer" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-violet-600 data-[state=active]:text-white uppercase tracking-tight">Waiting Transfer</TabsTrigger>
                           <TabsTrigger value="waiting_settled" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-indigo-600 data-[state=active]:text-white uppercase tracking-tight">Waiting Settled</TabsTrigger>
+                          <TabsTrigger value="rejected" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-red-600 data-[state=active]:text-white uppercase tracking-tight">Rejected</TabsTrigger>
                           <TabsTrigger value="completed" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-blue-600 data-[state=active]:text-white uppercase tracking-tight">Settled</TabsTrigger>
                         </TabsList>
                         
@@ -1917,6 +1928,7 @@ export default function App() {
                       <TabsContent value="pending">
                         <SubmissionGrid 
                           items={filteredSubmissions.filter(s => {
+                            if (s.status === 'REJECTED' || s.status === 'rejected') return false;
                             return s.currentStageIndex !== undefined && s.currentStageIndex >= 0 && s.currentStageIndex <= 2;
                           })} 
                           onApprove={handleApprove} 
@@ -1934,6 +1946,7 @@ export default function App() {
                       <TabsContent value="transfer">
                         <SubmissionGrid 
                           items={filteredSubmissions.filter(s => {
+                            if (s.status === 'REJECTED' || s.status === 'rejected') return false;
                             const stages = getStagesByType(s.type);
                             const currentStage = s.currentStageIndex !== undefined ? (stages[s.currentStageIndex] || '') : '';
                             return currentStage === "Dalam Antrian Transfer";
@@ -1953,8 +1966,26 @@ export default function App() {
                       <TabsContent value="waiting_settled">
                         <SubmissionGrid 
                           items={filteredSubmissions.filter(s => {
+                            if (s.status === 'REJECTED' || s.status === 'rejected') return false;
                             const stages = getStagesByType(s.type);
                             return s.currentStageIndex !== undefined && s.currentStageIndex >= 4 && s.currentStageIndex < stages.length - 1;
+                          })} 
+                          onApprove={handleApprove} 
+                          onReject={handleReject} 
+                          onDelete={(id) => setDeletingId(id)}
+                          onEdit={openEditDialog}
+                          userRole={isAdmin ? 'admin' : (profile?.role || 'staff')} 
+                          currentUser={user}
+                          selectedSubmissions={selectedSubmissions}
+                          onToggle={toggleSelection}
+                          onBukukan={isTrackingAdmin ? handleBukukan : undefined}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="rejected">
+                        <SubmissionGrid 
+                          items={filteredSubmissions.filter(s => {
+                            return s.status === 'REJECTED' || s.status === 'rejected';
                           })} 
                           onApprove={handleApprove} 
                           onReject={handleReject} 
@@ -1971,6 +2002,7 @@ export default function App() {
                       <TabsContent value="completed">
                         <SubmissionGrid 
                           items={filteredSubmissions.filter(s => {
+                            if (s.status === 'REJECTED' || s.status === 'rejected') return false;
                             const stages = getStagesByType(s.type);
                             return s.currentStageIndex !== undefined && s.currentStageIndex === stages.length - 1;
                           })} 
@@ -2646,7 +2678,7 @@ function FilteredResultsSummary({
 const StatusAccumulationSummary = React.memo(({ submissions }: { submissions: Submission[] }) => {
   const statusSummary = submissions.reduce((acc, sub) => {
     const stages = getStagesByType(sub.type);
-    const status = stages[sub.currentStageIndex] || sub.status || 'Diproses';
+    const status = (sub.status === 'REJECTED' || sub.status === 'rejected') ? 'REJECTED' : (stages[sub.currentStageIndex] || sub.status || 'Diproses');
     acc[status] = (acc[status] || 0) + sub.amount;
     return acc;
   }, {} as Record<string, number>);
@@ -2705,24 +2737,30 @@ const StatusAccumulationSummary = React.memo(({ submissions }: { submissions: Su
   );
 });
 
-function WorkflowProgressBar({ stages, currentIdx }: { stages: readonly string[], currentIdx: number }) {
+function WorkflowProgressBar({ stages, currentIdx, isRejected }: { stages: readonly string[], currentIdx: number, isRejected?: boolean }) {
   return (
     <div className="flex w-full gap-0.5">
       {stages.map((_, i) => {
         let bgColor = 'bg-slate-100';
         const progressPercent = (i / (stages.length - 1)) * 100;
 
-        if (i < currentIdx) {
-          // Stages already passed
-          if (progressPercent < 33) bgColor = 'bg-blue-400';
-          else if (progressPercent < 66) bgColor = 'bg-amber-400';
-          else bgColor = 'bg-emerald-500';
-        } else if (i === currentIdx) {
-          // Current stage
-          if (progressPercent < 33) bgColor = 'bg-blue-600 animate-pulse';
-          else if (progressPercent < 66) bgColor = 'bg-amber-600 animate-pulse';
-          else if (progressPercent === 100) bgColor = 'bg-teal-600 animate-pulse';
-          else bgColor = 'bg-emerald-600 animate-pulse';
+        if (isRejected) {
+          if (i <= currentIdx) {
+            bgColor = 'bg-red-500';
+          }
+        } else {
+          if (i < currentIdx) {
+            // Stages already passed
+            if (progressPercent < 33) bgColor = 'bg-blue-400';
+            else if (progressPercent < 66) bgColor = 'bg-amber-400';
+            else bgColor = 'bg-emerald-500';
+          } else if (i === currentIdx) {
+            // Current stage
+            if (progressPercent < 33) bgColor = 'bg-blue-600 animate-pulse';
+            else if (progressPercent < 66) bgColor = 'bg-amber-600 animate-pulse';
+            else if (progressPercent === 100) bgColor = 'bg-teal-600 animate-pulse';
+            else bgColor = 'bg-emerald-600 animate-pulse';
+          }
         }
 
         return (
@@ -2736,7 +2774,7 @@ function WorkflowProgressBar({ stages, currentIdx }: { stages: readonly string[]
   );
 }
 
-function WorkflowStepper({ stages, currentIdx, isLastStage }: { stages: readonly string[], currentIdx: number, isLastStage: boolean }) {
+function WorkflowStepper({ stages, currentIdx, isLastStage, isRejected }: { stages: readonly string[], currentIdx: number, isLastStage: boolean, isRejected?: boolean }) {
   return (
     <div className="bg-white overflow-hidden p-2 flex flex-col hide-scrollbar max-h-[350px] overflow-y-auto">
       <div className="relative space-y-0.5 pl-5 before:absolute before:left-[21px] before:top-4 before:h-[calc(100%-32px)] before:w-[2px] before:bg-slate-100">
@@ -2745,16 +2783,32 @@ function WorkflowStepper({ stages, currentIdx, isLastStage }: { stages: readonly
           const isCurrent = i === currentIdx;
           const isUpcoming = i > currentIdx;
 
+          let badgeStyle = "bg-slate-50 text-slate-300";
+          let textStyle = "font-medium text-slate-400";
+          let icon = null;
+
+          if (isRejected && isCurrent) {
+            badgeStyle = "bg-red-500 text-white shadow-md";
+            textStyle = "font-black text-red-600";
+            icon = <XCircle size={14} className="fill-red-100 text-red-500" />;
+          } else if (isCompleted) {
+            badgeStyle = "bg-emerald-50 text-emerald-500";
+            textStyle = "font-medium text-slate-500";
+            icon = <CheckCircle2 size={14} className="fill-emerald-100 text-emerald-500" />;
+          } else if (isCurrent) {
+            badgeStyle = "bg-slate-800 text-white shadow-md";
+            textStyle = "font-black text-slate-900";
+          }
+
           return (
-            <div key={i} className={`relative flex items-center gap-3 p-2 rounded-lg ${isCurrent ? 'bg-slate-50 shadow-sm' : ''}`}>
+            <div key={i} className={`relative flex items-center gap-3 p-2 rounded-lg ${isCurrent ? (isRejected ? 'bg-red-50/50 shadow-sm' : 'bg-slate-50 shadow-sm') : ''}`}>
               <div 
-                className={`absolute -left-5 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded-full z-10 
-                  ${isCompleted ? 'bg-emerald-50 text-emerald-500' : isCurrent ? 'bg-slate-800 text-white shadow-md' : 'bg-slate-50 text-slate-300'}`}
+                className={`absolute -left-5 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 rounded-full z-10 ${badgeStyle}`}
               >
-                {isCompleted ? <CheckCircle2 size={14} className="fill-emerald-100 text-emerald-500" /> : <span className="text-[9px] font-black">{i + 1}</span>}
+                {icon ? icon : <span className="text-[9px] font-black">{i + 1}</span>}
               </div>
-              <span className={`text-[10px] leading-snug w-full ${isCurrent ? 'font-black text-slate-900' : isCompleted ? 'font-medium text-slate-500' : 'font-medium text-slate-400'}`}>
-                {stage}
+              <span className={`text-[10px] leading-snug w-full ${textStyle}`}>
+                {stage} {isRejected && isCurrent && <span className="text-[8px] font-black uppercase text-red-500 ml-1">(REJECTED)</span>}
               </span>
             </div>
           );
@@ -3985,20 +4039,22 @@ function WorkflowModal({
   currentIdx, 
   isOpen, 
   onClose,
-  submissionId
+  submissionId,
+  isRejected
 }: { 
   stages: readonly string[], 
   currentIdx: number, 
   isOpen: boolean, 
   onClose: () => void,
-  submissionId: string
+  submissionId: string,
+  isRejected?: boolean
 }) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[320px] rounded-[2rem] p-4 border-none shadow-3xl bg-white max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader className="pb-3 border-b border-slate-50">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600">
+            <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${isRejected ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-emerald-100 text-emerald-600'}`}>
               <Activity size={16} />
             </div>
             <div>
@@ -4011,7 +4067,7 @@ function WorkflowModal({
         </DialogHeader>
         <ScrollArea className="flex-1 pr-2 mt-2">
           <div className="py-2">
-            <WorkflowStepper stages={stages} currentIdx={currentIdx} isLastStage={currentIdx === stages.length - 1} />
+            <WorkflowStepper stages={stages} currentIdx={currentIdx} isLastStage={currentIdx === stages.length - 1} isRejected={isRejected} />
           </div>
         </ScrollArea>
         <DialogFooter className="pt-3 border-t border-slate-50 flex justify-center">
@@ -5054,19 +5110,33 @@ Wassalamu'alaikum Wr. Wb.
 
              <div className="space-y-1 relative">
                 <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-primary/10 text-primary border-none rounded-lg text-[9px] font-black uppercase tracking-widest">
-                    Tahap {submission.currentStageIndex + 1} Dari {stages.length}
+                  <Badge className={`border-none rounded-lg text-[9px] font-black uppercase tracking-widest ${
+                    submission.status === 'REJECTED' || submission.status === 'rejected'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-primary/10 text-primary'
+                  }`}>
+                    {submission.status === 'REJECTED' || submission.status === 'rejected' ? 'REJECTED' : `Tahap ${submission.currentStageIndex + 1} Dari ${stages.length}`}
                   </Badge>
-                  <span className="text-[10px] font-bold text-slate-500">{Math.round(((submission.currentStageIndex + 1) / stages.length) * 100)}% Selesai</span>
+                  <span className={`text-[10px] font-bold ${
+                    submission.status === 'REJECTED' || submission.status === 'rejected' ? 'text-red-600' : 'text-slate-500'
+                  }`}>
+                    {submission.status === 'REJECTED' || submission.status === 'rejected' ? 'DITOLAK (REJECTED)' : `${Math.round(((submission.currentStageIndex + 1) / stages.length) * 100)}% Selesai`}
+                  </span>
                 </div>
                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                   <motion.div 
                     initial={{ width: 0 }}
-                    animate={{ width: `${((submission.currentStageIndex + 1) / stages.length) * 100}%` }}
-                    className="h-full bg-primary"
+                    animate={{ width: submission.status === 'REJECTED' || submission.status === 'rejected' ? '100%' : `${((submission.currentStageIndex + 1) / stages.length) * 100}%` }}
+                    className={`h-full ${
+                      submission.status === 'REJECTED' || submission.status === 'rejected' ? 'bg-red-500' : 'bg-primary'
+                    }`}
                   />
                 </div>
-                <p className="text-xs font-black text-slate-800 mt-3 truncate">{stages[submission.currentStageIndex]}</p>
+                <p className={`text-xs font-black mt-3 truncate ${
+                  submission.status === 'REJECTED' || submission.status === 'rejected' ? 'text-red-600 font-bold' : 'text-slate-800'
+                }`}>
+                  {submission.status === 'REJECTED' || submission.status === 'rejected' ? 'PENGAJUAN DITOLAK (REJECTED)' : stages[submission.currentStageIndex]}
+                </p>
              </div>
           </div>
         </div>
@@ -5210,6 +5280,7 @@ Wassalamu'alaikum Wr. Wb.
         stages={stages}
         currentIdx={submission.currentStageIndex}
         submissionId={submission.id}
+        isRejected={submission.status === 'REJECTED' || submission.status === 'rejected'}
       />
     </div>
   );
