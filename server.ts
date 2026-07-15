@@ -207,19 +207,24 @@ async function startServer() {
         return res.status(400).json({ error: "Missing file data" });
       }
 
-      // Convert Base64 to Buffer
-      const buffer = Buffer.from(base64Data.split(',')[1], 'base64');
-      const stream = new Readable();
-      stream.push(buffer);
-      stream.push(null);
+      // Convert Base64 to Buffer safely
+      let base64Part = base64Data;
+      if (base64Data.includes(',')) {
+        base64Part = base64Data.split(',')[1];
+      }
+      const buffer = Buffer.from(base64Part, 'base64');
+      const stream = Readable.from(buffer);
 
       const fileMetadata: any = {
         name: filename || 'donation_proof.png',
       };
 
-      // Use target folder if provided in env
-      if (process.env.GOOGLE_DRIVE_FOLDER_ID) {
-        fileMetadata.parents = [process.env.GOOGLE_DRIVE_FOLDER_ID];
+      // Use target folder if provided in env and valid
+      if (process.env.GOOGLE_DRIVE_FOLDER_ID && 
+          process.env.GOOGLE_DRIVE_FOLDER_ID !== "undefined" && 
+          process.env.GOOGLE_DRIVE_FOLDER_ID !== "null" && 
+          process.env.GOOGLE_DRIVE_FOLDER_ID.trim() !== "") {
+        fileMetadata.parents = [process.env.GOOGLE_DRIVE_FOLDER_ID.trim()];
       }
 
       const media = {
@@ -254,18 +259,20 @@ async function startServer() {
         link: file.data.webContentLink || file.data.webViewLink 
       });
     } catch (error: any) {
-      console.error("Drive Upload Error:", error.message);
+      console.error("Drive Upload Error:", error.message || error);
+      
+      const errMsg = error.message || "";
+      const isQuota = errMsg.toLowerCase().includes("storage quota") || errMsg.toLowerCase().includes("quota exceeded");
       
       // Return a 200 with success: false so the frontend can handle it as a non-fatal sync error
-      if (error.message.toLowerCase().includes("storage quota") || error.message.toLowerCase().includes("quota exceeded")) {
-        return res.status(200).json({ 
-          success: false, 
-          error: "Drive Quota Error",
-          message: "Service Account tidak memiliki kuota storage. Silakan bagikan folder Google Drive ke email service account sebagai Editor.",
-          serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
-        });
-      }
-      res.status(500).json({ error: error.message || "Gagal mengunggah file ke Google Drive" });
+      return res.status(200).json({ 
+        success: false, 
+        error: isQuota ? "Drive Quota Error" : "Drive Sync Error",
+        message: isQuota 
+          ? "Service Account tidak memiliki kuota storage. Silakan bagikan folder Google Drive ke email service account sebagai Editor."
+          : `Gagal mengunggah file ke Google Drive (${errMsg || "Bad Request"}). Pastikan folder tujuan di-share dengan hak Editor ke email Service Account.`,
+        serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
+      });
     }
   });
 

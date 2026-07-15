@@ -40,6 +40,24 @@ const getDonationDate = (donation: any): Date => {
   return new Date(donation.createdAt);
 };
 
+const getEvidenceImageUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('data:')) return url;
+  
+  if (url.includes('drive.google.com')) {
+    const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      return `https://lh3.googleusercontent.com/d/${match[1]}`;
+    }
+  }
+  
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  
+  return getApiUrl(url);
+};
+
 const sendWhatsApp = (phoneNumber: string, message: string) => {
   if (!phoneNumber) {
     toast.error("Nomor WhatsApp tidak ditemukan");
@@ -291,23 +309,26 @@ export const DonationList = () => {
                                 </DialogTitle>
                               </DialogHeader>
                               <div className="p-6 bg-slate-50 flex items-center justify-center">
-                                {donation.evidenceUrl.startsWith('http') ? (
-                                  <div className="flex flex-col items-center gap-4">
-                                    <img src={donation.evidenceUrl} alt="Bukti Transfer" className="max-h-[70vh] rounded-2xl shadow-lg" />
+                                <div className="flex flex-col items-center gap-4">
+                                  <img 
+                                    src={getEvidenceImageUrl(donation.evidenceUrl)} 
+                                    alt="Bukti Transfer" 
+                                    className="max-h-[70vh] rounded-2xl shadow-lg object-contain" 
+                                    referrerPolicy="no-referrer"
+                                  />
+                                  {donation.evidenceUrl.startsWith('http') && (
                                     <Button 
                                       render={
                                         <a href={donation.evidenceUrl} target="_blank" rel="noopener noreferrer">
                                           <ExternalLink size={14} className="mr-2" />
-                                          Buka di Google Drive
+                                          Buka di Tab Baru / Google Drive
                                         </a>
                                       } 
                                       variant="outline" 
                                       className="rounded-xl border-slate-200" 
                                     />
-                                  </div>
-                                ) : (
-                                  <img src={donation.evidenceUrl} alt="Bukti Transfer" className="max-h-[70vh] rounded-2xl shadow-lg" />
-                                )}
+                                  )}
+                                </div>
                               </div>
                             </DialogContent>
                           </Dialog>
