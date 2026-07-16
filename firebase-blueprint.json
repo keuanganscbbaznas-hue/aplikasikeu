@@ -179,6 +179,69 @@
         "userUid": { "type": "string" }
       },
       "required": ["account", "month", "year", "kodeBudget", "noDoc", "noBukti", "tanggalBudget", "keterangan", "details", "userUid"]
+    },
+    "RealisasiBulanan": {
+      "title": "RealisasiBulanan",
+      "description": "Monthly realization inputs for programs, salaries, and food.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tahun": { "type": "string" },
+        "bulan": { "type": "string" },
+        "program": { "type": "number" },
+        "gaji": { "type": "number" },
+        "makan": { "type": "number" },
+        "keterangan": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tahun", "bulan", "program", "gaji", "makan", "createdAt"]
+    },
+    "DonationCashflowTransaction": {
+      "title": "DonationCashflowTransaction",
+      "description": "Donation reception and expenditure cashflow transaction details.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "account": { "type": "string", "enum": ["smp", "sma"] },
+        "type": { "type": "string", "enum": ["penerimaan", "pengeluaran"] },
+        "category": { "type": "string", "enum": ["dana_terikat", "dana_tidak_terikat", "non_program", "program"] },
+        "subCategory": { "type": "string" },
+        "budgetName": { "type": "string" },
+        "amount": { "type": "number" },
+        "year": { "type": "number" },
+        "dateStr": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["account", "type", "category", "budgetName", "amount", "year", "dateStr", "createdAt"]
+    },
+    "DonationBudgetCategory": {
+      "title": "DonationBudgetCategory",
+      "description": "Custom or default budget names/categories for donations.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "account": { "type": "string", "enum": ["smp", "sma"] },
+        "type": { "type": "string", "enum": ["penerimaan", "pengeluaran"] },
+        "category": { "type": "string", "enum": ["dana_terikat", "dana_tidak_terikat", "non_program", "program"] },
+        "subCategory": { "type": "string" },
+        "name": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["account", "type", "category", "name", "createdAt"]
+    },
+    "DonationSaldoAwal": {
+      "title": "DonationSaldoAwal",
+      "description": "Starting balance configuration for donation reports by year and account.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "account": { "type": "string", "enum": ["smp", "sma"] },
+        "year": { "type": "number" },
+        "amount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["account", "year", "amount", "createdAt"]
     }
   },
   "firestore": {
@@ -217,6 +280,22 @@
     "/laporan_baznas_rincian_docs/{rincianId}": {
       "schema": "LaporanBaznasRincian",
       "description": "Collection of detailed transactional structures for BAZNAS report."
+    },
+    "/realisasi_bulanan/{realisasiId}": {
+      "schema": "RealisasiBulanan",
+      "description": "Collection of monthly realization records."
+    },
+    "/donation_cashflow_transactions/{transactionId}": {
+      "schema": "DonationCashflowTransaction",
+      "description": "Donation cashflow transactions representing income and expense."
+    },
+    "/donation_budget_categories/{categoryId}": {
+      "schema": "DonationBudgetCategory",
+      "description": "Donation budget names/categories."
+    },
+    "/donation_saldo_awal/{saldoId}": {
+      "schema": "DonationSaldoAwal",
+      "description": "Yearly starting balance configurations for SMP/SMA donations."
     }
   }
 }

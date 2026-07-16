@@ -51,6 +51,7 @@ import { LaporanManager } from './components/LaporanManager';
 import { AdministrasiManager } from './components/administrasi/AdministrasiManager';
 import { AnalisisManager } from './components/AnalisisManager';
 import { BerkasDigitalManager } from './components/BerkasDigitalManager';
+import { RealisasiManager } from './components/RealisasiManager';
 import { LearningSection } from './components/LearningSection';
 import { InfoKeuanganSection } from './components/InfoKeuanganSection';
 import SignaturePad from 'signature_pad';
@@ -104,7 +105,8 @@ import {
   Check,
   MessageSquare,
   BarChart3,
-  ClipboardCheck
+  ClipboardCheck,
+  CalendarCheck
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { 
@@ -541,7 +543,7 @@ export default function App() {
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedSubmissions, setSelectedSubmissions] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'berkas' | 'administrasi' | 'analisis' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'realisasi' | 'berkas' | 'administrasi' | 'analisis' | 'settings'>('dashboard');
   const [bukuKasUnit, setBukuKasUnit] = useState<'smp' | 'sma'>('smp');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
@@ -1368,6 +1370,7 @@ export default function App() {
     { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'admin' },
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan PertUM ke BAZNAS', icon: FileText, access: 'admin' },
+    { id: 'realisasi', label: 'Laporan Realisasi', icon: CalendarCheck, access: 'admin' },
     { id: 'berkas', label: 'Berkas Digital', icon: FolderOpen, access: 'admin' },
     { id: 'administrasi', label: 'Laporan Donasi', icon: Briefcase, access: 'admin' },
     { id: 'settings', label: 'Settingan', icon: Settings, access: 'owner_only' },
@@ -2081,6 +2084,10 @@ export default function App() {
 
                 {activeTab === 'laporan' && checkMenuAccess('laporan', 'admin') && (
                   <LaporanManager userUid={user?.uid || ''} isReadOnly={isKeuanganSCB} />
+                )}
+
+                {activeTab === 'realisasi' && checkMenuAccess('realisasi', 'admin') && (
+                  <RealisasiManager />
                 )}
 
                 {activeTab === 'berkas' && checkMenuAccess('berkas', 'admin') && (
@@ -5511,6 +5518,7 @@ const ALL_MENU_ITEMS = [
   { id: 'buku_kas', label: 'Buku Kas' },
   { id: 'anggaran', label: 'Pengajuan Anggaran' },
   { id: 'laporan', label: 'Laporan PertUM' },
+  { id: 'realisasi', label: 'Laporan Realisasi' },
   { id: 'berkas', label: 'Berkas Digital' },
   { id: 'administrasi', label: 'Laporan Donasi' },
   { id: 'settings', label: 'Settingan' },
@@ -5528,7 +5536,7 @@ const getDefaultMenusForUser = (p: UserProfile): string[] => {
     pEmail === 'operasional.scb@gmail.com' || 
     pEmail === 'keuanganscbbaznas@gmail.com'
   ) {
-    defaults.push('buku_kas', 'laporan', 'berkas', 'administrasi');
+    defaults.push('buku_kas', 'laporan', 'realisasi', 'berkas', 'administrasi');
   }
   
   if (pEmail === 'keuanganscbbaznas@gmail.com' || pEmail === 'kamal2015go@gmail.com') {

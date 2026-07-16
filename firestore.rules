@@ -170,6 +170,26 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
+    match /realisasi_bulanan/{realisasiId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /donation_cashflow_transactions/{transactionId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /donation_budget_categories/{categoryId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /donation_saldo_awal/{saldoId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
     match /donations/{donationId} {
       allow read: if isAdmin() || getRole() in ['finance', 'accountant', 'management'];
       allow create: if isValidDonation(incoming()) && incoming().createdAt == request.time;
