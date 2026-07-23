@@ -1109,3 +1109,220 @@ export const DEFAULT_BAZNAS_RINCIAN_SMA_JAN_2026: BaznasRincianItem[] = [
     ]
   }
 ];
+
+export const DEFAULT_BAZNAS_SETTLEMENT_SMA_JUNI_2026 = [
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'A1.3.1',
+    namaAnggaran: 'Berkah Ramadhan dan Wisuda Quran',
+    noDoc: 161,
+    noBukti: 'FS.04.290626',
+    tanggalBudget: '29-Jun-26',
+    keterangan: 'Pameran LTM 2026',
+    debit: 'UM.24.060526',
+    details: [
+      { noBuktiDetail: 'a', keteranganDetail: 'Peralatan, Konsumsi & Transport', qty: 1, hargaSatuan: 950000 },
+      { noBuktiDetail: 'b', keteranganDetail: 'Insentif', qty: 1, hargaSatuan: 300000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'K1.1.7',
+    namaAnggaran: 'Dana Kesehatan Amil Tetap (Guru)',
+    noDoc: 162,
+    noBukti: 'B.05.240626',
+    tanggalBudget: '24-Jun-26',
+    keterangan: 'Klaim Kesehatan an Ust Siswadi',
+    debit: '',
+    details: [
+      { noBuktiDetail: 'a', keteranganDetail: 'Pengobatan', qty: 1, hargaSatuan: 501500 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'K1.1.7',
+    namaAnggaran: 'Dana Kesehatan Amil Tetap (Guru)',
+    noDoc: 163,
+    noBukti: 'B.06.240626',
+    tanggalBudget: '24-Jun-26',
+    keterangan: 'Klaim Kesehatan an Ust Ahmad',
+    debit: '',
+    details: [
+      { noBuktiDetail: 'a', keteranganDetail: 'Obat & Suplement', qty: 1, hargaSatuan: 631540 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'K1.1.7',
+    namaAnggaran: 'Dana Kesehatan Amil Tetap (Guru)',
+    noDoc: 164,
+    noBukti: 'B.01.260626',
+    tanggalBudget: '26-Jun-26',
+    keterangan: 'Klaim Kesehatan an Ustzh Hanifah',
+    debit: '',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '31-Mar-26', keteranganDetail: 'Apotek KF Bojong Gede - Caplang dll', qty: 1, hargaSatuan: 969909 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'K1.1.9',
+    namaAnggaran: 'Tunjangan Fungsional',
+    noDoc: 165,
+    noBukti: 'B.03.020626',
+    tanggalBudget: '2-Jun-26',
+    keterangan: 'Tunjangan Funsional Mei 2026',
+    debit: '',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '2-Jun-26', keteranganDetail: 'Batch Transfer BSI', qty: 1, hargaSatuan: 1900000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'K1.4.7',
+    namaAnggaran: 'Olimpiade Matematika',
+    noDoc: 166,
+    noBukti: 'B.13.040626',
+    tanggalBudget: '4-Jun-26',
+    keterangan: 'OSPENAS 2026',
+    debit: '',
+    details: [
+      { noBuktiDetail: 'a', keteranganDetail: 'Konsumsi', qty: 1, hargaSatuan: 90000 },
+      { noBuktiDetail: 'b', keteranganDetail: 'Insentif', qty: 9, hargaSatuan: 100000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'K1.8',
+    namaAnggaran: 'Sukses PTN (Diagnostic Test dan Peminatan Siswa)',
+    noDoc: 167,
+    noBukti: 'B.12.040626',
+    tanggalBudget: '4-Jun-26',
+    keterangan: 'Supercamp UTBK Mandiri April Mei',
+    debit: '',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '10-Oct-26', keteranganDetail: 'CV. Azzam Edutalent - Super Camp UTBK', qty: 1, hargaSatuan: 8400000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'O2.1.1',
+    namaAnggaran: 'Biaya Pengadaan Perlengkapan Kantor',
+    noDoc: 202,
+    noBukti: 'KK.01.110626',
+    tanggalBudget: '11-Jun-26',
+    keterangan: 'Kebutuhan Kantor OP',
+    debit: '',
+    details: [
+      { noBuktiDetail: 'a', keteranganDetail: 'Perlengkapan', qty: 1, hargaSatuan: 241000 },
+      { noBuktiDetail: 'a', keteranganDetail: 'Perlengkapan', qty: 1, hargaSatuan: 131000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'O2.1.1',
+    namaAnggaran: 'Biaya Pengadaan Perlengkapan Kantor',
+    noDoc: 203,
+    noBukti: 'KK.02.220626',
+    tanggalBudget: '22-Jun-26',
+    keterangan: 'Pemangkasan 6 Pohon',
+    debit: '',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '9-Jun-26', keteranganDetail: 'Jasa Pemangkasan Pohon a.n Andri Halim', qty: 1, hargaSatuan: 360000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'O2.1.1',
+    namaAnggaran: 'Biaya Pengadaan Perlengkapan Kantor',
+    noDoc: 204,
+    noBukti: 'KK.03.220626',
+    tanggalBudget: '22-Jun-26',
+    keterangan: 'Pemangkasan 10 pohon',
+    debit: '',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '9-Jun-26', keteranganDetail: 'Jasa Pemangkasan Pohon a.n Andri Halim', qty: 1, hargaSatuan: 500000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'O2.1.17',
+    namaAnggaran: 'Biaya Iuran Lingkungan',
+    noDoc: 205,
+    noBukti: 'B.09.040626',
+    tanggalBudget: '4-Jun-26',
+    keterangan: 'Iuran Sampah Mei 2026',
+    debit: '',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '4-Jun-26', keteranganDetail: 'DKP Galuga - Retribusi Kebersihan Mei 2026', qty: 1, hargaSatuan: 1250000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'O3.1.2',
+    namaAnggaran: 'Biaya Perbaikan pintu dan jendela',
+    noDoc: 206,
+    noBukti: 'FS.16.170626',
+    tanggalBudget: '17-Jun-26',
+    keterangan: 'Kunci Pintu Asrama Putera',
+    debit: 'UM.02.050326',
+    details: [
+      { noBuktiDetail: '1', tanggalDetail: '14-Apr-26', keteranganDetail: 'TB. Arinda Jaya - Kunci Set & Jendela Frame', qty: 1, hargaSatuan: 2260000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'S3.1',
+    namaAnggaran: 'Ekstrakulikuler',
+    noDoc: 207,
+    noBukti: 'FS.03.110626',
+    tanggalBudget: '11-Jun-26',
+    keterangan: 'IKMC 2026',
+    debit: 'UM.05.230426',
+    details: [
+      { noBuktiDetail: 'a', keteranganDetail: 'Registrasi', qty: 1, hargaSatuan: 750000 },
+      { noBuktiDetail: 'b', keteranganDetail: 'Insentif', qty: 1, hargaSatuan: 200000 }
+    ]
+  },
+  {
+    account: 'SMA',
+    month: 'Juni',
+    year: '2026',
+    kodeBudget: 'S3.1',
+    namaAnggaran: 'Ekstrakulikuler',
+    noDoc: 208,
+    noBukti: 'B.03.190626',
+    tanggalBudget: '19-Jun-26',
+    keterangan: 'Honor Pembina Ekskul Mei 2026',
+    debit: '',
+    details: [
+      { noBuktiDetail: 'a', keteranganDetail: 'Batch Transfer BSI', qty: 1, hargaSatuan: 4440000 }
+    ]
+  }
+];

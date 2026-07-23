@@ -14,12 +14,21 @@ import { FileText, Plus, Search, ExternalLink, Download, Upload, Trash2, Edit2, 
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
-import { DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026, DEFAULT_BAZNAS_RINCIAN_SMA_JAN_2026, BaznasRincianItem, RincianDetailItem } from './baznasDefaultRincian';
+import { DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026, DEFAULT_BAZNAS_RINCIAN_SMA_JAN_2026, DEFAULT_BAZNAS_SETTLEMENT_SMA_JUNI_2026, BaznasRincianItem, RincianDetailItem } from './baznasDefaultRincian';
 
 const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
+
+export const normalizeBudgetCode = (code: string): string => {
+  if (!code) return '';
+  const trimmed = code.trim();
+  if (/^0(?=[0-9]|\.|$)/i.test(trimmed)) {
+    return 'O' + trimmed.slice(1);
+  }
+  return trimmed;
+};
 
 interface Report {
   id: string;
@@ -266,6 +275,11 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   const [dbSettlementList, setDbSettlementList] = useState<any[]>([]);
   const [isSettlementFormOpen, setIsSettlementFormOpen] = useState(false);
   const [sFormBudgetCode, setSFormBudgetCode] = useState<string>('');
+  const [sFormIsCustomCode, setSFormIsCustomCode] = useState<boolean>(false);
+  const [sFormCustomCode, setSFormCustomCode] = useState<string>('');
+  const [sFormCustomName, setSFormCustomName] = useState<string>('');
+  const [sFormDebit, setSFormDebit] = useState<string>('');
+  const [baznasDana, setBaznasDana] = useState<string>('ZAKAT');
   const [sFormNoDoc, setSFormNoDoc] = useState<number>(1);
   const [sFormNoBukti, setSFormNoBukti] = useState<string>('');
   const [sFormTanggalBudget, setSFormTanggalBudget] = useState<string>('');
@@ -402,7 +416,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
 
   const handleSaveRincian = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rFormBudgetCode || !rFormNoBukti || !rFormTanggalBudget || !rFormKeterangan) {
+    const finalRCode = normalizeBudgetCode(rFormBudgetCode);
+    if (!finalRCode || !rFormNoBukti || !rFormTanggalBudget || !rFormKeterangan) {
       toast.error("Mohon lengkapi semua field utama rincian transaksi");
       return;
     }
@@ -425,7 +440,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
       if (editingRincianId && editingRincianId !== 'default_static') {
         const docRef = doc(db, 'laporan_baznas_rincian_docs', editingRincianId);
         await updateDoc(docRef, {
-          kodeBudget: rFormBudgetCode,
+          kodeBudget: finalRCode,
           noDoc: rFormNoDoc,
           noBukti: rFormNoBukti,
           tanggalBudget: rFormTanggalBudget,
@@ -442,7 +457,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
         if (existingDoc) {
           const docRef = doc(db, 'laporan_baznas_rincian_docs', existingDoc.id);
           await updateDoc(docRef, {
-            kodeBudget: rFormBudgetCode,
+            kodeBudget: finalRCode,
             noBukti: rFormNoBukti,
             tanggalBudget: rFormTanggalBudget,
             keterangan: rFormKeterangan,
@@ -455,7 +470,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
             account: baznasAccount,
             month: baznasMonth,
             year: baznasYear,
-            kodeBudget: rFormBudgetCode,
+            kodeBudget: finalRCode,
             noDoc: rFormNoDoc,
             noBukti: rFormNoBukti,
             tanggalBudget: rFormTanggalBudget,
@@ -550,20 +565,21 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
 
   // Settlement BAZNAS computed data & helper functions
   const getBudgetItemMeta = (code: string, targetAccount: 'SMP' | 'SMA' = baznasAccount) => {
+    const normCode = normalizeBudgetCode(code);
     const templates = targetAccount === 'SMP' ? BAZNAS_SMP_BUDGET_TEMPLATES : BAZNAS_SMA_BUDGET_TEMPLATES;
-    const found = templates.find(t => t.code === code);
+    const found = templates.find(t => t.code === normCode || t.code === code);
     
     const customDoc = customBaznasValues.find(c =>
       c.account === targetAccount &&
       c.month?.toLowerCase() === baznasMonth.toLowerCase() &&
       c.year === baznasYear &&
-      c.code === code
+      (normalizeBudgetCode(c.code) === normCode || c.code === code)
     );
 
     const pagu = customDoc?.budget !== undefined ? customDoc.budget : (found?.budget || 0);
     const name = found?.name || 'Pos Anggaran';
 
-    return { code, name, pagu };
+    return { code: normCode || code, name, pagu };
   };
 
   const currentDbSettlement = dbSettlementList.filter(
@@ -583,6 +599,11 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
 
   const handleOpenAddSettlement = (presetCode?: string) => {
     setEditingSettlementId(null);
+    setSFormIsCustomCode(false);
+    setSFormCustomCode('');
+    setSFormCustomName('');
+    setSFormDebit('');
+    
     const selectedCode = presetCode || currentTemplates.find(t => t.level === 3)?.code || '';
     setSFormBudgetCode(selectedCode);
     const nextNoDoc = (sortedSettlementItems.length > 0 ? Math.max(...sortedSettlementItems.map(s => s.noDoc || 0)) + 1 : 1);
@@ -604,14 +625,18 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
 
   const handleSaveSettlement = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sFormBudgetCode || !sFormNoBukti || !sFormTanggalBudget || !sFormKeterangan) {
+    const rawCode = sFormIsCustomCode ? sFormCustomCode.trim() : sFormBudgetCode;
+    const finalCode = normalizeBudgetCode(rawCode);
+    const meta = getBudgetItemMeta(finalCode);
+    const finalName = sFormIsCustomCode ? sFormCustomName.trim() : (meta.name || 'Pos Anggaran');
+
+    if (!finalCode || !sFormNoBukti || !sFormTanggalBudget || !sFormKeterangan) {
       toast.error("Mohon lengkapi data utama settlement");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const meta = getBudgetItemMeta(sFormBudgetCode);
       const validatedDetails = sFormDetails.map(d => ({
         noBuktiDetail: d.noBuktiDetail || 'a',
         tanggalDetail: d.tanggalDetail || sFormTanggalBudget,
@@ -626,9 +651,10 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
           account: baznasAccount,
           month: baznasMonth,
           year: baznasYear,
-          kodeBudget: sFormBudgetCode,
-          namaAnggaran: meta.name,
-          paguAnggaran: meta.pagu,
+          kodeBudget: finalCode,
+          namaAnggaran: finalName,
+          paguAnggaran: meta.pagu || 0,
+          debit: sFormDebit,
           noDoc: sFormNoDoc,
           noBukti: sFormNoBukti,
           tanggalBudget: sFormTanggalBudget,
@@ -642,9 +668,10 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
           account: baznasAccount,
           month: baznasMonth,
           year: baznasYear,
-          kodeBudget: sFormBudgetCode,
-          namaAnggaran: meta.name,
-          paguAnggaran: meta.pagu,
+          kodeBudget: finalCode,
+          namaAnggaran: finalName,
+          paguAnggaran: meta.pagu || 0,
+          debit: sFormDebit,
           noDoc: sFormNoDoc,
           noBukti: sFormNoBukti,
           tanggalBudget: sFormTanggalBudget,
@@ -670,6 +697,10 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   const resetSettlementForm = () => {
     setEditingSettlementId(null);
     setSFormBudgetCode('');
+    setSFormIsCustomCode(false);
+    setSFormCustomCode('');
+    setSFormCustomName('');
+    setSFormDebit('');
     setSFormNoDoc(1);
     setSFormNoBukti('');
     setSFormTanggalBudget('');
@@ -679,7 +710,22 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
 
   const handleEditSettlement = (item: any) => {
     setEditingSettlementId(item.id);
-    setSFormBudgetCode(item.kodeBudget);
+    const templates = baznasAccount === 'SMP' ? BAZNAS_SMP_BUDGET_TEMPLATES : BAZNAS_SMA_BUDGET_TEMPLATES;
+    const existsInTemplate = templates.some(t => t.code === item.kodeBudget);
+
+    if (existsInTemplate) {
+      setSFormIsCustomCode(false);
+      setSFormBudgetCode(item.kodeBudget);
+      setSFormCustomCode('');
+      setSFormCustomName('');
+    } else {
+      setSFormIsCustomCode(true);
+      setSFormBudgetCode('');
+      setSFormCustomCode(item.kodeBudget || '');
+      setSFormCustomName(item.namaAnggaran || '');
+    }
+
+    setSFormDebit(item.debit || '');
     setSFormNoDoc(item.noDoc);
     setSFormNoBukti(item.noBukti);
     setSFormTanggalBudget(item.tanggalBudget);
@@ -694,10 +740,36 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
       if (item.id) {
         await deleteDoc(doc(db, 'laporan_baznas_settlement_docs', item.id));
         toast.success("Data settlement berhasil dihapus");
+      } else {
+        setIsSubmitting(true);
+        toast.info("Menginisialisasi data settlement ke database...");
+        const sampleToLoad = DEFAULT_BAZNAS_SETTLEMENT_SMA_JUNI_2026;
+        for (const defaultItem of sampleToLoad) {
+          if (defaultItem.noDoc === item.noDoc && defaultItem.kodeBudget === item.kodeBudget && defaultItem.keterangan === item.keterangan) continue;
+          await addDoc(collection(db, 'laporan_baznas_settlement_docs'), {
+            account: baznasAccount,
+            month: baznasMonth,
+            year: baznasYear,
+            kodeBudget: defaultItem.kodeBudget,
+            namaAnggaran: defaultItem.namaAnggaran,
+            noDoc: defaultItem.noDoc,
+            noBukti: defaultItem.noBukti,
+            tanggalBudget: defaultItem.tanggalBudget,
+            keterangan: defaultItem.keterangan,
+            debit: defaultItem.debit || '',
+            details: defaultItem.details,
+            userUid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+        }
+        toast.success("Data settlement berhasil dihapus");
       }
     } catch (error) {
       console.error("Error deleting settlement:", error);
       toast.error("Gagal menghapus data settlement");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -705,21 +777,32 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
     try {
       setIsResettingSettlement(true);
       toast.info("Memuat sample data settlement BAZNAS...");
-      const sampleToLoad = baznasAccount === 'SMP' ? DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026 : DEFAULT_BAZNAS_RINCIAN_SMA_JAN_2026;
       
+      // Clear existing settlement items for current account/month/year
+      const currentItems = dbSettlementList.filter(
+        s => s.month?.toLowerCase() === baznasMonth.toLowerCase() &&
+             s.year === baznasYear &&
+             s.account?.toLowerCase() === baznasAccount.toLowerCase()
+      );
+      for (const item of currentItems) {
+        if (item.id) {
+          await deleteDoc(doc(db, 'laporan_baznas_settlement_docs', item.id));
+        }
+      }
+
+      const sampleToLoad = DEFAULT_BAZNAS_SETTLEMENT_SMA_JUNI_2026;
       for (const item of sampleToLoad) {
-        const meta = getBudgetItemMeta(item.kodeBudget, baznasAccount);
         await addDoc(collection(db, 'laporan_baznas_settlement_docs'), {
           account: baznasAccount,
           month: baznasMonth,
           year: baznasYear,
           kodeBudget: item.kodeBudget,
-          namaAnggaran: meta.name,
-          paguAnggaran: meta.pagu,
+          namaAnggaran: item.namaAnggaran,
           noDoc: item.noDoc,
-          noBukti: item.noBukti ? item.noBukti.replace('B.', 'STL.') : `STL.${item.noDoc}`,
+          noBukti: item.noBukti,
           tanggalBudget: item.tanggalBudget,
-          keterangan: `[Settlement] ${item.keterangan}`,
+          keterangan: item.keterangan,
+          debit: item.debit || '',
           details: item.details,
           userUid,
           createdAt: serverTimestamp(),
@@ -1448,10 +1531,9 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
       {activeTab === 'settlement' ? (
         /* SETTLEMENT BAZNAS VIEW */
         <div className="space-y-6" ref={settlementLaporanRef}>
-          {/* Controls & Mini Menu Bar - Hides on PDF export */}
+          {/* Controls & Filter Bar - Hides on PDF export */}
           {!isExportingPDF && (
             <div className="space-y-4" id="settlement-controls-and-form">
-              {/* COMPACT HORIZONTAL FILTER BAR */}
               <Card className="rounded-3xl border border-slate-100 shadow-sm bg-white overflow-hidden">
                 <CardContent className="p-4 md:p-5">
                   <div className="flex flex-wrap items-end gap-3 justify-between">
@@ -1501,13 +1583,27 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                         </Select>
                       </div>
 
+                      {/* Jenis Dana */}
+                      <div className="space-y-1.5 w-32">
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Sumber Dana</Label>
+                        <Select value={baznasDana} onValueChange={setBaznasDana}>
+                          <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200 text-xs h-9 font-semibold">
+                            <SelectValue placeholder="Pilih Dana" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ZAKAT" className="text-xs font-medium">ZAKAT</SelectItem>
+                            <SelectItem value="INFAQ" className="text-xs font-medium">INFAQ</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       {/* No PPD */}
                       <div className="space-y-1.5 w-32">
                         <Label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">No. PPD</Label>
                         <Input 
                           value={baznasNoPpd}
                           onChange={e => setBaznasNoPpd(e.target.value)}
-                          placeholder="137910"
+                          placeholder="145430"
                           className="rounded-xl bg-slate-50 border-slate-200 text-xs h-9 font-mono font-semibold"
                         />
                       </div>
@@ -1517,15 +1613,16 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                         variant="ghost" 
                         size="sm"
                         onClick={() => {
-                          setBaznasMonth('Januari');
+                          setBaznasMonth('Juni');
                           setBaznasYear('2026');
-                          setBaznasAccount('SMP');
-                          setBaznasNoPpd('137910');
+                          setBaznasAccount('SMA');
+                          setBaznasNoPpd('145430');
+                          setBaznasDana('ZAKAT');
                           setSettlementSearchTerm('');
                         }}
                         className="h-9 px-3 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 font-bold text-xs"
                       >
-                        <RefreshCw size={12} className="mr-1.5" /> Reset Filter
+                        <RefreshCw size={12} className="mr-1.5" /> Reset
                       </Button>
                     </div>
 
@@ -1535,7 +1632,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                         onClick={() => handleOpenAddSettlement()}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md font-bold text-xs h-9 px-4 transition-all"
                       >
-                        <Plus size={14} className="mr-1.5" /> Input Settlement Baru
+                        <Plus size={14} className="mr-1.5" /> + Input Settlement Baru
                       </Button>
 
                       <Button
@@ -1545,7 +1642,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                         className="border-amber-200 text-amber-700 hover:bg-amber-50 rounded-xl font-bold text-xs h-9 px-3"
                       >
                         <RefreshCw size={12} className={`mr-1.5 ${isResettingSettlement ? 'animate-spin' : ''}`} />
-                        Sample Data
+                        Muat Data BAZNAS
                       </Button>
 
                       <Button
@@ -1553,7 +1650,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                         onClick={() => handleDownloadPDFType('settlement')}
                         className="border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl font-bold text-xs h-9 px-3"
                       >
-                        <FileDown size={14} className="mr-1.5" /> Unduh PDF Settlement
+                        <FileDown size={14} className="mr-1.5" /> Unduh PDF
                       </Button>
                     </div>
                   </div>
@@ -1562,386 +1659,289 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
             </div>
           )}
 
-          {/* SUMMARY CARDS FOR SETTLEMENT */}
-          {(() => {
-            const level3Templates = currentTemplates.filter(t => t.level === 3);
-            const totalPagu = level3Templates.reduce((sum, item) => {
-              const meta = getBudgetItemMeta(item.code);
-              return sum + meta.pagu;
-            }, 0);
-
-            const totalSettlementSpent = sortedSettlementItems.reduce((sum, item) => {
-              const itemCredit = item.details ? item.details.reduce((dSum: number, d: any) => dSum + ((parseFloat(d.qty) || 1) * (parseInt(d.hargaSatuan) || 0)), 0) : 0;
-              return sum + itemCredit;
-            }, 0);
-
-            const sisaPaguOverall = totalPagu - totalSettlementSpent;
-            const percentPenyerapan = totalPagu > 0 ? (totalSettlementSpent / totalPagu) * 100 : 0;
-
-            return (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="rounded-2xl border border-slate-100 shadow-sm bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Total Pagu Budget</p>
-                      <p className="text-xl font-black text-slate-800 font-mono mt-1">Rp {totalPagu.toLocaleString('id-ID')}</p>
-                    </div>
-                    <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                      <Coins size={20} />
-                    </div>
+          {/* MAIN FORMAL REPORT CONTAINER matching requested "LAPORAN PERTUM SCB" format */}
+          <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-md space-y-6" id="settlement-print-table">
+            
+            {/* TOP HEADER */}
+            <div className="flex items-start justify-between border-b-2 border-slate-900 pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-emerald-700 flex items-center justify-center text-white font-black text-lg shadow-sm">
+                    SCB
                   </div>
-                </Card>
-
-                <Card className="rounded-2xl border border-slate-100 shadow-sm bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Total Settlement Realisasi</p>
-                      <p className="text-xl font-black text-blue-700 font-mono mt-1">Rp {totalSettlementSpent.toLocaleString('id-ID')}</p>
-                    </div>
-                    <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                      <Calculator size={20} />
-                    </div>
+                  <div>
+                    <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">
+                      LAPORAN PERTUM {baznasAccount} SCB
+                    </h1>
+                    <p className="text-xs text-slate-600 font-bold uppercase tracking-wider">
+                      SEKOLAH CENDEKIA BAZNAS
+                    </p>
                   </div>
-                </Card>
-
-                <Card className="rounded-2xl border border-slate-100 shadow-sm bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Sisa Pagu (Varian)</p>
-                      <p className={`text-xl font-black font-mono mt-1 ${sisaPaguOverall < 0 ? 'text-red-600' : 'text-amber-700'}`}>
-                        Rp {sisaPaguOverall.toLocaleString('id-ID')}
-                      </p>
-                    </div>
-                    <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-                      <Layers size={20} />
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="rounded-2xl border border-slate-100 shadow-sm bg-white p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Penyerapan Settlement</p>
-                      <p className="text-xl font-black text-emerald-700 font-mono mt-1">{percentPenyerapan.toFixed(1)}%</p>
-                    </div>
-                    <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                      <ClipboardCheck size={20} />
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            );
-          })()}
-
-          {/* TABLE PAGU KODE ANGGARAN BESERTA NAMA ANGGARANNYA */}
-          <Card className="rounded-3xl border border-slate-100 shadow-sm bg-white overflow-hidden">
-            <CardHeader className="bg-slate-900 text-white p-5 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-base font-black tracking-tight uppercase flex items-center gap-2">
-                  <Coins size={18} className="text-emerald-400" />
-                  PAGU KODE ANGGARAN & REALISASI SETTLEMENT {baznasAccount} ({baznasMonth} {baznasYear})
-                </CardTitle>
-                <p className="text-xs text-slate-300 font-medium mt-1">
-                  Daftar Pagu Kode Anggaran beserta Nama Anggaran dan status akumulasi settlement.
-                </p>
-              </div>
-              <div className="relative w-64">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <Input
-                  placeholder="Cari kode/nama anggaran..."
-                  value={settlementSearchTerm}
-                  onChange={e => setSettlementSearchTerm(e.target.value)}
-                  className="pl-9 h-8 text-xs bg-slate-800 border-slate-700 text-white rounded-xl placeholder:text-slate-500"
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-slate-50">
-                    <TableRow>
-                      <TableHead className="font-bold text-xs text-slate-600 w-28">KODE BUDGET</TableHead>
-                      <TableHead className="font-bold text-xs text-slate-600">NAMA ANGGARAN</TableHead>
-                      <TableHead className="font-bold text-xs text-slate-600 text-right">PAGU ANGGARAN (RP)</TableHead>
-                      <TableHead className="font-bold text-xs text-slate-600 text-right">TOTAL SETTLEMENT (RP)</TableHead>
-                      <TableHead className="font-bold text-xs text-slate-600 text-right">SISA PAGU (RP)</TableHead>
-                      <TableHead className="font-bold text-xs text-slate-600 text-center w-24">% PENYERAPAN</TableHead>
-                      {!isExportingPDF && <TableHead className="font-bold text-xs text-slate-600 text-center w-32">AKSI</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentTemplates
-                      .filter(t => t.level === 3)
-                      .filter(t => {
-                        if (!settlementSearchTerm) return true;
-                        const term = settlementSearchTerm.toLowerCase();
-                        return t.code.toLowerCase().includes(term) || t.name.toLowerCase().includes(term);
-                      })
-                      .map((item) => {
-                        const meta = getBudgetItemMeta(item.code);
-                        
-                        // Compute total settlement credit spent for this budget code
-                        const settlementForCode = sortedSettlementItems.filter(s => s.kodeBudget === item.code);
-                        const totalSettlementSpent = settlementForCode.reduce((sum, sItem) => {
-                          const credit = sItem.details ? sItem.details.reduce((dSum: number, d: any) => dSum + ((parseFloat(d.qty) || 1) * (parseInt(d.hargaSatuan) || 0)), 0) : 0;
-                          return sum + credit;
-                        }, 0);
-
-                        const sisaPagu = meta.pagu - totalSettlementSpent;
-                        const percent = meta.pagu > 0 ? Math.min(100, (totalSettlementSpent / meta.pagu) * 100) : 0;
-
-                        return (
-                          <TableRow key={item.code} className="hover:bg-slate-50/80 transition-colors">
-                            <TableCell className="font-mono font-bold text-xs text-emerald-800">
-                              <span className="bg-emerald-50 px-2 py-1 rounded-md border border-emerald-200">
-                                {item.code}
-                              </span>
-                            </TableCell>
-                            <TableCell className="font-semibold text-xs text-slate-800">
-                              {item.name}
-                            </TableCell>
-                            <TableCell className="font-mono font-bold text-xs text-right text-slate-700">
-                              Rp {meta.pagu.toLocaleString('id-ID')}
-                            </TableCell>
-                            <TableCell className="font-mono font-bold text-xs text-right text-blue-700">
-                              Rp {totalSettlementSpent.toLocaleString('id-ID')}
-                            </TableCell>
-                            <TableCell className={`font-mono font-bold text-xs text-right ${sisaPagu < 0 ? 'text-red-600' : 'text-slate-800'}`}>
-                              Rp {sisaPagu.toLocaleString('id-ID')}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <span className="font-bold text-xs font-mono text-slate-600">{percent.toFixed(0)}%</span>
-                                <div className="w-12 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                                  <div 
-                                    className={`h-full ${percent > 100 ? 'bg-red-500' : 'bg-emerald-500'}`} 
-                                    style={{ width: `${Math.min(100, percent)}%` }} 
-                                  />
-                                </div>
-                              </div>
-                            </TableCell>
-                            {!isExportingPDF && (
-                              <TableCell className="text-center">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleOpenAddSettlement(item.code)}
-                                  className="h-7 px-2 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800 rounded-lg"
-                                >
-                                  <Plus size={12} className="mr-1" /> Settlement
-                                </Button>
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        );
-                      })}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* TABEL HASIL AKHIR INPUTAN SETTLEMENT BAZNAS (RINCIAN LAPORAN PERIODE) */}
-          <Card className="rounded-3xl border border-slate-100 shadow-sm bg-white overflow-hidden" id="settlement-print-table">
-            <CardHeader className="bg-slate-900 text-white p-6 flex flex-row items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="bg-emerald-500 text-slate-950 font-black text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider">
-                    {baznasAccount} Cendekia BAZNAS
-                  </span>
-                  <CardTitle className="text-lg font-black tracking-tight uppercase">
-                    RINCIAN LAPORAN SETTLEMENT PERIODE
-                  </CardTitle>
                 </div>
-                <p className="text-xs text-slate-300 font-semibold mt-1">
-                  Bulan: {baznasMonth} {baznasYear} &nbsp;|&nbsp; NO. PPD: {baznasNoPpd}
-                </p>
               </div>
 
-              {!isExportingPDF && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => handleOpenAddSettlement()}
-                    className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs h-9 px-4 rounded-xl shadow-md"
-                  >
-                    <Plus size={14} className="mr-1.5" /> Tambah Settlement
-                  </Button>
+              <div className="border-2 border-slate-900 p-2.5 rounded text-xs font-mono font-bold text-slate-900 space-y-1 bg-slate-50 min-w-[200px]">
+                <div className="flex justify-between">
+                  <span>PERIODE</span>
+                  <span>: {baznasMonth.toUpperCase()} {baznasYear}</span>
                 </div>
-              )}
-            </CardHeader>
+                <div className="flex justify-between">
+                  <span>DANA</span>
+                  <span>: {baznasDana || 'ZAKAT'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>PPD</span>
+                  <span>: {baznasNoPpd || '145430'}</span>
+                </div>
+              </div>
+            </div>
 
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table className="border-collapse text-slate-800">
-                  <TableHeader className="bg-slate-100">
-                    <TableRow className="border-b border-slate-200">
-                      <TableHead className="font-bold text-[11px] text-slate-700 text-center w-12 py-3">NO DOC</TableHead>
-                      <TableHead className="font-bold text-[11px] text-slate-700 w-28 py-3">KODE BUDGET</TableHead>
-                      <TableHead className="font-bold text-[11px] text-slate-700 w-48 py-3">NAMA ANGGARAN</TableHead>
-                      <TableHead className="font-bold text-[11px] text-slate-700 text-right w-32 py-3">PAGU (RP)</TableHead>
-                      <TableHead className="font-bold text-[11px] text-slate-700 w-32 py-3">NO. BUKTI</TableHead>
-                      <TableHead className="font-bold text-[11px] text-slate-700 w-28 py-3">TANGGAL</TableHead>
-                      <TableHead className="font-bold text-[11px] text-slate-700 py-3">KETERANGAN & RINCIAN DETAIL</TableHead>
-                      <TableHead className="font-bold text-[11px] text-slate-700 text-center w-16 py-3">QTY</TableHead>
-                      <TableHead className="font-bold text-[11px] text-slate-700 text-right w-28 py-3">HARGA SATUAN</TableHead>
-                      <TableHead className="font-bold text-[11px] text-slate-700 text-right w-32 py-3">CREDIT (RP)</TableHead>
-                      <TableHead className="font-bold text-[11px] text-slate-700 text-right w-32 py-3">SISA PAGU</TableHead>
-                      {!isExportingPDF && <TableHead className="font-bold text-[11px] text-slate-700 text-center w-24 py-3">AKSI</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedSettlementItems.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={12} className="h-32 text-center text-slate-400 font-medium text-xs">
-                          Belum ada transaksi settlement BAZNAS untuk periode {baznasMonth} {baznasYear} ({baznasAccount}).
-                          <div className="mt-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={handleLoadDefaultSettlement}
-                              className="font-bold text-xs text-emerald-700 border-emerald-200 hover:bg-emerald-50 rounded-xl"
-                            >
-                              <RefreshCw size={12} className="mr-1.5" /> Muat Sample Data Settlement
-                            </Button>
+            {/* SETTLEMENT ITEMS DISPLAYED BY BUDGET CODE GROUPS */}
+            {(() => {
+              const displaySettlementItems = sortedSettlementItems.length > 0 
+                ? sortedSettlementItems 
+                : (baznasAccount === 'SMA' && baznasMonth === 'Juni' && baznasYear === '2026' ? DEFAULT_BAZNAS_SETTLEMENT_SMA_JUNI_2026 : []);
+
+              if (displaySettlementItems.length === 0) {
+                return (
+                  <div className="p-12 text-center border-2 border-dashed border-slate-200 rounded-xl space-y-3">
+                    <p className="text-slate-500 font-bold text-sm">
+                      Belum ada data settlement BAZNAS untuk {baznasAccount} periode {baznasMonth} {baznasYear}.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={handleLoadDefaultSettlement}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl"
+                    >
+                      <RefreshCw size={12} className="mr-1.5" /> Muat Data BAZNAS SMA Juni 2026
+                    </Button>
+                  </div>
+                );
+              }
+
+              // Group items by unique kodeBudget
+              const grouped: Record<string, { kodeBudget: string; namaAnggaran: string; items: any[] }> = {};
+              for (const item of displaySettlementItems) {
+                const rawCode = item.kodeBudget || 'LAIN';
+                const code = normalizeBudgetCode(rawCode);
+                if (!grouped[code]) {
+                  grouped[code] = {
+                    kodeBudget: code,
+                    namaAnggaran: item.namaAnggaran || getBudgetItemMeta(code, baznasAccount).name,
+                    items: []
+                  };
+                }
+                grouped[code].items.push(item);
+              }
+
+              const groupCodes = Object.keys(grouped);
+
+              let grandTotalCredit = 0;
+
+              return (
+                <div className="space-y-5">
+                  {/* MAIN TABLE HEADER BAR */}
+                  <div className="grid grid-cols-12 bg-[#1d609b] text-white font-black text-[11px] uppercase tracking-wider py-2.5 px-3 rounded-t border-2 border-[#1d609b] text-center gap-1">
+                    <div className="col-span-1">NO DOC</div>
+                    <div className="col-span-2">NO BUKTI</div>
+                    <div className="col-span-2">TGL/ BUDGET</div>
+                    <div className="col-span-3">KETERANGAN</div>
+                    <div className="col-span-1">QTY</div>
+                    <div className="col-span-1">HARGA SATUAN</div>
+                    <div className="col-span-1">DEBIT</div>
+                    <div className="col-span-1">CREDIT / BALANCE</div>
+                  </div>
+
+                  {/* GROUPS */}
+                  {groupCodes.map((code) => {
+                    const group = grouped[code];
+                    
+                    // Group total
+                    const groupTotal = group.items.reduce((sum, item) => {
+                      const c = item.details && item.details.length > 0
+                        ? item.details.reduce((dSum: number, d: any) => dSum + ((parseFloat(d.qty) || 1) * (parseInt(d.hargaSatuan) || 0)), 0)
+                        : (item.creditTotal || 0);
+                      return sum + c;
+                    }, 0);
+
+                    grandTotalCredit += groupTotal;
+
+                    return (
+                      <div key={code} className="border-2 border-slate-900 rounded bg-white overflow-hidden shadow-sm">
+                        {/* Group Title Header */}
+                        <div className="bg-slate-100 border-b-2 border-slate-900 px-4 py-2 font-black text-xs text-slate-900 tracking-wide uppercase flex items-center justify-between">
+                          <div>
+                            <span className="font-mono bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300 mr-2">
+                              {group.kodeBudget}
+                            </span>
+                            {group.namaAnggaran}
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      sortedSettlementItems.map((item) => {
-                        const meta = getBudgetItemMeta(item.kodeBudget, baznasAccount);
-                        const itemCreditTotal = item.details ? item.details.reduce((sum: number, d: any) => sum + ((parseFloat(d.qty) || 1) * (parseInt(d.hargaSatuan) || 0)), 0) : 0;
-                        const sisaPaguAfter = meta.pagu - itemCreditTotal;
+                          <span className="text-[10px] text-slate-500 font-bold">
+                            {group.items.length} Dokumen
+                          </span>
+                        </div>
 
-                        return (
-                          <React.Fragment key={item.id || item.noDoc}>
-                            {/* PARENT ROW */}
-                            <TableRow className="bg-emerald-50/40 hover:bg-emerald-50/70 border-t-2 border-slate-200 font-semibold transition-colors">
-                              <TableCell className="text-center font-bold font-mono text-xs text-slate-800">
-                                {item.noDoc}
-                              </TableCell>
-                              <TableCell className="font-mono font-black text-xs text-emerald-800">
-                                <span className="bg-emerald-100 text-emerald-900 px-2 py-0.5 rounded border border-emerald-300">
-                                  {item.kodeBudget}
-                                </span>
-                              </TableCell>
-                              <TableCell className="font-bold text-xs text-slate-800">
-                                {item.namaAnggaran || meta.name}
-                              </TableCell>
-                              <TableCell className="font-mono font-bold text-xs text-right text-slate-700">
-                                Rp {(item.paguAnggaran || meta.pagu).toLocaleString('id-ID')}
-                              </TableCell>
-                              <TableCell className="font-mono text-xs font-bold text-slate-700">
-                                {item.noBukti}
-                              </TableCell>
-                              <TableCell className="text-xs text-slate-600 font-medium">
-                                {item.tanggalBudget}
-                              </TableCell>
-                              <TableCell className="font-bold text-xs text-slate-900" colSpan={3}>
-                                {item.keterangan}
-                              </TableCell>
-                              <TableCell className="font-mono font-black text-xs text-right text-blue-800">
-                                Rp {itemCreditTotal.toLocaleString('id-ID')}
-                              </TableCell>
-                              <TableCell className={`font-mono font-bold text-xs text-right ${sisaPaguAfter < 0 ? 'text-red-600' : 'text-slate-700'}`}>
-                                Rp {sisaPaguAfter.toLocaleString('id-ID')}
-                              </TableCell>
-                              {!isExportingPDF && (
-                                <TableCell className="text-center">
-                                  <div className="flex items-center justify-center gap-1">
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleEditSettlement(item)}
-                                      className="h-7 w-7 p-0 text-blue-600 hover:bg-blue-50 rounded-lg"
-                                      title="Edit Settlement"
-                                    >
-                                      <Edit2 size={14} />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleDeleteSettlement(item)}
-                                      className="h-7 w-7 p-0 text-red-500 hover:bg-red-50 rounded-lg"
-                                      title="Hapus Settlement"
-                                    >
-                                      <Trash2 size={14} />
-                                    </Button>
+                        {/* Document Rows */}
+                        <div className="divide-y divide-slate-200 text-xs">
+                          {group.items.map((docItem: any) => {
+                            const itemCreditTotal = docItem.details && docItem.details.length > 0
+                              ? docItem.details.reduce((dSum: number, d: any) => dSum + ((parseFloat(d.qty) || 1) * (parseInt(d.hargaSatuan) || 0)), 0)
+                              : (docItem.creditTotal || 0);
+
+                            const hasDetails = docItem.details && docItem.details.length > 0;
+
+                            return (
+                              <div key={docItem.id || docItem.noDoc} className="bg-white hover:bg-slate-50/70">
+                                {/* MAIN DOC ROW */}
+                                <div className="grid grid-cols-12 py-2 px-3 items-center font-bold text-slate-900 gap-1 border-b border-slate-100 text-xs">
+                                  <div className="col-span-1 text-center font-mono text-slate-900">
+                                    {docItem.noDoc}
                                   </div>
-                                </TableCell>
-                              )}
-                            </TableRow>
+                                  <div className="col-span-2 font-mono text-slate-900">
+                                    {docItem.noBukti}
+                                  </div>
+                                  <div className="col-span-2 text-slate-800 text-[11px]">
+                                    {docItem.tanggalBudget}
+                                  </div>
+                                  <div className="col-span-3 text-slate-900 font-bold">
+                                    {docItem.keterangan}
+                                  </div>
+                                  <div className="col-span-1 text-center text-slate-400">
+                                    -
+                                  </div>
+                                  <div className="col-span-1 text-right text-slate-400 font-mono">
+                                    -
+                                  </div>
+                                  <div className="col-span-1 text-right font-mono font-semibold text-slate-700 text-[11px]">
+                                    {docItem.debit || ''}
+                                  </div>
+                                  <div className="col-span-1 text-right font-mono font-black text-slate-900 flex items-center justify-end gap-1">
+                                    {!hasDetails && `Rp ${itemCreditTotal.toLocaleString('id-ID')}`}
+                                    
+                                    {!isExportingPDF && (
+                                      <div className="flex items-center ml-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleEditSettlement(docItem)}
+                                          className="text-blue-600 hover:text-blue-800 p-1"
+                                          title="Edit"
+                                        >
+                                          <Edit2 size={12} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteSettlement(docItem)}
+                                          className="text-red-500 hover:text-red-700 p-1"
+                                          title="Hapus"
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
 
-                            {/* SUB-DETAIL ROWS */}
-                            {item.details && item.details.map((detail: RincianDetailItem, idx: number) => {
-                              const lineTotal = (parseFloat(detail.qty as any) || 1) * (parseInt(detail.hargaSatuan as any) || 0);
-                              return (
-                                <TableRow key={`${item.id || item.noDoc}-detail-${idx}`} className="hover:bg-slate-50/80 border-b border-slate-100 text-xs">
-                                  <TableCell className="text-center font-mono text-[11px] text-slate-400">
-                                    {/* empty */}
-                                  </TableCell>
-                                  <TableCell className="font-mono text-[11px] text-slate-400">
-                                    {/* empty */}
-                                  </TableCell>
-                                  <TableCell className="text-slate-400">
-                                    {/* empty */}
-                                  </TableCell>
-                                  <TableCell className="text-slate-400">
-                                    {/* empty */}
-                                  </TableCell>
-                                  <TableCell className="font-mono text-slate-500 pl-6 text-[11px]">
-                                    ({detail.noBuktiDetail || String.fromCharCode(97 + idx)})
-                                  </TableCell>
-                                  <TableCell className="text-slate-500 text-[11px]">
-                                    {detail.tanggalDetail || item.tanggalBudget}
-                                  </TableCell>
-                                  <TableCell className="text-slate-700 font-medium italic pl-4">
-                                    ↳ {detail.keteranganDetail || '-'}
-                                  </TableCell>
-                                  <TableCell className="text-center font-mono font-medium text-slate-600">
-                                    {detail.qty}
-                                  </TableCell>
-                                  <TableCell className="text-right font-mono text-slate-600">
-                                    Rp {(parseInt(detail.hargaSatuan as any) || 0).toLocaleString('id-ID')}
-                                  </TableCell>
-                                  <TableCell className="text-right font-mono font-semibold text-slate-700">
-                                    Rp {lineTotal.toLocaleString('id-ID')}
-                                  </TableCell>
-                                  <TableCell className="text-slate-300">
-                                    {/* empty */}
-                                  </TableCell>
-                                  {!isExportingPDF && <TableCell />}
-                                </TableRow>
-                              );
-                            })}
-                          </React.Fragment>
-                        );
-                      })
-                    )}
+                                {/* SUB-ITEM DETAILS */}
+                                {hasDetails && (
+                                  <div className="bg-slate-50/60 divide-y divide-slate-100 pl-4">
+                                    {docItem.details.map((det: any, dIdx: number) => {
+                                      const lineTotal = (parseFloat(det.qty) || 1) * (parseInt(det.hargaSatuan) || 0);
+                                      return (
+                                        <div key={dIdx} className="grid grid-cols-12 py-1.5 px-3 items-center text-[11px] text-slate-700 gap-1 hover:bg-slate-100/60">
+                                          <div className="col-span-1 text-center font-mono text-slate-400">
+                                            {/* empty */}
+                                          </div>
+                                          <div className="col-span-2 font-mono font-bold text-slate-700">
+                                            {det.noBuktiDetail || String.fromCharCode(97 + dIdx)}
+                                          </div>
+                                          <div className="col-span-2 text-slate-500 text-[10px]">
+                                            {det.tanggalDetail || ''}
+                                          </div>
+                                          <div className="col-span-3 text-slate-800 font-medium">
+                                            {det.keteranganDetail}
+                                          </div>
+                                          <div className="col-span-1 text-center font-mono font-bold text-slate-800">
+                                            {det.qty}
+                                          </div>
+                                          <div className="col-span-1 text-right font-mono text-slate-800">
+                                            {parseInt(det.hargaSatuan || 0).toLocaleString('id-ID')}
+                                          </div>
+                                          <div className="col-span-1 text-right font-mono text-slate-400">
+                                            -
+                                          </div>
+                                          <div className="col-span-1 text-right font-mono font-bold text-slate-900">
+                                            Rp {lineTotal.toLocaleString('id-ID')}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
 
-                    {/* GRAND TOTAL ROW */}
-                    {sortedSettlementItems.length > 0 && (() => {
-                      const grandTotalCredit = sortedSettlementItems.reduce((sum, item) => {
-                        const credit = item.details ? item.details.reduce((dSum: number, d: any) => dSum + ((parseFloat(d.qty) || 1) * (parseInt(d.hargaSatuan) || 0)), 0) : 0;
-                        return sum + credit;
-                      }, 0);
+                        {/* Group Subtotal Footer */}
+                        <div className="bg-slate-100 border-t-2 border-slate-900 px-4 py-2 flex items-center justify-end font-mono font-bold text-xs text-slate-900">
+                          <span className="mr-3 font-sans uppercase text-[10px] tracking-wider text-slate-600">
+                            Subtotal {group.kodeBudget}:
+                          </span>
+                          <span className="bg-white border border-slate-900 px-3 py-1 rounded text-slate-950 font-black">
+                            Rp {groupTotal.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
 
-                      return (
-                        <TableRow className="bg-slate-900 text-white font-black text-xs border-t-2 border-slate-800">
-                          <TableCell colSpan={9} className="text-right uppercase tracking-wider py-3.5">
-                            GRAND TOTAL REKAPITULASI SETTLEMENT REALISASI ({baznasAccount}):
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-emerald-400 text-sm py-3.5">
-                            Rp {grandTotalCredit.toLocaleString('id-ID')}
-                          </TableCell>
-                          <TableCell colSpan={!isExportingPDF ? 2 : 1} />
-                        </TableRow>
-                      );
-                    })()}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
+                  {/* OVERALL GRAND TOTAL ROW */}
+                  <div className="border-2 border-slate-900 bg-slate-900 text-white font-black text-xs p-3.5 flex items-center justify-between rounded shadow-sm">
+                    <span className="uppercase tracking-wider font-bold text-sm">
+                      TOTAL REKAPITULASI SETTLEMENT
+                    </span>
+                    <span className="font-mono text-emerald-400 text-base font-black bg-slate-800 px-4 py-1.5 rounded border border-slate-700">
+                      Rp {grandTotalCredit.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+
+                  {/* FORMAL SIGNATURES BLOCK (4 COLUMNS) */}
+                  <div className="border-2 border-slate-900 bg-white rounded overflow-hidden mt-8">
+                    <div className="grid grid-cols-4 divide-x-2 divide-slate-900 text-center text-xs">
+                      <div className="p-3 flex flex-col justify-between h-36">
+                        <p className="font-bold text-slate-800 uppercase">Dibuat Oleh :</p>
+                        <div>
+                          <p className="font-bold underline text-slate-900">Dany Wahyudi</p>
+                          <p className="text-[11px] text-slate-600 font-medium">Staf Akuntan</p>
+                        </div>
+                      </div>
+                      <div className="p-3 flex flex-col justify-between h-36">
+                        <p className="font-bold text-slate-800 uppercase">Disusun oleh :</p>
+                        <div>
+                          <p className="font-bold underline text-slate-900">Nur Asiah</p>
+                          <p className="text-[11px] text-slate-600 font-medium">Staf Keuangan</p>
+                        </div>
+                      </div>
+                      <div className="p-3 flex flex-col justify-between h-36">
+                        <p className="font-bold text-slate-800 uppercase">Diperiksa Oleh :</p>
+                        <div>
+                          <p className="font-bold underline text-slate-900">Mohamad Roni</p>
+                          <p className="text-[11px] text-slate-600 font-medium">Manajer Operasional</p>
+                        </div>
+                      </div>
+                      <div className="p-3 flex flex-col justify-between h-36">
+                        <p className="font-bold text-slate-800 uppercase">Diketahui Oleh :</p>
+                        <div>
+                          <p className="font-bold underline text-slate-900">Ahmad Kamaluddin Afif</p>
+                          <p className="text-[11px] text-slate-600 font-medium">PLT. Kepala Sekolah</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       ) : activeTab === 'baznas' ? (
         /* BAZNAS FORMAT VIEW */
@@ -3320,32 +3320,67 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
           </DialogHeader>
 
           <form onSubmit={handleSaveSettlement} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-            {/* Row 1: Kode Budget & Meta Info Badge */}
+            {/* Mode Toggle: Preset Code vs Custom Code */}
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Pilih Kode Budget & Nama Anggaran <span className="text-red-500">*</span>
-              </Label>
-              <Select value={sFormBudgetCode} onValueChange={setSFormBudgetCode}>
-                <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200 text-xs font-semibold h-10">
-                  <SelectValue placeholder="Pilih Kode Budget" />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {currentTemplates
-                    .filter(t => t.level === 3)
-                    .map(item => {
-                      const meta = getBudgetItemMeta(item.code);
-                      return (
-                        <SelectItem key={item.code} value={item.code} className="text-xs font-medium">
-                          <span className="font-mono font-bold text-emerald-700">{item.code}</span> — {item.name} (Pagu: Rp {meta.pagu.toLocaleString('id-ID')})
-                        </SelectItem>
-                      );
-                    })}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Kode Budget & Nama Anggaran <span className="text-red-500">*</span>
+                </Label>
+                <button
+                  type="button"
+                  onClick={() => setSFormIsCustomCode(!sFormIsCustomCode)}
+                  className="text-xs font-bold text-emerald-600 hover:text-emerald-700 underline"
+                >
+                  {sFormIsCustomCode ? '← Pilih dari Template Standard' : '+ Input Kode Budget Custom'}
+                </button>
+              </div>
 
-              {/* Selected Budget Meta Badge */}
-              {sFormBudgetCode && (() => {
-                const meta = getBudgetItemMeta(sFormBudgetCode);
+              {!sFormIsCustomCode ? (
+                <Select value={sFormBudgetCode} onValueChange={setSFormBudgetCode}>
+                  <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200 text-xs font-semibold h-10">
+                    <SelectValue placeholder="Pilih Kode Budget Template" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {currentTemplates
+                      .filter(t => t.level === 3)
+                      .map(item => {
+                        const meta = getBudgetItemMeta(item.code, baznasAccount);
+                        return (
+                          <SelectItem key={item.code} value={item.code} className="text-xs font-medium">
+                            <span className="font-mono font-bold text-emerald-700">{item.code}</span> — {item.name}
+                          </SelectItem>
+                        );
+                      })}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-emerald-50/50 p-3 rounded-2xl border border-emerald-200">
+                  <div>
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase">Kode Budget Custom <span className="text-red-500">*</span></Label>
+                    <Input
+                      value={sFormCustomCode}
+                      onChange={e => setSFormCustomCode(normalizeBudgetCode(e.target.value))}
+                      placeholder="Contoh: O2.1.17"
+                      className="rounded-xl bg-white border-slate-200 text-xs font-mono font-bold h-9"
+                      required={sFormIsCustomCode}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase">Nama Anggaran Custom <span className="text-red-500">*</span></Label>
+                    <Input
+                      value={sFormCustomName}
+                      onChange={e => setSFormCustomName(e.target.value)}
+                      placeholder="Contoh: Realisasi Program Berkah Ramadhan"
+                      className="rounded-xl bg-white border-slate-200 text-xs font-medium h-9"
+                      required={sFormIsCustomCode}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Selected Budget Meta Badge for preset */}
+              {!sFormIsCustomCode && sFormBudgetCode && (() => {
+                const meta = getBudgetItemMeta(sFormBudgetCode, baznasAccount);
                 return (
                   <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between">
                     <div>
@@ -3361,11 +3396,11 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
               })()}
             </div>
 
-            {/* Row 2: No Doc, No Bukti, Tanggal */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Row 2: No Doc, No Bukti, Tanggal, Debit */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  No. Urut Doc <span className="text-red-500">*</span>
+                  No. Doc <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   type="number"
@@ -3378,12 +3413,12 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  No. Bukti Settlement <span className="text-red-500">*</span>
+                  No. Bukti <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   value={sFormNoBukti}
                   onChange={e => setSFormNoBukti(e.target.value)}
-                  placeholder="STL.01/JAN/26"
+                  placeholder="FS.04.290626"
                   className="rounded-xl bg-slate-50 border-slate-200 text-xs font-mono font-semibold h-10"
                   required
                 />
@@ -3391,14 +3426,26 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Tanggal Document <span className="text-red-500">*</span>
+                  Tanggal <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   value={sFormTanggalBudget}
                   onChange={e => setSFormTanggalBudget(e.target.value)}
-                  placeholder="16-Jan-26"
+                  placeholder="29-Jun-26"
                   className="rounded-xl bg-slate-50 border-slate-200 text-xs font-semibold h-10"
                   required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Debit / Ref UM
+                </Label>
+                <Input
+                  value={sFormDebit}
+                  onChange={e => setSFormDebit(e.target.value)}
+                  placeholder="UM.24.060526"
+                  className="rounded-xl bg-slate-50 border-slate-200 text-xs font-mono font-semibold h-10"
                 />
               </div>
             </div>
