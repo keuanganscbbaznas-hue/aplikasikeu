@@ -56,6 +56,21 @@ export function getStagesByType(type: SubmissionType): readonly string[] {
   return TRANSACTION_STAGES;
 }
 
+export function getDisplayAmount(submission: Submission): number {
+  if (submission?.type === 'uang_muka') {
+    const stages = getStagesByType(submission.type);
+    const targetIdx = stages.indexOf("Pencatatan Transaksi dan Penomeran Dokumen Laporan");
+    if (targetIdx !== -1 && submission.currentStageIndex !== undefined && submission.currentStageIndex >= targetIdx) {
+      const sisaDanaVal = Number(submission.sisaDana) || 0;
+      const usedFundVal = (submission.nominalPermohonanLaporan !== undefined && submission.nominalPermohonanLaporan !== null)
+        ? Number(submission.nominalPermohonanLaporan)
+        : ((submission.amount || 0) - sisaDanaVal);
+      return usedFundVal;
+    }
+  }
+  return submission?.amount || 0;
+}
+
 export interface HistoryEntry {
   stage: string;
   status: 'approved' | 'rejected' | 'pending' | 'submitted';

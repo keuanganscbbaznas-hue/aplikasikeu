@@ -26,6 +26,7 @@ import {
   UserProfile, 
   Submission, 
   getStagesByType, 
+  getDisplayAmount,
   UserRole, 
   SubmissionType,
   HistoryEntry 
@@ -132,7 +133,7 @@ const formatWhatsAppMessage = (submission: Submission) => {
   const currentStatus = stages[submission.currentStageIndex];
   const url = 'https://aplikasikeu.vercel.app';
   
-  return `Assalamu'alaikum \nPIC ${submission.picName || submission.submittedByName}, Informasi Update Pengajuan:\n📦 Judul: ${submission.title}\n💰 Nominal: Rp ${submission.amount.toLocaleString('id-ID')}\n📝 Status: ${currentStatus}\n\nSilakan cek detail selengkapnya di aplikasi: ${url}\n\nTerima kasih.`;
+  return `Assalamu'alaikum \nPIC ${submission.picName || submission.submittedByName}, Informasi Update Pengajuan:\n📦 Judul: ${submission.title}\n💰 Nominal: Rp ${getDisplayAmount(submission).toLocaleString('id-ID')}\n📝 Status: ${currentStatus}\n\nSilakan cek detail selengkapnya di aplikasi: ${url}\n\nTerima kasih.`;
 };
 
 const sendWhatsApp = (phoneNumber: string, message: string) => {
@@ -385,7 +386,7 @@ function SubmissionCard({
         <div className="flex items-baseline gap-1">
           <span className="text-[14px] bg-[#ffffff] font-bold text-slate-400">Rp</span>
           <span className="font-['Times_New_Roman'] font-black text-[16px] text-slate-800 tracking-tight tabular-nums">
-            {submission.amount.toLocaleString('id-ID')}
+            {getDisplayAmount(submission).toLocaleString('id-ID')}
           </span>
         </div>
       </td>
@@ -448,7 +449,7 @@ function SubmissionCard({
                          </div>
                          <div className="text-right">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Nominal</p>
-                            <p className="text-2xl font-black text-slate-900 tracking-tighter">Rp {submission.amount.toLocaleString('id-ID')}</p>
+                            <p className="text-2xl font-black text-slate-900 tracking-tighter">Rp {getDisplayAmount(submission).toLocaleString('id-ID')}</p>
                          </div>
                       </div>
                     </DialogHeader>
@@ -864,7 +865,7 @@ export default function App() {
         s.sumberRekening || '-',
         s.noDokumen || '-',
         s.description || '',
-        s.amount || 0,
+        getDisplayAmount(s),
         s.status || '',
         s.picName || '',
         s.currentStageIndex !== undefined ? (getStagesByType(s.type)[s.currentStageIndex] || '-') : '-',
@@ -1319,7 +1320,7 @@ export default function App() {
         s.kodeBudget || '-',
         s.sumberRekening || '-',
         s.noDokumen || '-',
-        s.amount,
+        getDisplayAmount(s),
         currentStatus,
         s.currentStageIndex + 1,
         s.submittedByName,
@@ -2532,8 +2533,9 @@ const MonthlyAccumulationSummary = React.memo(({ submissions }: { submissions: S
         latestDate: date
       };
     }
-    refinedSummary[monthKey].types[sub.type] += sub.amount;
-    grandTotals[sub.type] += sub.amount;
+    const displayAmt = getDisplayAmount(sub);
+    refinedSummary[monthKey].types[sub.type] += displayAmt;
+    grandTotals[sub.type] += displayAmt;
     
     if (date > refinedSummary[monthKey].latestDate) {
       refinedSummary[monthKey].latestDate = date;
@@ -2627,7 +2629,7 @@ function FilteredResultsSummary({
 }) {
   if (!isFiltered) return null;
 
-  const total = submissions.reduce((acc, s) => acc + s.amount, 0);
+  const total = submissions.reduce((acc, s) => acc + getDisplayAmount(s), 0);
 
   const getFilterLabel = () => {
     const parts = [];
@@ -2686,7 +2688,7 @@ const StatusAccumulationSummary = React.memo(({ submissions }: { submissions: Su
   const statusSummary = submissions.reduce((acc, sub) => {
     const stages = getStagesByType(sub.type);
     const status = (sub.status === 'REJECTED' || sub.status === 'rejected') ? 'REJECTED' : (stages[sub.currentStageIndex] || sub.status || 'Diproses');
-    acc[status] = (acc[status] || 0) + sub.amount;
+    acc[status] = (acc[status] || 0) + getDisplayAmount(sub);
     return acc;
   }, {} as Record<string, number>);
 
