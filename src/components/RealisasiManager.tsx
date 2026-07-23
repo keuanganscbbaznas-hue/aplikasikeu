@@ -34,6 +34,9 @@ import {
 import { 
   BarChart, 
   Bar, 
+  LineChart,
+  Line,
+  ComposedChart,
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -71,6 +74,7 @@ export const RealisasiManager = () => {
   const [filterTahun, setFilterTahun] = useState('Semua');
   const [filterBulan, setFilterBulan] = useState('Semua');
   const [searchQuery, setSearchQuery] = useState('');
+  const [chartType, setChartType] = useState<'composed' | 'bar' | 'line'>('composed');
 
   // Add/Edit Dialog State
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -157,34 +161,65 @@ export const RealisasiManager = () => {
     };
   }, [filteredEntries]);
 
-  // Chart data preparation
+  // Chart data preparation directly from filteredEntries (rincian realisasi bulanan)
   const chartData = useMemo(() => {
-    // Group by month for current filtered year (or overall)
-    const yearToUse = filterTahun === 'Semua' ? '2026' : filterTahun;
     const monthlyMap: Record<string, { program: number; gaji: number; makan: number }> = {};
     
     MONTHS.forEach(m => {
       monthlyMap[m] = { program: 0, gaji: 0, makan: 0 };
     });
 
-    entries.forEach(item => {
-      if (item.tahun === yearToUse) {
-        if (monthlyMap[item.bulan]) {
-          monthlyMap[item.bulan].program += Number(item.program || 0);
-          monthlyMap[item.bulan].gaji += Number(item.gaji || 0);
-          monthlyMap[item.bulan].makan += Number(item.makan || 0);
+    filteredEntries.forEach(item => {
+      if (monthlyMap[item.bulan]) {
+        monthlyMap[item.bulan].program += Number(item.program || 0);
+        monthlyMap[item.bulan].gaji += Number(item.gaji || 0);
+        monthlyMap[item.bulan].makan += Number(item.makan || 0);
+      }
+    });
+
+    const data = MONTHS.map(m => {
+      const prog = monthlyMap[m].program;
+      const gaji = monthlyMap[m].gaji;
+      const makan = monthlyMap[m].makan;
+      const total = prog + gaji + makan;
+      return {
+        name: m.substring(0, 3),
+        fullName: m,
+        'Realisasi Program': prog,
+        'Realisasi Gaji': gaji,
+        'Realisasi Makan': makan,
+        'Total Realisasi': total
+      };
+    });
+
+    if (filterBulan !== 'Semua') {
+      return data.filter(d => d.fullName === filterBulan);
+    }
+
+    return data;
+  }, [filteredEntries, filterBulan]);
+
+  const chartStats = useMemo(() => {
+    let maxMonth = '-';
+    let maxVal = 0;
+    let activeMonths = 0;
+    let sumVal = 0;
+
+    chartData.forEach(d => {
+      if (d['Total Realisasi'] > 0) {
+        activeMonths++;
+        sumVal += d['Total Realisasi'];
+        if (d['Total Realisasi'] > maxVal) {
+          maxVal = d['Total Realisasi'];
+          maxMonth = d.fullName;
         }
       }
     });
 
-    return MONTHS.map(m => ({
-      name: m.substring(0, 3),
-      'Realisasi Program': monthlyMap[m].program,
-      'Realisasi Gaji': monthlyMap[m].gaji,
-      'Realisasi Makan': monthlyMap[m].makan,
-      'Total': monthlyMap[m].program + monthlyMap[m].gaji + monthlyMap[m].makan
-    })).filter(d => d.Total > 0 || filterTahun !== 'Semua'); // Only show months with data if 'Semua', or show all if year selected
-  }, [entries, filterTahun]);
+    const avgVal = activeMonths > 0 ? sumVal / activeMonths : 0;
+
+    return { maxMonth, maxVal, avgVal, activeMonths };
+  }, [chartData]);
 
   // Actions
   const handleOpenAdd = () => {
@@ -469,34 +504,139 @@ export const RealisasiManager = () => {
       </div>
 
       {/* CHART SECTION */}
-      {entries.length > 0 && (
-        <Card className="rounded-3xl border border-slate-100/80 shadow-sm bg-white p-6">
-          <CardHeader className="px-0 pt-0 pb-4">
-            <CardTitle className="text-xs font-black text-slate-400 uppercase tracking-widest">
-              Grafik Tren Realisasi Bulanan {filterTahun === 'Semua' ? 'Tahun 2026' : `Tahun ${filterTahun}`}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-0 pb-0 h-72">
+      <Card className="rounded-3xl border border-slate-100/80 shadow-sm bg-white p-6 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="h-6 w-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <TrendingUp size={14} />
+              </div>
+              <h3 className="text-sm font-black text-slate-800 uppercase tracking-wide">
+                Grafik Tren Realisasi Bulanan
+              </h3>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Visualisasi tren bulanan berdasarkan rincian {filteredEntries.length} data realisasi {filterTahun !== 'Semua' ? `tahun ${filterTahun}` : 'semua periode'}.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Quick Stats Pills */}
+            {chartStats.maxVal > 0 && (
+              <div className="hidden sm:flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 text-[10px]">
+                <span className="text-slate-400 font-bold uppercase">Puncak:</span>
+                <span className="font-black text-slate-700">{chartStats.maxMonth} ({formatRupiah(chartStats.maxVal)})</span>
+              </div>
+            )}
+            {chartStats.avgVal > 0 && (
+              <div className="hidden sm:flex items-center gap-2 bg-emerald-50/60 px-3 py-1.5 rounded-xl border border-emerald-100 text-[10px]">
+                <span className="text-emerald-600 font-bold uppercase">Rata-rata:</span>
+                <span className="font-black text-emerald-700">{formatRupiah(chartStats.avgVal)}/bln</span>
+              </div>
+            )}
+
+            {/* Chart Type Selector */}
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setChartType('composed')}
+                className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                  chartType === 'composed'
+                    ? 'bg-white text-emerald-700 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Kombinasi
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartType('bar')}
+                className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                  chartType === 'bar'
+                    ? 'bg-white text-emerald-700 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Batang
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartType('line')}
+                className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                  chartType === 'line'
+                    ? 'bg-white text-emerald-700 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Garis Tren
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <CardContent className="px-0 pb-0 h-80">
+          {filteredEntries.length === 0 ? (
+            <div className="h-full w-full flex flex-col items-center justify-center text-slate-400 text-xs font-bold gap-2">
+              <TrendingUp size={32} className="opacity-20" />
+              <span>Tidak ada data realisasi bulanan untuk ditampilkan dalam grafik.</span>
+            </div>
+          ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} stroke="#94a3b8" />
-                <YAxis fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} stroke="#94a3b8" tickFormatter={(v) => `${(v/1000000).toFixed(0)}M`} />
-                <Tooltip 
-                  formatter={(value: any) => [formatRupiah(Number(value)), '']}
-                  contentStyle={{ backgroundColor: '#1e293b', borderRadius: '12px', border: 'none', color: '#fff' }}
-                  labelStyle={{ fontWeight: 'black', color: '#34d399', fontSize: '11px' }}
-                  itemStyle={{ fontSize: '11px', fontWeight: 'bold' }}
-                />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '10px' }} />
-                <Bar dataKey="Realisasi Program" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="Realisasi Gaji" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
-                <Bar dataKey="Realisasi Makan" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-              </BarChart>
+              {chartType === 'composed' ? (
+                <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} stroke="#64748b" />
+                  <YAxis fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} stroke="#94a3b8" tickFormatter={(v) => v >= 1000000000 ? `${(v/1000000000).toFixed(1)}B` : v >= 1000000 ? `${(v/1000000).toFixed(0)}Jt` : `${v}`} />
+                  <Tooltip 
+                    formatter={(value: any, name: string) => [formatRupiah(Number(value)), name]}
+                    contentStyle={{ backgroundColor: '#0f172a', borderRadius: '16px', border: 'none', color: '#fff', padding: '12px 16px' }}
+                    labelStyle={{ fontWeight: 'black', color: '#34d399', fontSize: '12px', marginBottom: '4px' }}
+                    itemStyle={{ fontSize: '11px', fontWeight: 'bold' }}
+                  />
+                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '12px' }} />
+                  <Bar dataKey="Realisasi Program" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="Realisasi Gaji" stackId="a" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="Realisasi Makan" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  <Line type="monotone" dataKey="Total Realisasi" stroke="#0f172a" strokeWidth={2.5} dot={{ r: 4, fill: '#0f172a', strokeWidth: 2, stroke: '#fff' }} />
+                </ComposedChart>
+              ) : chartType === 'bar' ? (
+                <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} stroke="#64748b" />
+                  <YAxis fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} stroke="#94a3b8" tickFormatter={(v) => v >= 1000000000 ? `${(v/1000000000).toFixed(1)}B` : v >= 1000000 ? `${(v/1000000).toFixed(0)}Jt` : `${v}`} />
+                  <Tooltip 
+                    formatter={(value: any, name: string) => [formatRupiah(Number(value)), name]}
+                    contentStyle={{ backgroundColor: '#0f172a', borderRadius: '16px', border: 'none', color: '#fff', padding: '12px 16px' }}
+                    labelStyle={{ fontWeight: 'black', color: '#34d399', fontSize: '12px', marginBottom: '4px' }}
+                    itemStyle={{ fontSize: '11px', fontWeight: 'bold' }}
+                  />
+                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '12px' }} />
+                  <Bar dataKey="Realisasi Program" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Realisasi Gaji" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Realisasi Makan" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              ) : (
+                <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" fontSize={11} fontWeight="bold" tickLine={false} axisLine={false} stroke="#64748b" />
+                  <YAxis fontSize={9} fontWeight="bold" tickLine={false} axisLine={false} stroke="#94a3b8" tickFormatter={(v) => v >= 1000000000 ? `${(v/1000000000).toFixed(1)}B` : v >= 1000000 ? `${(v/1000000).toFixed(0)}Jt` : `${v}`} />
+                  <Tooltip 
+                    formatter={(value: any, name: string) => [formatRupiah(Number(value)), name]}
+                    contentStyle={{ backgroundColor: '#0f172a', borderRadius: '16px', border: 'none', color: '#fff', padding: '12px 16px' }}
+                    labelStyle={{ fontWeight: 'black', color: '#34d399', fontSize: '12px', marginBottom: '4px' }}
+                    itemStyle={{ fontSize: '11px', fontWeight: 'bold' }}
+                  />
+                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '12px' }} />
+                  <Line type="monotone" dataKey="Realisasi Program" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="Realisasi Gaji" stroke="#3b82f6" strokeWidth={2.5} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="Realisasi Makan" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="Total Realisasi" stroke="#0f172a" strokeWidth={3} strokeDasharray="4 4" dot={{ r: 4 }} />
+                </LineChart>
+              )}
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       {/* FILTERS & TABLE SECTION */}
       <Card className="rounded-3xl border border-slate-100/80 shadow-sm bg-white">
