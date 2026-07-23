@@ -180,6 +180,39 @@
       },
       "required": ["account", "month", "year", "kodeBudget", "noDoc", "noBukti", "tanggalBudget", "keterangan", "details", "userUid"]
     },
+    "LaporanBaznasSettlement": {
+      "title": "LaporanBaznasSettlement",
+      "description": "Settlement documents and details for BAZNAS budget settlement.",
+      "type": "object",
+      "properties": {
+        "account": { "type": "string", "enum": ["SMP", "SMA"] },
+        "month": { "type": "string" },
+        "year": { "type": "string" },
+        "kodeBudget": { "type": "string" },
+        "namaAnggaran": { "type": "string" },
+        "paguAnggaran": { "type": "number" },
+        "noDoc": { "type": "number" },
+        "noBukti": { "type": "string" },
+        "tanggalBudget": { "type": "string" },
+        "keterangan": { "type": "string" },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "noBuktiDetail": { "type": "string" },
+              "tanggalDetail": { "type": "string" },
+              "keteranganDetail": { "type": "string" },
+              "qty": { "type": "number" },
+              "hargaSatuan": { "type": "number" }
+            }
+          }
+        },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "userUid": { "type": "string" }
+      },
+      "required": ["account", "month", "year", "kodeBudget", "noDoc", "noBukti", "tanggalBudget", "keterangan", "details", "userUid"]
+    },
     "RealisasiBulanan": {
       "title": "RealisasiBulanan",
       "description": "Monthly realization inputs for programs, salaries, and food.",
@@ -280,6 +313,10 @@
     "/laporan_baznas_rincian_docs/{rincianId}": {
       "schema": "LaporanBaznasRincian",
       "description": "Collection of detailed transactional structures for BAZNAS report."
+    },
+    "/laporan_baznas_settlement_docs/{settlementId}": {
+      "schema": "LaporanBaznasSettlement",
+      "description": "Collection of settlement documents and details for BAZNAS budget settlement."
     },
     "/realisasi_bulanan/{realisasiId}": {
       "schema": "RealisasiBulanan",

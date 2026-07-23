@@ -107,7 +107,8 @@ import {
   MessageSquare,
   BarChart3,
   ClipboardCheck,
-  CalendarCheck
+  CalendarCheck,
+  CheckSquare
 } from 'lucide-react';
 import Papa from 'papaparse';
 import { 
@@ -544,6 +545,7 @@ export default function App() {
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedSubmissions, setSelectedSubmissions] = useState<Set<string>>(new Set());
+  const [trackingTab, setTrackingTab] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'realisasi' | 'berkas' | 'administrasi' | 'analisis' | 'settings'>('dashboard');
   const [bukuKasUnit, setBukuKasUnit] = useState<'smp' | 'sma'>('smp');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -1408,6 +1410,74 @@ export default function App() {
     });
   }, [submissions, deferredSearchQuery, deferredFilterPIC, filterType, minAmount, maxAmount, filterStatuses, filterMonth, filterYear, filterSumberRekening]);
 
+  const activeTabSubmissions = useMemo(() => {
+    if (trackingTab === 'pending') {
+      return filteredSubmissions.filter(s => {
+        if (s.status === 'REJECTED' || s.status === 'rejected') return false;
+        return s.currentStageIndex !== undefined && s.currentStageIndex >= 0 && s.currentStageIndex <= 2;
+      });
+    }
+    if (trackingTab === 'transfer') {
+      return filteredSubmissions.filter(s => {
+        if (s.status === 'REJECTED' || s.status === 'rejected') return false;
+        const stages = getStagesByType(s.type);
+        const currentStage = s.currentStageIndex !== undefined ? (stages[s.currentStageIndex] || '') : '';
+        return currentStage === "Dalam Antrian Transfer";
+      });
+    }
+    if (trackingTab === 'waiting_settled') {
+      return filteredSubmissions.filter(s => {
+        if (s.status === 'REJECTED' || s.status === 'rejected') return false;
+        const stages = getStagesByType(s.type);
+        return s.currentStageIndex !== undefined && s.currentStageIndex >= 4 && s.currentStageIndex < stages.length - 1;
+      });
+    }
+    if (trackingTab === 'rejected') {
+      return filteredSubmissions.filter(s => s.status === 'REJECTED' || s.status === 'rejected');
+    }
+    if (trackingTab === 'completed') {
+      return filteredSubmissions.filter(s => {
+        if (s.status === 'REJECTED' || s.status === 'rejected') return false;
+        const stages = getStagesByType(s.type);
+        return s.currentStageIndex !== undefined && s.currentStageIndex === stages.length - 1;
+      });
+    }
+    return filteredSubmissions;
+  }, [filteredSubmissions, trackingTab]);
+
+  const isAllActiveSelected = useMemo(() => {
+    const currentIds = activeTabSubmissions.map(s => s.id!).filter(Boolean);
+    return currentIds.length > 0 && currentIds.every(id => selectedSubmissions.has(id));
+  }, [activeTabSubmissions, selectedSubmissions]);
+
+  const handleSelectAllCurrentTab = () => {
+    const currentIds = activeTabSubmissions.map(s => s.id!).filter(Boolean);
+    if (currentIds.length === 0) return;
+    
+    setSelectedSubmissions(prev => {
+      const newSet = new Set(prev);
+      if (isAllActiveSelected) {
+        currentIds.forEach(id => newSet.delete(id));
+      } else {
+        currentIds.forEach(id => newSet.add(id));
+      }
+      return newSet;
+    });
+  };
+
+  const handleGridSelectAll = (idsToSelect: string[]) => {
+    const currentIds = activeTabSubmissions.map(s => s.id!).filter(Boolean);
+    setSelectedSubmissions(prev => {
+      const newSet = new Set(prev);
+      if (idsToSelect.length === 0) {
+        currentIds.forEach(id => newSet.delete(id));
+      } else {
+        idsToSelect.forEach(id => newSet.add(id));
+      }
+      return newSet;
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-50">
@@ -1871,7 +1941,7 @@ export default function App() {
                       }}
                     />
 
-                    <Tabs defaultValue="all" className="space-y-4 mt-6">
+                    <Tabs value={trackingTab} onValueChange={setTrackingTab} className="space-y-4 mt-6">
                       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-1">
                         <TabsList className="bg-white p-1 shadow-lg shadow-slate-200/40 rounded-xl border border-slate-100 h-10 w-full md:w-auto overflow-x-auto gap-1">
                           <TabsTrigger value="all" className="px-4 rounded-lg font-black text-[10px] h-full data-[state=active]:bg-emerald-600 data-[state=active]:text-white uppercase tracking-tight">Semua Data</TabsTrigger>
@@ -1883,6 +1953,16 @@ export default function App() {
                         </TabsList>
                         
                         <div className="flex items-center gap-2 flex-wrap">
+                          <Button 
+                            onClick={handleSelectAllCurrentTab}
+                            variant="outline" 
+                            className="h-10 bg-white border-slate-100 shadow-lg shadow-slate-200/40 rounded-xl px-3 flex items-center gap-2 hover:bg-slate-50 font-black text-[10px] uppercase tracking-wider text-slate-700 transition-all"
+                            title="Pilih semua data yang sesuai dengan filter & tab saat ini"
+                          >
+                            <CheckSquare size={14} className={isAllActiveSelected ? "text-emerald-600" : "text-slate-400"} />
+                            <span>{isAllActiveSelected ? "Batalkan Pilih" : `Pilih Semua (${activeTabSubmissions.length})`}</span>
+                          </Button>
+
                           <div className="flex items-center gap-2 text-xs font-bold text-slate-500 bg-white border border-slate-100 px-3 h-10 rounded-xl shadow-lg shadow-slate-200/40">
                             <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Limit Muat:</span>
                             <select 
@@ -1925,6 +2005,7 @@ export default function App() {
                           currentUser={user}
                           selectedSubmissions={selectedSubmissions}
                           onToggle={toggleSelection}
+                          onSelectAll={handleGridSelectAll}
                           onBukukan={isTrackingAdmin ? handleBukukan : undefined}
                         />
                       </TabsContent>
@@ -1943,6 +2024,7 @@ export default function App() {
                           currentUser={user}
                           selectedSubmissions={selectedSubmissions}
                           onToggle={toggleSelection}
+                          onSelectAll={handleGridSelectAll}
                           onBukukan={isTrackingAdmin ? handleBukukan : undefined}
                         />
                       </TabsContent>
@@ -1963,6 +2045,7 @@ export default function App() {
                           currentUser={user}
                           selectedSubmissions={selectedSubmissions}
                           onToggle={toggleSelection}
+                          onSelectAll={handleGridSelectAll}
                           onBukukan={isTrackingAdmin ? handleBukukan : undefined}
                         />
                       </TabsContent>
@@ -1982,6 +2065,7 @@ export default function App() {
                           currentUser={user}
                           selectedSubmissions={selectedSubmissions}
                           onToggle={toggleSelection}
+                          onSelectAll={handleGridSelectAll}
                           onBukukan={isTrackingAdmin ? handleBukukan : undefined}
                         />
                       </TabsContent>
@@ -1999,6 +2083,7 @@ export default function App() {
                           currentUser={user}
                           selectedSubmissions={selectedSubmissions}
                           onToggle={toggleSelection}
+                          onSelectAll={handleGridSelectAll}
                           onBukukan={isTrackingAdmin ? handleBukukan : undefined}
                         />
                       </TabsContent>
@@ -2018,6 +2103,7 @@ export default function App() {
                           currentUser={user}
                           selectedSubmissions={selectedSubmissions}
                           onToggle={toggleSelection}
+                          onSelectAll={handleGridSelectAll}
                           onBukukan={isTrackingAdmin ? handleBukukan : undefined}
                         />
                       </TabsContent>
@@ -2125,24 +2211,39 @@ export default function App() {
               initial={{ opacity: 0, y: 50, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 50, scale: 0.9 }}
-              className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-4 rounded-[2rem] shadow-2xl flex items-center gap-6"
+              className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-4 rounded-[2rem] shadow-2xl flex items-center gap-4 flex-wrap justify-center border border-slate-800"
             >
               <div className="flex items-center gap-3">
-                <div className="bg-primary text-primary-foreground font-black w-8 h-8 rounded-full flex items-center justify-center text-xs">
+                <div className="bg-emerald-500 text-white font-black w-8 h-8 rounded-full flex items-center justify-center text-xs shadow-md">
                   {selectedSubmissions.size}
                 </div>
-                <span className="font-bold text-sm">Data Terpilih</span>
+                <div>
+                  <span className="font-bold text-sm block leading-none">Data Terpilih</span>
+                  <span className="text-[10px] text-slate-400 font-medium">dari {activeTabSubmissions.length} data filter</span>
+                </div>
               </div>
               
-              <div className="h-6 w-px bg-slate-700 mx-2" />
+              <div className="h-6 w-px bg-slate-700 mx-1 hidden sm:block" />
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleSelectAllCurrentTab}
+                className="h-9 text-xs font-bold text-emerald-400 hover:text-emerald-300 hover:bg-slate-800 rounded-xl px-3 border border-slate-700/80 transition-all"
+              >
+                <CheckSquare size={14} className="mr-1.5" />
+                {isAllActiveSelected ? "Batalkan Pilihan Tab Ini" : `Pilih Semua Filter (${activeTabSubmissions.length})`}
+              </Button>
+              
+              <div className="h-6 w-px bg-slate-700 mx-1 hidden sm:block" />
               
               <div className="flex items-center gap-3">
                 {profile?.email && TRACKING_ADMIN_EMAILS.includes(profile.email) && (
                   <Button 
                     onClick={handleBulkApprove} 
-                    className="bg-emerald-500 hover:bg-emerald-600 rounded-xl font-bold h-10 px-6"
+                    className="bg-emerald-500 hover:bg-emerald-600 rounded-xl font-bold h-10 px-6 shadow-lg shadow-emerald-500/20"
                   >
-                    Setujui Masal
+                    Setujui Masal ({selectedSubmissions.size})
                   </Button>
                 )}
                 
