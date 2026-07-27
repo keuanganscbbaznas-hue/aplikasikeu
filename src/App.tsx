@@ -48,7 +48,7 @@ import { StatusMultiSelect } from './components/StatusMultiSelect';
 import { GenericMultiSelect } from './components/GenericMultiSelect';
 import { UM_STAGES, TRANSACTION_STAGES } from './types';
 import { BaznasBudgetManager } from './components/BaznasBudgetManager';
-import { LaporanManager } from './components/LaporanManager';
+import { LaporanManager, SettlementTrackingSummarySection } from './components/LaporanManager';
 import { AdministrasiManager } from './components/administrasi/AdministrasiManager';
 import { AnalisisManager } from './components/AnalisisManager';
 import { BerkasDigitalManager } from './components/BerkasDigitalManager';
@@ -1722,6 +1722,11 @@ export default function App() {
                         </div>
                       </div>
                     )}
+                    {/* Rekapitulasi Status Tracking Summary Section */}
+                    {isAdmin && (
+                      <SettlementTrackingSummarySection submissions={submissions} />
+                    )}
+
                     {/* Analysis Section - Moved from its own tab */}
                     {isAdmin && (
 

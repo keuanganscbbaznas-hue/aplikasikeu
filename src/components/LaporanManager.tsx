@@ -9,12 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { FileText, Plus, Search, ExternalLink, Download, Upload, Trash2, Edit2, FileDown, Calendar, Printer, RefreshCw, BarChart2, Settings, Calculator, ClipboardCheck, CheckCircle2, Coins, Layers } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
+import { FileText, Plus, Search, ExternalLink, Download, Upload, Trash2, Edit2, FileDown, Calendar, Printer, RefreshCw, BarChart2, Settings, Calculator, ClipboardCheck, CheckCircle2, Coins, Layers, BarChart3, Clock, FileCheck } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
 import { DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026, DEFAULT_BAZNAS_RINCIAN_SMA_JAN_2026, DEFAULT_BAZNAS_SETTLEMENT_SMA_JUNI_2026, BaznasRincianItem, RincianDetailItem } from './baznasDefaultRincian';
+import { UM_STAGES, TRANSACTION_STAGES, getDisplayAmount } from '../types';
 
 const MONTHS = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
@@ -216,6 +217,519 @@ const BAZNAS_SMA_BUDGET_TEMPLATES: BudgetTemplateItem[] = [
 ];
 
 const initialData: Report[] = [];
+
+interface TrackingCategoryData {
+  key: string;
+  name: string;
+  badgeLabel: string;
+  description: string;
+  statuses: string[];
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  textColor: string;
+  barColor: string;
+  count: number;
+  totalAmount: number;
+  items: any[];
+}
+
+export function SettlementTrackingSummarySection({ submissions }: { submissions: any[] }) {
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
+  const [chartMode, setChartMode] = useState<'amount' | 'count'>('amount');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const cat1Statuses = ["Belum Laporan (Masih di PIC)", "Belum Laporan"];
+  
+  const cat2Statuses = [
+    "Berkas Laporan di Admin (#09)",
+    "Berkas Laporan di Serahkan ke Keuangan (#10)",
+    "Verifikasi Laporan (#11)",
+    "Penyelesaian selisih (#12)",
+    "Pencatatan Transaksi dan Penomeran Dokumen Laporan (#13)"
+  ];
+
+  const cat3Statuses = [
+    "Proses Digitalisasi Dokumen (#14)",
+    "Verifikasi Dokumen Bulanan (#15)",
+    "Penyusunan Settlement (#16)",
+    "Finalisasi dan Penomeran Dokumen (#17)",
+    "Pengesahan Dokumen (#18)"
+  ];
+
+  const matchCategory = (sub: any) => {
+    if (sub.status === 'REJECTED' || sub.status === 'rejected') return null;
+
+    const type = sub.type || 'uang_muka';
+    const stages = type === 'uang_muka' ? UM_STAGES : TRANSACTION_STAGES;
+    const stageName = (stages[sub.currentStageIndex] || sub.status || '').toString().trim();
+    const lowerCurrent = stageName.toLowerCase();
+
+    // Kategori 1: Belum Laporan (Masih di PIC)
+    if (
+      lowerCurrent.includes("belum laporan") ||
+      (type === 'uang_muka' && sub.currentStageIndex === 6)
+    ) {
+      return 'cat1';
+    }
+
+    // Kategori 2: Laporan Sedang Diverifikasi
+    if (
+      lowerCurrent.includes("berkas laporan di admin") ||
+      lowerCurrent.includes("berkas laporan di serahkan ke keuangan") ||
+      lowerCurrent.includes("berkas laporan diserahkan ke keuangan") ||
+      lowerCurrent.includes("verifikasi laporan") ||
+      lowerCurrent.includes("penyelesaian selisih") ||
+      lowerCurrent.includes("pencatatan transaksi dan penomeran dokumen laporan") ||
+      (type === 'uang_muka' && sub.currentStageIndex >= 7 && sub.currentStageIndex <= 11)
+    ) {
+      return 'cat2';
+    }
+
+    // Kategori 3: Laporan Sedang Disusun
+    if (
+      lowerCurrent.includes("proses digitalisasi dokumen") ||
+      lowerCurrent.includes("verifikasi dokumen bulanan") ||
+      lowerCurrent.includes("penyusunan settlement") ||
+      lowerCurrent.includes("finalisasi dan penomeran dokumen") ||
+      lowerCurrent.includes("pengesahan dokumen") ||
+      (type === 'uang_muka' && sub.currentStageIndex >= 12 && sub.currentStageIndex <= 16)
+    ) {
+      return 'cat3';
+    }
+
+    return null;
+  };
+
+  const cat1Items: any[] = [];
+  const cat2Items: any[] = [];
+  const cat3Items: any[] = [];
+
+  (submissions || []).forEach(sub => {
+    const cat = matchCategory(sub);
+    if (cat === 'cat1') cat1Items.push(sub);
+    else if (cat === 'cat2') cat2Items.push(sub);
+    else if (cat === 'cat3') cat3Items.push(sub);
+  });
+
+  const getSubAmt = (sub: any) => {
+    try {
+      if (typeof getDisplayAmount === 'function') {
+        return getDisplayAmount(sub);
+      }
+    } catch (e) {}
+    return Number(sub?.amount) || 0;
+  };
+
+  const cat1Amount = cat1Items.reduce((acc, sub) => acc + getSubAmt(sub), 0);
+  const cat2Amount = cat2Items.reduce((acc, sub) => acc + getSubAmt(sub), 0);
+  const cat3Amount = cat3Items.reduce((acc, sub) => acc + getSubAmt(sub), 0);
+
+  const grandTotalAmount = cat1Amount + cat2Amount + cat3Amount;
+  const grandTotalCount = cat1Items.length + cat2Items.length + cat3Items.length;
+
+  const categories: TrackingCategoryData[] = [
+    {
+      key: 'cat1',
+      name: 'Belum Laporan (Masih di PIC)',
+      badgeLabel: 'Kategori I',
+      description: 'Pengajuan yang dana permohonannya telah ditransfer namun berkas laporan pertanggungjawaban (LPJ) masih berada di tangan PIC.',
+      statuses: cat1Statuses,
+      color: 'amber',
+      bgColor: 'bg-amber-50/70',
+      borderColor: 'border-amber-200',
+      textColor: 'text-amber-800',
+      barColor: '#f59e0b',
+      count: cat1Items.length,
+      totalAmount: cat1Amount,
+      items: cat1Items
+    },
+    {
+      key: 'cat2',
+      name: 'Laporan Sedang Diverifikasi',
+      badgeLabel: 'Kategori II',
+      description: 'Pengajuan LPJ yang sedang diperiksa oleh Admin/Keuangan, proses verifikasi, penyelesaian selisih, atau penomeran dokumen laporan.',
+      statuses: cat2Statuses,
+      color: 'blue',
+      bgColor: 'bg-blue-50/70',
+      borderColor: 'border-blue-200',
+      textColor: 'text-blue-800',
+      barColor: '#2563eb',
+      count: cat2Items.length,
+      totalAmount: cat2Amount,
+      items: cat2Items
+    },
+    {
+      key: 'cat3',
+      name: 'Laporan Sedang Disusun',
+      badgeLabel: 'Kategori III',
+      description: 'Pengajuan LPJ yang memasuki digitalisasi dokumen, verifikasi bulanan, penyusunan settlement BAZNAS, finalisasi & pengesahan akhir.',
+      statuses: cat3Statuses,
+      color: 'emerald',
+      bgColor: 'bg-emerald-50/70',
+      borderColor: 'border-emerald-200',
+      textColor: 'text-emerald-800',
+      barColor: '#059669',
+      count: cat3Items.length,
+      totalAmount: cat3Amount,
+      items: cat3Items
+    }
+  ];
+
+  const chartData = categories.map(cat => ({
+    name: cat.name.length > 25 ? cat.name.substring(0, 22) + '...' : cat.name,
+    fullName: cat.name,
+    nominal: cat.totalAmount,
+    jumlah: cat.count,
+    color: cat.barColor
+  }));
+
+  const activeCategoryObj = categories.find(c => c.key === selectedCategoryKey);
+
+  return (
+    <div className="mt-10 space-y-6 pt-6 border-t-2 border-slate-200" id="settlement-tracking-summary-section">
+      {/* HEADER SECTION */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 text-white p-5 rounded-2xl shadow-md">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+              TRACKING TRANSAKSI SUMMARY
+            </span>
+            <span className="text-[10px] text-slate-400 font-bold">• Data Terintegrasi Real-time</span>
+          </div>
+          <h3 className="text-xl font-black tracking-tight text-white flex items-center gap-2">
+            <BarChart2 className="text-emerald-400" size={22} />
+            Rekapitulasi Kategori Status Laporan
+          </h3>
+          <p className="text-xs text-slate-300 font-medium mt-1">
+            Aglomerasi data dari menu Tracking Transaksi berdasarkan 3 Tahapan Utama Status Laporan
+          </p>
+        </div>
+
+        {/* METRIC PILLS */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl text-right">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Total Transaksi</p>
+            <p className="text-base font-black text-white">{grandTotalCount} Transaksi</p>
+          </div>
+          <div className="bg-emerald-950/80 border border-emerald-800/80 px-4 py-2 rounded-xl text-right">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">Total Nominal LPJ</p>
+            <p className="text-base font-black text-emerald-300 font-mono">Rp {grandTotalAmount.toLocaleString('id-ID')}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* 3 CATEGORY CARDS */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {categories.map((cat) => {
+          const isSelected = selectedCategoryKey === cat.key;
+          const percentage = grandTotalAmount > 0 ? ((cat.totalAmount / grandTotalAmount) * 100).toFixed(1) : '0';
+
+          return (
+            <Card
+              key={cat.key}
+              onClick={() => setSelectedCategoryKey(isSelected ? null : cat.key)}
+              className={`rounded-2xl border transition-all cursor-pointer overflow-hidden ${
+                isSelected ? 'ring-2 ring-slate-900 shadow-md' : 'hover:shadow-md'
+              } ${cat.bgColor} ${cat.borderColor}`}
+            >
+              <CardContent className="p-5 flex flex-col justify-between h-full space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border bg-white ${cat.textColor} ${cat.borderColor}`}>
+                      {cat.badgeLabel}
+                    </span>
+                    <span className="text-xs font-black font-mono text-slate-600 bg-white/80 px-2 py-0.5 rounded">
+                      {percentage}%
+                    </span>
+                  </div>
+
+                  <h4 className={`text-base font-black tracking-tight leading-snug ${cat.textColor}`}>
+                    {cat.name}
+                  </h4>
+                  <p className="text-[11px] text-slate-600 font-medium mt-1.5 leading-relaxed">
+                    {cat.description}
+                  </p>
+                </div>
+
+                {/* Status List Preview */}
+                <div className="space-y-2 pt-2 border-t border-slate-200/60">
+                  <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">Daftar Status Termasuk:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {cat.statuses.map((st, idx) => (
+                      <span key={idx} className="text-[9px] font-semibold bg-white text-slate-700 px-1.5 py-0.5 rounded border border-slate-200/80">
+                        {st}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Footer Values */}
+                <div className="flex items-center justify-between pt-3 border-t border-slate-200/80 bg-white/60 -mx-5 -mb-5 p-4 mt-auto">
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Jumlah</span>
+                    <span className="text-sm font-black text-slate-900">{cat.count} Transaksi</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Total Nominal</span>
+                    <span className="text-sm font-black font-mono text-slate-900">Rp {cat.totalAmount.toLocaleString('id-ID')}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* CHART & TABLE GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* RECHARTS CHART (6 COLS) */}
+        <Card className="lg:col-span-6 rounded-2xl border border-slate-200 shadow-sm bg-white overflow-hidden flex flex-col justify-between">
+          <CardHeader className="py-4 px-5 border-b border-slate-100 flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-sm font-black text-slate-800 flex items-center gap-2">
+                <BarChart3 size={16} className="text-emerald-600" />
+                Grafik Kategori Status Tracking
+              </CardTitle>
+              <p className="text-[11px] text-slate-500 font-medium">Perbandingan statistik volume & nominal LPJ</p>
+            </div>
+
+            {/* Mode switch */}
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setChartMode('amount')}
+                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all ${
+                  chartMode === 'amount' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Nominal (Rp)
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartMode('count')}
+                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all ${
+                  chartMode === 'count' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                Jumlah (Doc)
+              </button>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-5 flex-1 flex flex-col justify-center min-h-[280px]">
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 25 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }}
+                  axisLine={{ stroke: '#e2e8f0' }}
+                  tickLine={false}
+                />
+                <YAxis 
+                  tick={{ fontSize: 10, fontWeight: 600, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(val) => chartMode === 'amount' ? (val >= 1000000 ? `${(val/1000000).toFixed(1)}M` : `${val/1000}k`) : val}
+                />
+                <Tooltip 
+                  formatter={(value: any) => [
+                    chartMode === 'amount' ? `Rp ${Number(value).toLocaleString('id-ID')}` : `${value} Transaksi`,
+                    chartMode === 'amount' ? 'Total Nominal' : 'Jumlah Transaksi'
+                  ]}
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px', fontWeight: 'bold' }}
+                />
+                <Bar 
+                  dataKey={chartMode === 'amount' ? 'nominal' : 'jumlah'} 
+                  radius={[8, 8, 0, 0]} 
+                  barSize={45}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* SUMMARY TABLE (6 COLS) */}
+        <Card className="lg:col-span-6 rounded-2xl border border-slate-200 shadow-sm bg-white overflow-hidden flex flex-col justify-between">
+          <CardHeader className="py-4 px-5 border-b border-slate-100">
+            <CardTitle className="text-sm font-black text-slate-800 flex items-center gap-2">
+              <FileText size={16} className="text-blue-600" />
+              Tabel Aggregasi Status Laporan
+            </CardTitle>
+            <p className="text-[11px] text-slate-500 font-medium">Ringkasan kuantitas & proporsi nominal pengajuan</p>
+          </CardHeader>
+
+          <CardContent className="p-0 flex-1 flex flex-col justify-between">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-[10px] font-black uppercase text-slate-500 w-10 text-center">No</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase text-slate-500">Kategori Status Tracking</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase text-slate-500 text-center">Jumlah</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase text-slate-500 text-right">Subtotal Nominal</TableHead>
+                    <TableHead className="text-[10px] font-black uppercase text-slate-500 text-right">Proporsi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-slate-100 text-xs">
+                  {categories.map((cat, idx) => {
+                    const pct = grandTotalAmount > 0 ? ((cat.totalAmount / grandTotalAmount) * 100).toFixed(1) : '0';
+                    const isSelected = selectedCategoryKey === cat.key;
+
+                    return (
+                      <TableRow 
+                        key={cat.key}
+                        onClick={() => setSelectedCategoryKey(isSelected ? null : cat.key)}
+                        className={`cursor-pointer transition-all ${isSelected ? 'bg-slate-100 font-bold' : 'hover:bg-slate-50'}`}
+                      >
+                        <TableCell className="text-center font-mono font-bold text-slate-500">{idx + 1}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.barColor }} />
+                            <div>
+                              <p className={`font-bold text-slate-900 ${isSelected ? 'text-blue-700' : ''}`}>{cat.name}</p>
+                              <p className="text-[10px] text-slate-400 font-medium">{cat.badgeLabel}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center font-mono font-bold text-slate-800">
+                          {cat.count} Doc
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-black text-slate-900">
+                          Rp {cat.totalAmount.toLocaleString('id-ID')}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-bold text-slate-600">
+                          {pct}%
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Grand Total Footer */}
+            <div className="bg-slate-900 text-white p-4 flex items-center justify-between text-xs font-bold border-t border-slate-800">
+              <span className="uppercase tracking-wider font-extrabold text-[11px] text-slate-300">
+                TOTAL AKUMULASI (3 KATEGORI)
+              </span>
+              <div className="flex items-center gap-4">
+                <span className="font-mono text-slate-300">{grandTotalCount} Dokumen</span>
+                <span className="font-mono text-emerald-400 font-black text-sm bg-slate-800 px-3 py-1 rounded border border-slate-700">
+                  Rp {grandTotalAmount.toLocaleString('id-ID')}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* EXPANDABLE TRANSACTION BREAKDOWN SECTION */}
+      {selectedCategoryKey && activeCategoryObj && (
+        <Card className="rounded-2xl border border-slate-300 shadow-md bg-white overflow-hidden mt-4">
+          <CardHeader className="py-4 px-5 bg-slate-900 text-white flex flex-row items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-white/20 text-white text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded">
+                  {activeCategoryObj.badgeLabel}
+                </span>
+                <span className="text-xs text-slate-300 font-bold">• {activeCategoryObj.count} Transaksi Ditemukan</span>
+              </div>
+              <CardTitle className="text-base font-black text-white">
+                Rincian Transaksi Pengajuan: {activeCategoryObj.name}
+              </CardTitle>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Cari transaksi..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="h-8 w-48 text-xs bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 rounded-xl"
+              />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedCategoryKey(null)}
+                className="h-8 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl"
+              >
+                Tutup Table Rincian ✕
+              </Button>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-0">
+            {activeCategoryObj.items.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-xs font-bold">
+                Tidak ada data transaksi pengajuan untuk kategori ini.
+              </div>
+            ) : (
+              <div className="overflow-x-auto max-h-[380px] overflow-y-auto">
+                <Table>
+                  <TableHeader className="bg-slate-100 sticky top-0 z-10">
+                    <TableRow>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-600 w-10 text-center">No</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-600">Judul Pengajuan</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-600">PIC / Pengaju</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-600">Status Tahap Spesifik</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-600 text-center">Sumber Rek</TableHead>
+                      <TableHead className="text-[10px] font-black uppercase text-slate-600 text-right">Nominal</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-slate-100 text-xs">
+                    {activeCategoryObj.items
+                      .filter(item => 
+                        !searchTerm || 
+                        (item.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (item.picName || item.submittedByName || '').toLowerCase().includes(searchTerm.toLowerCase())
+                      )
+                      .map((item, idx) => {
+                        const type = item.type || 'uang_muka';
+                        const stages = type === 'uang_muka' ? UM_STAGES : TRANSACTION_STAGES;
+                        const specStatus = stages[item.currentStageIndex] || item.status || 'Proses';
+                        const displayAmt = getSubAmt(item);
+
+                        return (
+                          <TableRow key={item.id || idx} className="hover:bg-slate-50">
+                            <TableCell className="text-center font-mono font-bold text-slate-400">{idx + 1}</TableCell>
+                            <TableCell className="font-bold text-slate-900">
+                              <div>
+                                <p>{item.title}</p>
+                                {item.noDokumen && <p className="text-[10px] font-mono text-slate-400 font-normal">No: {item.noDokumen}</p>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-slate-700 font-medium">
+                              {item.picName || item.submittedByName || 'PIC'}
+                            </TableCell>
+                            <TableCell>
+                              <span className="inline-block bg-slate-100 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-200">
+                                {specStatus}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center font-mono font-bold text-slate-600">
+                              {item.sumberRekening || '-'}
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-black text-slate-900">
+                              Rp {displayAmt.toLocaleString('id-ID')}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
 
 export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: string, isReadOnly?: boolean }) => {
   const [activeTab, setActiveTab] = useState<'standard' | 'baznas' | 'settlement'>('standard');
@@ -1942,6 +2456,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
               );
             })()}
           </div>
+
+
         </div>
       ) : activeTab === 'baznas' ? (
         /* BAZNAS FORMAT VIEW */
