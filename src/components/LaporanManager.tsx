@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { collection, addDoc, query, onSnapshot, orderBy, serverTimestamp, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { handleFirestoreError, OperationType } from '../lib/firebaseUtils';
@@ -238,6 +238,45 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
   const [chartMode, setChartMode] = useState<'amount' | 'count'>('amount');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortOption, setSortOption] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
+  const [filterMonth, setFilterMonth] = useState<string>('ALL');
+  const [filterYear, setFilterYear] = useState<string>('ALL');
+
+  const getItemTime = (item: any): number => {
+    if (!item) return 0;
+    if (item.createdAt?.seconds) {
+      return item.createdAt.seconds * 1000;
+    }
+    if (item.createdAt) {
+      const d = new Date(item.createdAt);
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    if (item.tanggalBudget) {
+      const d = new Date(item.tanggalBudget);
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    if (item.updatedAt?.seconds) {
+      return item.updatedAt.seconds * 1000;
+    }
+    return 0;
+  };
+
+  const getItemMonthYear = (item: any): { monthIndex: number; monthName: string; year: number } | null => {
+    const time = getItemTime(item);
+    if (!time) return null;
+    const d = new Date(time);
+    const monthIndex = d.getMonth();
+    const monthName = MONTHS[monthIndex] || '';
+    const year = d.getFullYear();
+    return { monthIndex, monthName, year };
+  };
+
+  const formatItemDate = (item: any): string => {
+    const time = getItemTime(item);
+    if (!time) return '-';
+    const d = new Date(time);
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
 
   const cat1Statuses = ["Belum Laporan (Masih di PIC)", "Belum Laporan"];
   
@@ -385,6 +424,61 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
   }));
 
   const activeCategoryObj = categories.find(c => c.key === selectedCategoryKey);
+
+  const availableYears = useMemo(() => {
+    if (!submissions) return [new Date().getFullYear().toString()];
+    const yearsSet = new Set<string>();
+    submissions.forEach(sub => {
+      const my = getItemMonthYear(sub);
+      if (my?.year) {
+        yearsSet.add(my.year.toString());
+      }
+    });
+    if (yearsSet.size === 0) yearsSet.add(new Date().getFullYear().toString());
+    return Array.from(yearsSet).sort((a, b) => Number(b) - Number(a));
+  }, [submissions]);
+
+  const filteredAndSortedItems = useMemo(() => {
+    if (!activeCategoryObj?.items) return [];
+
+    return activeCategoryObj.items
+      .filter(item => {
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          const matchesTitle = (item.title || '').toLowerCase().includes(term);
+          const matchesPic = (item.picName || item.submittedByName || '').toLowerCase().includes(term);
+          const matchesNo = (item.noDokumen || '').toLowerCase().includes(term);
+          if (!matchesTitle && !matchesPic && !matchesNo) return false;
+        }
+
+        if (filterMonth !== 'ALL') {
+          const my = getItemMonthYear(item);
+          if (!my || my.monthName !== filterMonth) return false;
+        }
+
+        if (filterYear !== 'ALL') {
+          const my = getItemMonthYear(item);
+          if (!my || my.year.toString() !== filterYear) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortOption === 'date_desc') {
+          return getItemTime(b) - getItemTime(a);
+        }
+        if (sortOption === 'date_asc') {
+          return getItemTime(a) - getItemTime(b);
+        }
+        if (sortOption === 'amount_desc') {
+          return getSubAmt(b) - getSubAmt(a);
+        }
+        if (sortOption === 'amount_asc') {
+          return getSubAmt(a) - getSubAmt(b);
+        }
+        return 0;
+      });
+  }, [activeCategoryObj, searchTerm, filterMonth, filterYear, sortOption]);
 
   return (
     <div className="mt-10 space-y-6 pt-6 border-t-2 border-slate-200" id="settlement-tracking-summary-section">
@@ -632,94 +726,198 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
       {/* EXPANDABLE TRANSACTION BREAKDOWN SECTION */}
       {selectedCategoryKey && activeCategoryObj && (
         <Card className="rounded-2xl border border-slate-300 shadow-md bg-white overflow-hidden mt-4">
-          <CardHeader className="py-4 px-5 bg-slate-900 text-white flex flex-row items-center justify-between">
+          <CardHeader className="py-4 px-5 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-800">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <span className="bg-white/20 text-white text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded">
                   {activeCategoryObj.badgeLabel}
                 </span>
-                <span className="text-xs text-slate-300 font-bold">• {activeCategoryObj.count} Transaksi Ditemukan</span>
+                <span className="text-xs text-slate-300 font-bold">• {activeCategoryObj.count} Transaksi Total</span>
               </div>
               <CardTitle className="text-base font-black text-white">
                 Rincian Transaksi Pengajuan: {activeCategoryObj.name}
               </CardTitle>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Cari transaksi..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="h-8 w-48 text-xs bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 rounded-xl"
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedCategoryKey(null)}
-                className="h-8 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl"
-              >
-                Tutup Table Rincian ✕
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedCategoryKey(null)}
+              className="h-8 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl shrink-0"
+            >
+              Tutup Table Rincian ✕
+            </Button>
           </CardHeader>
 
+          {/* FILTER & SORT TOOLBAR */}
+          <div className="bg-slate-800 border-b border-slate-700 p-3 px-5 flex flex-wrap items-center justify-between gap-3 text-xs text-white">
+            <div className="flex flex-wrap items-center gap-2">
+              {/* SEARCH INPUT */}
+              <div className="relative">
+                <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  placeholder="Cari transaksi..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="h-8 pl-8 w-44 text-xs bg-slate-900 border-slate-700 text-white placeholder:text-slate-500 rounded-xl"
+                />
+              </div>
+
+              {/* SORT SELECTION */}
+              <div className="flex items-center gap-1 bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-700">
+                <span className="text-[10px] text-slate-400 font-bold shrink-0">Urutan:</span>
+                <Select value={sortOption} onValueChange={(val: any) => setSortOption(val)}>
+                  <SelectTrigger className="h-6 text-xs border-0 bg-transparent text-white font-semibold focus:ring-0 px-1 py-0 shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 text-white border-slate-700">
+                    <SelectItem value="date_desc">📅 Tanggal: Terbaru → Terlama</SelectItem>
+                    <SelectItem value="date_asc">📅 Tanggal: Terlama → Terbaru</SelectItem>
+                    <SelectItem value="amount_desc">💰 Nominal: Terbesar → Terkecil</SelectItem>
+                    <SelectItem value="amount_asc">💰 Nominal: Terkecil → Terbesar</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* MONTH FILTER */}
+              <div className="flex items-center gap-1 bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-700">
+                <span className="text-[10px] text-slate-400 font-bold shrink-0">Bulan:</span>
+                <Select value={filterMonth} onValueChange={setFilterMonth}>
+                  <SelectTrigger className="h-6 text-xs border-0 bg-transparent text-white font-semibold focus:ring-0 px-1 py-0 shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 text-white border-slate-700 max-h-60 overflow-y-auto">
+                    <SelectItem value="ALL">Semua Bulan</SelectItem>
+                    {MONTHS.map(m => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* YEAR FILTER */}
+              <div className="flex items-center gap-1 bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-700">
+                <span className="text-[10px] text-slate-400 font-bold shrink-0">Tahun:</span>
+                <Select value={filterYear} onValueChange={setFilterYear}>
+                  <SelectTrigger className="h-6 text-xs border-0 bg-transparent text-white font-semibold focus:ring-0 px-1 py-0 shadow-none">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 text-white border-slate-700">
+                    <SelectItem value="ALL">Semua Tahun</SelectItem>
+                    {availableYears.map(yr => (
+                      <SelectItem key={yr} value={yr}>{yr}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* RESET BUTTON */}
+              {(filterMonth !== 'ALL' || filterYear !== 'ALL' || searchTerm || sortOption !== 'date_desc') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setFilterMonth('ALL');
+                    setFilterYear('ALL');
+                    setSortOption('date_desc');
+                  }}
+                  className="h-8 px-2.5 text-[10px] font-bold bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-200 rounded-xl"
+                >
+                  Reset Filter
+                </Button>
+              )}
+            </div>
+
+            <span className="text-[11px] font-bold text-emerald-400 bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-700 shrink-0">
+              Menampilkan {filteredAndSortedItems.length} dari {activeCategoryObj.items.length} Transaksi
+            </span>
+          </div>
+
           <CardContent className="p-0">
-            {activeCategoryObj.items.length === 0 ? (
+            {filteredAndSortedItems.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-xs font-bold">
-                Tidak ada data transaksi pengajuan untuk kategori ini.
+                Tidak ada data transaksi pengajuan yang cocok dengan filter.
               </div>
             ) : (
-              <div className="overflow-x-auto max-h-[380px] overflow-y-auto">
+              <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
                 <Table>
-                  <TableHeader className="bg-slate-100 sticky top-0 z-10">
+                  <TableHeader className="bg-slate-100 sticky top-0 z-10 shadow-xs">
                     <TableRow>
                       <TableHead className="text-[10px] font-black uppercase text-slate-600 w-10 text-center">No</TableHead>
                       <TableHead className="text-[10px] font-black uppercase text-slate-600">Judul Pengajuan</TableHead>
                       <TableHead className="text-[10px] font-black uppercase text-slate-600">PIC / Pengaju</TableHead>
+                      
+                      {/* TANGGAL / WAKTU COLUMN */}
+                      <TableHead 
+                        onClick={() => {
+                          if (sortOption === 'date_desc') setSortOption('date_asc');
+                          else setSortOption('date_desc');
+                        }}
+                        className="text-[10px] font-black uppercase text-slate-600 cursor-pointer hover:bg-slate-200/80 transition-colors select-none"
+                      >
+                        <div className="flex items-center gap-1">
+                          <span>Tanggal / Waktu</span>
+                          {sortOption === 'date_desc' && <span className="text-emerald-600 text-xs font-bold">▼</span>}
+                          {sortOption === 'date_asc' && <span className="text-emerald-600 text-xs font-bold">▲</span>}
+                        </div>
+                      </TableHead>
+
                       <TableHead className="text-[10px] font-black uppercase text-slate-600">Status Tahap Spesifik</TableHead>
                       <TableHead className="text-[10px] font-black uppercase text-slate-600 text-center">Sumber Rek</TableHead>
-                      <TableHead className="text-[10px] font-black uppercase text-slate-600 text-right">Nominal</TableHead>
+
+                      {/* NOMINAL COLUMN */}
+                      <TableHead 
+                        onClick={() => {
+                          if (sortOption === 'amount_desc') setSortOption('amount_asc');
+                          else setSortOption('amount_desc');
+                        }}
+                        className="text-[10px] font-black uppercase text-slate-600 text-right cursor-pointer hover:bg-slate-200/80 transition-colors select-none"
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          <span>Nominal</span>
+                          {sortOption === 'amount_desc' && <span className="text-emerald-600 text-xs font-bold">▼</span>}
+                          {sortOption === 'amount_asc' && <span className="text-emerald-600 text-xs font-bold">▲</span>}
+                        </div>
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="divide-y divide-slate-100 text-xs">
-                    {activeCategoryObj.items
-                      .filter(item => 
-                        !searchTerm || 
-                        (item.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        (item.picName || item.submittedByName || '').toLowerCase().includes(searchTerm.toLowerCase())
-                      )
-                      .map((item, idx) => {
-                        const type = item.type || 'uang_muka';
-                        const stages = type === 'uang_muka' ? UM_STAGES : TRANSACTION_STAGES;
-                        const specStatus = stages[item.currentStageIndex] || item.status || 'Proses';
-                        const displayAmt = getSubAmt(item);
+                    {filteredAndSortedItems.map((item, idx) => {
+                      const type = item.type || 'uang_muka';
+                      const stages = type === 'uang_muka' ? UM_STAGES : TRANSACTION_STAGES;
+                      const specStatus = stages[item.currentStageIndex] || item.status || 'Proses';
+                      const displayAmt = getSubAmt(item);
 
-                        return (
-                          <TableRow key={item.id || idx} className="hover:bg-slate-50">
-                            <TableCell className="text-center font-mono font-bold text-slate-400">{idx + 1}</TableCell>
-                            <TableCell className="font-bold text-slate-900">
-                              <div>
-                                <p>{item.title}</p>
-                                {item.noDokumen && <p className="text-[10px] font-mono text-slate-400 font-normal">No: {item.noDokumen}</p>}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-slate-700 font-medium">
-                              {item.picName || item.submittedByName || 'PIC'}
-                            </TableCell>
-                            <TableCell>
-                              <span className="inline-block bg-slate-100 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-200">
-                                {specStatus}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-center font-mono font-bold text-slate-600">
-                              {item.sumberRekening || '-'}
-                            </TableCell>
-                            <TableCell className="text-right font-mono font-black text-slate-900">
-                              Rp {displayAmt.toLocaleString('id-ID')}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
+                      return (
+                        <TableRow key={item.id || idx} className="hover:bg-slate-50">
+                          <TableCell className="text-center font-mono font-bold text-slate-400">{idx + 1}</TableCell>
+                          <TableCell className="font-bold text-slate-900">
+                            <div>
+                              <p>{item.title}</p>
+                              {item.noDokumen && <p className="text-[10px] font-mono text-slate-400 font-normal">No: {item.noDokumen}</p>}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-slate-700 font-medium">
+                            {item.picName || item.submittedByName || 'PIC'}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-slate-600 whitespace-nowrap">
+                            {formatItemDate(item)}
+                          </TableCell>
+                          <TableCell>
+                            <span className="inline-block bg-slate-100 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded border border-slate-200">
+                              {specStatus}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center font-mono font-bold text-slate-600">
+                            {item.sumberRekening || '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-black text-slate-900">
+                            Rp {displayAmt.toLocaleString('id-ID')}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
