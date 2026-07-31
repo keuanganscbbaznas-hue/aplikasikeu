@@ -291,13 +291,21 @@ export async function generateSettlementPDF(settlement: SettlementReport) {
     doc.setFont("helvetica", "bold");
     doc.text(settlement.signatures?.verifikator?.name || "Keuangan SCB", col3X + sigColWidth / 2, y + 28, { align: "center" });
 
-    // Save PDF
-    const rawTitle = (settlement.title || `Settlement_${settlement.settlementNo || '01'}`).trim();
+    // Save PDF with format: SETTLEMENT_<JUDUL_SETTLEMENT/KEGIATAN>.pdf
+    const rawTitle = (settlement.title || `Kegiatan_${settlement.settlementNo || '01'}`).trim();
     let cleanTitle = rawTitle.replace(/[/\\?%*:|"<>]/g, '_').replace(/\s+/g, '_');
     if (cleanTitle.toLowerCase().endsWith('.pdf')) {
       cleanTitle = cleanTitle.slice(0, -4);
     }
-    const filename = `${cleanTitle}_${format(new Date(), 'yyyyMMdd')}.pdf`;
+    
+    let filename = '';
+    if (cleanTitle.toUpperCase().startsWith('SETTLEMENT_')) {
+      filename = `${cleanTitle}.pdf`;
+    } else if (cleanTitle.toUpperCase().startsWith('SETTLEMENT')) {
+      filename = `SETTLEMENT_${cleanTitle.slice(10).replace(/^_+/, '')}.pdf`;
+    } else {
+      filename = `SETTLEMENT_${cleanTitle}.pdf`;
+    }
     doc.save(filename);
 
     toast.success("PDF Laporan Settlement berhasil diunduh!", { id: toastId });
