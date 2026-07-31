@@ -113,58 +113,67 @@ export async function generateSettlementPDF(settlement: SettlementReport) {
     doc.setTextColor(0, 0, 0);
     y += 33;
 
-    // 3. RINCIAN TABEL BERDASARKAN KATEGORI / BUDGET
+    // 3. RINCIAN TABEL BERDASARKAN KATEGORI
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("RINCIAN PENGELUARAN PER KATEGORI BUDGET", 15, y);
+    doc.text("RINCIAN PENGELUARAN PER KATEGORI ANGGARAN", 15, y);
     y += 4;
 
-    settlement.categories.forEach((cat, cIdx) => {
-      if (y > 250) {
-        doc.addPage();
-        y = 15;
-      }
+    // Filter out categories with 0 items or 0 total amount
+    const activeCategories = (settlement.categories || []).filter(
+      cat => cat.items && cat.items.length > 0 && cat.categoryTotal > 0
+    );
 
-      // Category Header Box
-      doc.setFillColor(241, 245, 249); // slate-100
-      doc.rect(15, y, 180, 7, 'F');
-      doc.rect(15, y, 180, 7, 'S');
-
+    if (activeCategories.length === 0) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(15, y, 180, 10, 'F');
+      doc.rect(15, y, 180, 10, 'S');
       doc.setFontSize(8.5);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(15, 23, 42);
-      const catTitle = `${cIdx + 1}. ${cat.categoryName.toUpperCase()} ${cat.budgetCode ? `[${cat.budgetCode}]` : ''}`;
-      doc.text(catTitle, 18, y + 5);
+      doc.setFont("helvetica", "italic");
+      doc.setTextColor(100, 116, 139);
+      doc.text("Tidak ada rincian kategori pengeluaran yang digunakan.", 105, y + 6, { align: "center" });
+      doc.setTextColor(0, 0, 0);
+      y += 12;
+    } else {
+      activeCategories.forEach((cat, cIdx) => {
+        if (y > 250) {
+          doc.addPage();
+          y = 15;
+        }
 
-      doc.text(`Subtotal: Rp ${cat.categoryTotal.toLocaleString('id-ID')}`, 192, y + 5, { align: 'right' });
-      y += 7;
+        // Category Header Box (Kode budget tidak ditampilkan sesuai instruksi)
+        doc.setFillColor(241, 245, 249); // slate-100
+        doc.rect(15, y, 180, 7, 'F');
+        doc.rect(15, y, 180, 7, 'S');
 
-      // Table Header
-      doc.setFillColor(226, 232, 240); // slate-200
-      doc.rect(15, y, 180, 6, 'F');
-      doc.rect(15, y, 180, 6, 'S');
+        doc.setFontSize(8.5);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(15, 23, 42);
+        const catTitle = `${cIdx + 1}. ${cat.categoryName.toUpperCase()}`;
+        doc.text(catTitle, 18, y + 5);
 
-      doc.setFontSize(7.5);
-      doc.setFont("helvetica", "bold");
-      doc.text("No", 18, y + 4.5);
-      doc.text("Uraian / Keterangan Item", 28, y + 4.5);
-      doc.text("Vol/Qty", 110, y + 4.5, { align: 'center' });
-      doc.text("Satuan", 128, y + 4.5, { align: 'center' });
-      doc.text("Harga Satuan (Rp)", 158, y + 4.5, { align: 'right' });
-      doc.text("Total (Rp)", 192, y + 4.5, { align: 'right' });
-      y += 6;
+        doc.text(`Subtotal: Rp ${cat.categoryTotal.toLocaleString('id-ID')}`, 192, y + 5, { align: 'right' });
+        y += 7;
 
-      // Table Rows
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
-
-      if (!cat.items || cat.items.length === 0) {
+        // Table Header
+        doc.setFillColor(226, 232, 240); // slate-200
+        doc.rect(15, y, 180, 6, 'F');
         doc.rect(15, y, 180, 6, 'S');
-        doc.setTextColor(148, 163, 184);
-        doc.text("Belum ada rincian item", 105, y + 4, { align: 'center' });
-        doc.setTextColor(0, 0, 0);
+
+        doc.setFontSize(7.5);
+        doc.setFont("helvetica", "bold");
+        doc.text("No", 18, y + 4.5);
+        doc.text("Uraian / Keterangan Item", 28, y + 4.5);
+        doc.text("Vol/Qty", 110, y + 4.5, { align: 'center' });
+        doc.text("Satuan", 128, y + 4.5, { align: 'center' });
+        doc.text("Harga Satuan (Rp)", 158, y + 4.5, { align: 'right' });
+        doc.text("Total (Rp)", 192, y + 4.5, { align: 'right' });
         y += 6;
-      } else {
+
+        // Table Rows
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+
         cat.items.forEach((item, itemIdx) => {
           if (y > 265) {
             doc.addPage();
@@ -186,10 +195,10 @@ export async function generateSettlementPDF(settlement: SettlementReport) {
 
           y += 6;
         });
-      }
 
-      y += 3; // space after category
-    });
+        y += 3; // space after category
+      });
+    }
 
     // 4. SUMMARY BOX
     if (y > 230) {

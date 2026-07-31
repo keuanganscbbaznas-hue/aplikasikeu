@@ -85,37 +85,15 @@ export function SettlementOtomatis({
   const [nominalUangMuka, setNominalUangMuka] = useState<string>('0');
   const [catatan, setCatatan] = useState('');
 
-  // Category Groups State
+  // Category Groups State - Hanya menampilkan kategori yang memiliki item/anggaran aktif
   const [categories, setCategories] = useState<SettlementCategoryGroup[]>([
     {
       id: 'cat-1',
       categoryName: 'Konsumsi & Jamuan',
-      budgetCode: 'K1.1.1',
       items: [
         { id: 'item-1', description: 'Makan Peserta/Panitia', qty: 10, unit: 'Porsi', unitPrice: 25000, totalAmount: 250000 }
       ],
       categoryTotal: 250000
-    },
-    {
-      id: 'cat-2',
-      categoryName: 'Perlengkapan & ATK',
-      budgetCode: 'K1.1.2',
-      items: [],
-      categoryTotal: 0
-    },
-    {
-      id: 'cat-3',
-      categoryName: 'Akomodasi & Transportasi',
-      budgetCode: 'K1.1.3',
-      items: [],
-      categoryTotal: 0
-    },
-    {
-      id: 'cat-4',
-      categoryName: 'Insentif & Honorarium',
-      budgetCode: 'K1.1.4',
-      items: [],
-      categoryTotal: 0
     }
   ]);
 
@@ -185,20 +163,41 @@ export function SettlementOtomatis({
   }, [selisihDana]);
 
   // Handle adding category
-  const handleAddCategory = () => {
-    if (!newCatName.trim()) {
+  const handleAddCategory = (presetName?: string) => {
+    const nameToAdd = (presetName || newCatName).trim();
+    if (!nameToAdd) {
       toast.error("Nama kategori tidak boleh kosong.");
       return;
     }
+
+    // Check if category already exists
+    const existingIndex = categories.findIndex(c => c.categoryName.toLowerCase() === nameToAdd.toLowerCase());
+    if (existingIndex !== -1) {
+      handleAddItem(categories[existingIndex].id);
+      toast.info(`Kategori "${nameToAdd}" sudah ada. Menambahkan item rincian.`);
+      setNewCatName('');
+      return;
+    }
+
+    const newCatId = `cat-${Date.now()}`;
     const newCat: SettlementCategoryGroup = {
-      id: `cat-${Date.now()}`,
-      categoryName: newCatName.trim(),
-      items: [],
+      id: newCatId,
+      categoryName: nameToAdd,
+      items: [
+        {
+          id: `item-${Date.now()}-1`,
+          description: '',
+          qty: 1,
+          unit: 'Buah',
+          unitPrice: 0,
+          totalAmount: 0
+        }
+      ],
       categoryTotal: 0
     };
     setCategories(prev => [...prev, newCat]);
     setNewCatName('');
-    toast.success(`Kategori "${newCatName}" berhasil ditambahkan.`);
+    toast.success(`Kategori "${nameToAdd}" berhasil ditambahkan.`);
   };
 
   // Handle removing category
@@ -261,20 +260,24 @@ export function SettlementOtomatis({
     }));
   };
 
-  // Build Settlement Object
+  // Build Settlement Object (Hanya menyertakan kategori yang digunakan/memiliki item aktif)
   const getSettlementDataObject = (): SettlementReport => {
-    const formattedCategories = categories.map(cat => {
-      const items = cat.items.map(item => ({
-        ...item,
-        totalAmount: (Number(item.qty) || 0) * (Number(item.unitPrice) || 0)
-      }));
-      const catTotal = items.reduce((s, i) => s + i.totalAmount, 0);
-      return {
-        ...cat,
-        items,
-        categoryTotal: catTotal
-      };
-    });
+    const formattedCategories = categories
+      .map(cat => {
+        const validItems = (cat.items || [])
+          .filter(item => (item.description || '').trim() !== '' || (item.totalAmount || 0) > 0)
+          .map(item => ({
+            ...item,
+            totalAmount: (Number(item.qty) || 0) * (Number(item.unitPrice) || 0)
+          }));
+        const catTotal = validItems.reduce((s, i) => s + i.totalAmount, 0);
+        return {
+          ...cat,
+          items: validItems,
+          categoryTotal: catTotal
+        };
+      })
+      .filter(cat => cat.items.length > 0 && cat.categoryTotal > 0);
 
     const calculatedTotalRealisasi = formattedCategories.reduce((s, c) => s + c.categoryTotal, 0);
     const calculatedSelisih = umNumber - calculatedTotalRealisasi;
@@ -668,26 +671,69 @@ export function SettlementOtomatis({
                 </CardDescription>
               </div>
 
-              {/* Add Custom Category UI */}
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Nama Kategori Baru..."
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                  className="h-9 w-48 rounded-xl border-slate-200 text-xs"
-                />
-                <Button
-                  onClick={handleAddCategory}
-                  size="sm"
-                  className="h-9 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shrink-0 gap-1"
-                >
-                  <Plus size={14} /> Kategori
-                </Button>
+              {/* Add Preset / Custom Category UI */}
+              <div className="flex flex-wrap items-center gap-2">
+                <Select onValueChange={(val: string) => handleAddCategory(val)}>
+                  <SelectTrigger className="h-9 w-44 rounded-xl text-xs font-semibold bg-white border-slate-200">
+                    <SelectValue placeholder="+ Pilih Preset Kategori" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {DEFAULT_CATEGORIES.map(preset => (
+                      <SelectItem key={preset} value={preset}>
+                        + {preset}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="flex items-center gap-1.5">
+                  <Input
+                    placeholder="Atau Kategori Kustom..."
+                    value={newCatName}
+                    onChange={(e) => setNewCatName(e.target.value)}
+                    className="h-9 w-40 rounded-xl border-slate-200 text-xs"
+                  />
+                  <Button
+                    onClick={() => handleAddCategory()}
+                    size="sm"
+                    className="h-9 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shrink-0 gap-1"
+                  >
+                    <Plus size={14} /> Tambah
+                  </Button>
+                </div>
               </div>
             </CardHeader>
 
             <CardContent className="p-6 space-y-6">
-              {categories.map((cat, catIdx) => (
+              <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50 p-3 rounded-2xl border border-slate-200/80">
+                <div className="flex items-center gap-2 font-medium">
+                  <AlertCircle size={15} className="text-emerald-600 shrink-0" />
+                  <span>
+                    Menampilkan <b>{categories.length}</b> kategori aktif. Kategori yang tidak digunakan anggarannya otomatis disembunyikan pada tampilan input dan hasil download PDF.
+                  </span>
+                </div>
+              </div>
+
+              {categories.length === 0 ? (
+                <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50 space-y-3">
+                  <p className="text-xs font-bold text-slate-500">Belum ada kategori anggaran yang ditambahkan.</p>
+                  <p className="text-[11px] text-slate-400">Silakan pilih preset kategori atau tulis kategori baru di atas.</p>
+                  <div className="flex items-center justify-center gap-2 pt-2">
+                    {DEFAULT_CATEGORIES.slice(0, 4).map(cat => (
+                      <Button
+                        key={cat}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddCategory(cat)}
+                        className="h-8 rounded-xl text-[11px] font-bold border-emerald-200 text-emerald-800 bg-emerald-50/50 hover:bg-emerald-100"
+                      >
+                        + {cat}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                categories.map((cat, catIdx) => (
                 <div
                   key={cat.id}
                   className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-xs transition-all hover:border-slate-300"
@@ -831,7 +877,7 @@ export function SettlementOtomatis({
                     )}
                   </div>
                 </div>
-              ))}
+              )))}
             </CardContent>
           </Card>
 
