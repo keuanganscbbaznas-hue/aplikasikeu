@@ -38,6 +38,7 @@ interface Report {
   amount: number;
   date: string;
   bastLink: string;
+  linkRincian?: string;
   keterangan: string;
 }
 
@@ -242,6 +243,15 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
   const [filterMonth, setFilterMonth] = useState<string>('ALL');
   const [filterYear, setFilterYear] = useState<string>('ALL');
 
+  // Global Date Filter State for Chart, Aggregation Table & Summary Cards
+  const [globalStartDate, setGlobalStartDate] = useState<string>('');
+  const [globalEndDate, setGlobalEndDate] = useState<string>('');
+  const [globalMonth, setGlobalMonth] = useState<string>('ALL');
+  const [globalYear, setGlobalYear] = useState<string>('ALL');
+
+  // Detail Dialog State for inspecting complete report info
+  const [selectedDetailItem, setSelectedDetailItem] = useState<any | null>(null);
+
   const getItemTime = (item: any): number => {
     if (!item) return 0;
     if (item.createdAt?.seconds) {
@@ -261,6 +271,21 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
     return 0;
   };
 
+  const getItemReportDate = (item: any): Date | null => {
+    if (!item) return null;
+    if (item.tanggalLaporan) {
+      const d = new Date(item.tanggalLaporan);
+      if (!isNaN(d.getTime())) return d;
+    }
+    if (item.tanggalLPJ) {
+      const d = new Date(item.tanggalLPJ);
+      if (!isNaN(d.getTime())) return d;
+    }
+    const t = getItemTime(item);
+    if (t > 0) return new Date(t);
+    return null;
+  };
+
   const getItemMonthYear = (item: any): { monthIndex: number; monthName: string; year: number } | null => {
     const time = getItemTime(item);
     if (!time) return null;
@@ -277,6 +302,39 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
     const d = new Date(time);
     return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
   };
+
+  // Filter submissions by Global Date Filter (Start Date, End Date, Month, Year)
+  const dateFilteredSubmissions = useMemo(() => {
+    if (!submissions) return [];
+
+    return submissions.filter(sub => {
+      const rDate = getItemReportDate(sub);
+      if (!rDate) return true;
+
+      const time = rDate.getTime();
+
+      if (globalStartDate) {
+        const start = new Date(globalStartDate + 'T00:00:00').getTime();
+        if (time < start) return false;
+      }
+
+      if (globalEndDate) {
+        const end = new Date(globalEndDate + 'T23:59:59').getTime();
+        if (time > end) return false;
+      }
+
+      if (globalMonth !== 'ALL') {
+        const mName = MONTHS[rDate.getMonth()];
+        if (mName !== globalMonth) return false;
+      }
+
+      if (globalYear !== 'ALL') {
+        if (rDate.getFullYear().toString() !== globalYear) return false;
+      }
+
+      return true;
+    });
+  }, [submissions, globalStartDate, globalEndDate, globalMonth, globalYear]);
 
   const cat1Statuses = ["Belum Laporan (Masih di PIC)", "Belum Laporan"];
   
@@ -344,7 +402,7 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
   const cat2Items: any[] = [];
   const cat3Items: any[] = [];
 
-  (submissions || []).forEach(sub => {
+  (dateFilteredSubmissions || []).forEach(sub => {
     const cat = matchCategory(sub);
     if (cat === 'cat1') cat1Items.push(sub);
     else if (cat === 'cat2') cat2Items.push(sub);
@@ -511,6 +569,169 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
             <p className="text-base font-black text-emerald-300 font-mono">Rp {grandTotalAmount.toLocaleString('id-ID')}</p>
           </div>
         </div>
+      </div>
+
+      {/* FILTER TANGGAL LAPORAN GLOBAL TOOLBAR */}
+      <div className="bg-slate-800 border border-slate-700 p-4 rounded-2xl shadow-sm text-white space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-700/80 pb-2.5">
+          <div className="flex items-center gap-2">
+            <Calendar size={18} className="text-emerald-400" />
+            <span className="text-xs font-black uppercase tracking-wider text-slate-200">
+              Filter Tanggal Laporan (Memperbarui Grafik & Tabel Summary)
+            </span>
+          </div>
+
+          {/* Quick Presets */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setGlobalStartDate('');
+                setGlobalEndDate('');
+                setGlobalMonth('ALL');
+                setGlobalYear('ALL');
+              }}
+              className={`h-7 px-2.5 text-[10px] font-extrabold rounded-lg transition-colors ${
+                !globalStartDate && !globalEndDate && globalMonth === 'ALL' && globalYear === 'ALL'
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                  : 'bg-slate-700/70 text-slate-300 hover:bg-slate-700 hover:text-white'
+              }`}
+            >
+              Semua Waktu
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const now = new Date();
+                const yearStr = now.getFullYear().toString();
+                const monthName = MONTHS[now.getMonth()];
+                setGlobalMonth(monthName);
+                setGlobalYear(yearStr);
+                setGlobalStartDate('');
+                setGlobalEndDate('');
+              }}
+              className={`h-7 px-2.5 text-[10px] font-extrabold rounded-lg transition-colors ${
+                globalMonth === MONTHS[new Date().getMonth()] && globalYear === new Date().getFullYear().toString()
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-500'
+                  : 'bg-slate-700/70 text-slate-300 hover:bg-slate-700 hover:text-white'
+              }`}
+            >
+              Bulan Ini
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const now = new Date();
+                const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const yearStr = prev.getFullYear().toString();
+                const monthName = MONTHS[prev.getMonth()];
+                setGlobalMonth(monthName);
+                setGlobalYear(yearStr);
+                setGlobalStartDate('');
+                setGlobalEndDate('');
+              }}
+              className="h-7 px-2.5 text-[10px] font-extrabold rounded-lg bg-slate-700/70 text-slate-300 hover:bg-slate-700 hover:text-white"
+            >
+              Bulan Lalu
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                const now = new Date();
+                setGlobalYear(now.getFullYear().toString());
+                setGlobalMonth('ALL');
+                setGlobalStartDate('');
+                setGlobalEndDate('');
+              }}
+              className="h-7 px-2.5 text-[10px] font-extrabold rounded-lg bg-slate-700/70 text-slate-300 hover:bg-slate-700 hover:text-white"
+            >
+              Tahun Ini
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          {/* Rentang Tanggal Awal */}
+          <div>
+            <Label className="text-[10px] font-bold uppercase text-slate-400 mb-1 block">Tanggal Awal Laporan</Label>
+            <Input
+              type="date"
+              value={globalStartDate}
+              onChange={e => setGlobalStartDate(e.target.value)}
+              className="h-8 text-xs bg-slate-900 border-slate-700 text-white rounded-xl"
+            />
+          </div>
+
+          {/* Rentang Tanggal Akhir */}
+          <div>
+            <Label className="text-[10px] font-bold uppercase text-slate-400 mb-1 block">Tanggal Akhir Laporan</Label>
+            <Input
+              type="date"
+              value={globalEndDate}
+              onChange={e => setGlobalEndDate(e.target.value)}
+              className="h-8 text-xs bg-slate-900 border-slate-700 text-white rounded-xl"
+            />
+          </div>
+
+          {/* Filter Bulan */}
+          <div>
+            <Label className="text-[10px] font-bold uppercase text-slate-400 mb-1 block">Bulan Laporan</Label>
+            <Select value={globalMonth} onValueChange={setGlobalMonth}>
+              <SelectTrigger className="h-8 text-xs bg-slate-900 border-slate-700 text-white rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 text-white border-slate-700 max-h-60 overflow-y-auto">
+                <SelectItem value="ALL">Semua Bulan</SelectItem>
+                {MONTHS.map(m => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Filter Tahun */}
+          <div>
+            <Label className="text-[10px] font-bold uppercase text-slate-400 mb-1 block">Tahun Laporan</Label>
+            <Select value={globalYear} onValueChange={setGlobalYear}>
+              <SelectTrigger className="h-8 text-xs bg-slate-900 border-slate-700 text-white rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 text-white border-slate-700">
+                <SelectItem value="ALL">Semua Tahun</SelectItem>
+                {availableYears.map(yr => (
+                  <SelectItem key={yr} value={yr}>{yr}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* STATUS BAR / RESET */}
+        {(globalStartDate || globalEndDate || globalMonth !== 'ALL' || globalYear !== 'ALL') && (
+          <div className="flex items-center justify-between pt-1 border-t border-slate-700/60 text-[11px]">
+            <span className="text-emerald-400 font-bold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              Filter Aktif: Menampilkan {dateFilteredSubmissions.length} dari {submissions.length} total transaksi
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setGlobalStartDate('');
+                setGlobalEndDate('');
+                setGlobalMonth('ALL');
+                setGlobalYear('ALL');
+              }}
+              className="h-6 text-[10px] font-extrabold bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-200 rounded-lg"
+            >
+              Reset Filter Tanggal
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* 3 CATEGORY CARDS */}
@@ -866,6 +1087,9 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
                       <TableHead className="text-[10px] font-black uppercase text-slate-600">Status Tahap Spesifik</TableHead>
                       <TableHead className="text-[10px] font-black uppercase text-slate-600 text-center">Sumber Rek</TableHead>
 
+                      {/* LINK RINCIAN LAPORAN COLUMN */}
+                      <TableHead className="text-[10px] font-black uppercase text-slate-600 text-center">Link Rincian Laporan</TableHead>
+
                       {/* NOMINAL COLUMN */}
                       <TableHead 
                         onClick={() => {
@@ -912,6 +1136,54 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
                           <TableCell className="text-center font-mono font-bold text-slate-600">
                             {item.sumberRekening || '-'}
                           </TableCell>
+
+                          {/* LINK RINCIAN LAPORAN CELL */}
+                          <TableCell className="text-center whitespace-nowrap">
+                            {(() => {
+                              const link = item.lpjUrl || item.evidenceUrl || item.linkDriveLPJ || item.driveLink || item.linkLaporan || item.linkPenyelesaian || item.bastLink;
+                              if (link && typeof link === 'string' && link.trim().length > 0) {
+                                const href = link.startsWith('http') ? link : `https://${link}`;
+                                return (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <a
+                                      href={href}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all shadow-2xs hover:shadow-xs"
+                                      title="Buka Link Drive / Rincian LPJ"
+                                    >
+                                      <span>Link LPJ</span>
+                                      <ExternalLink size={12} className="shrink-0" />
+                                    </a>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setSelectedDetailItem(item)}
+                                      className="h-6 px-1.5 text-[10px] text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md"
+                                      title="Rincian Detail Transaksi"
+                                    >
+                                      <FileText size={13} />
+                                    </Button>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="text-[10px] text-slate-400 italic font-medium">Belum Ada Link</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setSelectedDetailItem(item)}
+                                    className="h-6 px-1.5 text-[10px] text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md"
+                                    title="Rincian Detail Transaksi"
+                                  >
+                                    <FileText size={13} />
+                                  </Button>
+                                </div>
+                              );
+                            })()}
+                          </TableCell>
+
                           <TableCell className="text-right font-mono font-black text-slate-900">
                             Rp {displayAmt.toLocaleString('id-ID')}
                           </TableCell>
@@ -924,6 +1196,100 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* DIALOG RINCIAN DETAIL LAPORAN */}
+      {selectedDetailItem && (
+        <Dialog open={!!selectedDetailItem} onOpenChange={() => setSelectedDetailItem(null)}>
+          <DialogContent className="max-w-lg rounded-2xl p-6 bg-white">
+            <DialogHeader>
+              <DialogTitle className="text-base font-black text-slate-900 flex items-center gap-2">
+                <FileText className="text-emerald-600" size={20} />
+                Rincian Detail Laporan Pengajuan
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 text-xs mt-2">
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500 font-medium">Judul Pengajuan:</span>
+                  <span className="font-bold text-slate-900 text-right">{selectedDetailItem.title}</span>
+                </div>
+                {selectedDetailItem.noDokumen && (
+                  <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                    <span className="text-slate-500 font-medium">No. Dokumen:</span>
+                    <span className="font-mono font-bold text-slate-800">{selectedDetailItem.noDokumen}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500 font-medium">PIC / Pengaju:</span>
+                  <span className="font-bold text-slate-900">{selectedDetailItem.picName || selectedDetailItem.submittedByName || '-'}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500 font-medium">Tanggal / Waktu:</span>
+                  <span className="font-mono font-bold text-slate-800">{formatItemDate(selectedDetailItem)}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500 font-medium">Sumber Rekening:</span>
+                  <span className="font-bold text-slate-800">{selectedDetailItem.sumberRekening || '-'}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                  <span className="text-slate-500 font-medium">Nominal Total:</span>
+                  <span className="font-mono font-black text-emerald-700 text-sm">
+                    Rp {getSubAmt(selectedDetailItem).toLocaleString('id-ID')}
+                  </span>
+                </div>
+                {selectedDetailItem.description && (
+                  <div className="pt-1">
+                    <span className="text-slate-500 font-medium block mb-1">Keterangan:</span>
+                    <p className="bg-white p-2.5 rounded-lg border text-slate-700 text-[11px] leading-relaxed">
+                      {selectedDetailItem.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* LINK ATTACHMENTS */}
+              <div className="space-y-2">
+                <p className="font-bold text-slate-800">Tautan Berkas & LPJ:</p>
+                {(() => {
+                  const link = selectedDetailItem.lpjUrl || selectedDetailItem.evidenceUrl || selectedDetailItem.linkDriveLPJ || selectedDetailItem.driveLink || selectedDetailItem.linkLaporan || selectedDetailItem.linkPenyelesaian || selectedDetailItem.bastLink;
+                  if (link) {
+                    const href = link.startsWith('http') ? link : `https://${link}`;
+                    return (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 transition-colors font-bold text-xs"
+                      >
+                        <span className="flex items-center gap-2">
+                          <ExternalLink size={16} className="text-blue-600" />
+                          Link Berkas LPJ / Dokumen Pendukung
+                        </span>
+                        <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-extrabold">Buka Link ↗</span>
+                      </a>
+                    );
+                  }
+                  return (
+                    <div className="p-3 rounded-xl bg-slate-100 text-slate-500 text-center text-xs font-medium">
+                      Belum ada link drive LPJ / berkas laporan yang diunggah.
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <DialogFooter className="mt-4">
+              <Button
+                onClick={() => setSelectedDetailItem(null)}
+                className="bg-slate-900 text-white hover:bg-slate-800 text-xs rounded-xl"
+              >
+                Tutup
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
@@ -959,6 +1325,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   const [amount, setAmount] = useState('');
   const [reportDate, setReportDate] = useState('');
   const [bastLink, setBastLink] = useState('');
+  const [linkRincian, setLinkRincian] = useState('');
   const [keterangan, setKeterangan] = useState(''); // Tambahkan state ini
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -977,11 +1344,13 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   const [rFormNoBukti, setRFormNoBukti] = useState<string>('');
   const [rFormTanggalBudget, setRFormTanggalBudget] = useState<string>('');
   const [rFormKeterangan, setRFormKeterangan] = useState<string>('');
+  const [rFormLinkBukti, setRFormLinkBukti] = useState<string>('');
   const [rFormDetails, setRFormDetails] = useState<RincianDetailItem[]>([
     { noBuktiDetail: 'a', keteranganDetail: '', qty: 1, hargaSatuan: 0 }
   ]);
   const [editingRincianId, setEditingRincianId] = useState<string | null>(null);
   const [isResettingDefault, setIsResettingDefault] = useState(false);
+  const [selectedBuktiRincian, setSelectedBuktiRincian] = useState<any | null>(null);
 
   // Settlement BAZNAS states
   const [dbSettlementList, setDbSettlementList] = useState<any[]>([]);
@@ -1149,6 +1518,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
         await ensureRincianCollection();
       }
 
+      const linkBuktiVal = rFormLinkBukti.trim();
+
       if (editingRincianId && editingRincianId !== 'default_static') {
         const docRef = doc(db, 'laporan_baznas_rincian_docs', editingRincianId);
         await updateDoc(docRef, {
@@ -1157,6 +1528,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
           noBukti: rFormNoBukti,
           tanggalBudget: rFormTanggalBudget,
           keterangan: rFormKeterangan,
+          linkBukti: linkBuktiVal,
+          buktiUrl: linkBuktiVal,
           details: validatedDetails,
           updatedAt: serverTimestamp()
         });
@@ -1173,6 +1546,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
             noBukti: rFormNoBukti,
             tanggalBudget: rFormTanggalBudget,
             keterangan: rFormKeterangan,
+            linkBukti: linkBuktiVal,
+            buktiUrl: linkBuktiVal,
             details: validatedDetails,
             updatedAt: serverTimestamp()
           });
@@ -1187,6 +1562,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
             noBukti: rFormNoBukti,
             tanggalBudget: rFormTanggalBudget,
             keterangan: rFormKeterangan,
+            linkBukti: linkBuktiVal,
+            buktiUrl: linkBuktiVal,
             details: validatedDetails,
             userUid,
             updatedAt: serverTimestamp()
@@ -1537,6 +1914,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
     setRFormNoBukti(item.noBukti);
     setRFormTanggalBudget(item.tanggalBudget);
     setRFormKeterangan(item.keterangan);
+    setRFormLinkBukti(item.linkBukti || item.buktiUrl || '');
     setRFormDetails(item.details && item.details.length > 0 ? [...item.details] : [{ noBuktiDetail: 'a', keteranganDetail: '', qty: 1, hargaSatuan: 0 }]);
     
     setIsRincianFormOpen(true);
@@ -1554,6 +1932,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
     setRFormNoBukti('');
     setRFormTanggalBudget('');
     setRFormKeterangan('');
+    setRFormLinkBukti('');
     setRFormDetails([{ noBuktiDetail: 'a', keteranganDetail: '', qty: 1, hargaSatuan: 0 }]);
     setEditingRincianId(null);
   };
@@ -1819,6 +2198,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
           amount: parseInt(amount.toString().replace(/\./g, '')) || 0,
           date: reportDate,
           bastLink,
+          linkRincian,
           keterangan,
           updatedAt: serverTimestamp()
         });
@@ -1830,6 +2210,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
           amount: parseInt(amount.toString().replace(/\./g, '')) || 0,
           date: reportDate,
           bastLink,
+          linkRincian,
           keterangan,
           createdAt: serverTimestamp()
         });
@@ -1850,6 +2231,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
     setAmount('');
     setReportDate('');
     setBastLink('');
+    setLinkRincian('');
     setKeterangan('');
     setEditingId(null);
   };
@@ -1860,7 +2242,8 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
     setYear(report.year);
     setAmount(report.amount.toString());
     setReportDate(report.date);
-    setBastLink(report.bastLink);
+    setBastLink(report.bastLink || '');
+    setLinkRincian(report.linkRincian || (report as any).buktiRincianLink || (report as any).rincianLink || '');
     setKeterangan(report.keterangan || '');
   };
 
@@ -1882,6 +2265,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
       "nominal laporan": d.amount,
       "tanggal laporan": d.date,
       "link bukti BAST": d.bastLink,
+      "link bukti rincian laporan": d.linkRincian || '',
       "Keterangan": d.keterangan
     }));
     const csvString = Papa.unparse(csvData);
@@ -1895,7 +2279,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ["bulan laporan", "tahun laporan", "nominal laporan", "tanggal laporan", "link bukti BAST", "Keterangan"];
+    const headers = ["bulan laporan", "tahun laporan", "nominal laporan", "tanggal laporan", "link bukti BAST", "link bukti rincian laporan", "Keterangan"];
     const csvString = Papa.unparse([headers]);
     const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -1923,6 +2307,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
             const a = parseFloat(ObjectRow["nominal laporan"]) || 0;
             const d = ObjectRow["tanggal laporan"];
             const bLink = ObjectRow["link bukti BAST"];
+            const rLink = ObjectRow["link bukti rincian laporan"] || ObjectRow["link rincian"] || '';
             const k = ObjectRow["Keterangan"] || '';
 
             if (!m || !y) continue;
@@ -1933,6 +2318,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                 amount: a,
                 date: d || '',
                 bastLink: bLink || '',
+                linkRincian: rLink || '',
                 keterangan: k || '',
                 createdAt: serverTimestamp()
             });
@@ -3269,8 +3655,9 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                       <th className="py-3 px-3 border-r border-slate-700 w-32 bg-slate-900 text-center">NO. BUKTI</th>
                       <th className="py-3 px-3 border-r border-slate-700 w-24 bg-slate-900 text-center">TANGGAL</th>
                       <th className="py-3 px-4 border-r border-slate-700 text-left bg-slate-900">KETERANGAN & RINCIAN DETAIL</th>
-                      <th className="py-3 px-3 border-r border-slate-700 text-right w-24 bg-slate-900">QTY</th>
-                      <th className="py-3 px-3 border-r border-slate-700 text-right w-32 bg-slate-900">HARGA SATUAN</th>
+                      <th className="py-3 px-3 border-r border-slate-700 text-center w-36 bg-slate-900">BUKTI RINCIAN LAPORAN</th>
+                      <th className="py-3 px-3 border-r border-slate-700 text-right w-20 bg-slate-900">QTY</th>
+                      <th className="py-3 px-3 border-r border-slate-700 text-right w-28 bg-slate-900">HARGA SATUAN</th>
                       <th className="py-3 px-3 border-r border-slate-700 text-right w-32 bg-slate-900">JUMLAH (CREDIT)</th>
                       {!isExportingPDF && <th className="py-3 px-2 text-center w-20 bg-slate-900">AKSI</th>}
                     </tr>
@@ -3278,7 +3665,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                   <tbody className="text-[11px]">
                     {sortedRincianItems.length === 0 ? (
                       <tr>
-                        <td colSpan={isExportingPDF ? 8 : 9} className="py-8 text-center text-slate-400 font-bold text-xs bg-slate-50/50">
+                        <td colSpan={isExportingPDF ? 9 : 10} className="py-8 text-center text-slate-400 font-bold text-xs bg-slate-50/50">
                           Tidak ada data rincian transaksi untuk periode ini. Silakan input baru atau klik "Muat Default Jan 2026".
                         </td>
                       </tr>
@@ -3303,9 +3690,56 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                               <td className="py-2.5 px-3 border-r border-slate-200 text-center text-xs">
                                 {item.tanggalBudget || '-'}
                               </td>
-                              <td className="py-2.5 px-4 border-r border-slate-200 text-xs font-black tracking-tight text-slate-900" colSpan={3}>
+                              <td className="py-2.5 px-4 border-r border-slate-200 text-xs font-black tracking-tight text-slate-900">
                                 {item.keterangan}
                               </td>
+                              <td className="py-2.5 px-3 border-r border-slate-200 text-center text-xs">
+                                {(() => {
+                                  const link = item.linkBukti || item.buktiUrl;
+                                  if (link && typeof link === 'string' && link.trim().length > 0) {
+                                    const href = link.startsWith('http') ? link : `https://${link}`;
+                                    return (
+                                      <div className="flex items-center justify-center gap-1">
+                                        <a
+                                          href={href}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-extrabold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-all shadow-2xs hover:shadow-xs"
+                                          title="Buka Link Bukti LPJ"
+                                        >
+                                          <span>Bukti LPJ</span>
+                                          <ExternalLink size={12} className="shrink-0" />
+                                        </a>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          type="button"
+                                          onClick={() => setSelectedBuktiRincian(item)}
+                                          className="h-6 w-6 p-0 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md"
+                                          title="Detail Bukti Rincian"
+                                        >
+                                          <FileText size={12} />
+                                        </Button>
+                                      </div>
+                                    );
+                                  }
+                                  return (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      type="button"
+                                      onClick={() => handleEditRincian(item)}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold text-slate-400 hover:text-blue-700 hover:bg-blue-50 border border-dashed border-slate-200 transition-all"
+                                      title="Tambah Link Bukti Rincian Laporan"
+                                    >
+                                      <Plus size={10} />
+                                      <span>+ Bukti LPJ</span>
+                                    </Button>
+                                  );
+                                })()}
+                              </td>
+                              <td className="py-2.5 px-3 border-r border-slate-200 text-right font-mono text-slate-400 text-xs bg-slate-50/30">-</td>
+                              <td className="py-2.5 px-3 border-r border-slate-200 text-right font-mono text-slate-400 text-xs bg-slate-50/30">-</td>
                               <td className="py-2.5 px-3 border-r border-slate-200 text-right font-mono font-bold text-slate-900 text-xs bg-slate-50">
                                 Rp {totalItemCredit.toLocaleString('id-ID')}
                               </td>
@@ -3350,6 +3784,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                                   <td className="py-1.5 px-4 border-r border-slate-200 pl-6 italic text-slate-650">
                                     {detail.keteranganDetail || '-'}
                                   </td>
+                                  <td className="py-1.5 px-3 border-r border-slate-200 bg-white"></td>
                                   <td className="py-1.5 px-3 border-r border-slate-200 text-right font-mono">
                                     {detail.qty}
                                   </td>
@@ -3373,6 +3808,7 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                         TOTAL RINCIAN PENGELUARAN PERTUM
                       </td>
                       <td className="py-3 px-4 border-r border-slate-800"></td>
+                      <td className="py-3 px-3 border-r border-slate-800"></td>
                       <td className="py-3 px-3 border-r border-slate-800"></td>
                       <td className="py-3 px-3 border-r border-slate-800"></td>
                       <td className="py-3 px-3 text-right border-r border-slate-800 font-mono text-emerald-400 text-xs">
@@ -3477,6 +3913,24 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                           className="rounded-xl bg-slate-50 border-slate-200 h-10"
                           required
                         />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-bold text-slate-500 uppercase flex items-center justify-between">
+                          <span>Bukti Rincian Laporan (Tautan Drive / LPJ)</span>
+                          <span className="text-[10px] text-blue-600 font-semibold font-mono">Opsional</span>
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            type="url"
+                            value={rFormLinkBukti}
+                            onChange={e => setRFormLinkBukti(e.target.value)}
+                            placeholder="https://drive.google.com/drive/folders/... atau https://..."
+                            className="rounded-xl bg-slate-50 border-slate-200 h-10 text-xs font-mono pl-9"
+                          />
+                          <ExternalLink size={14} className="absolute left-3 top-3 text-slate-400" />
+                        </div>
+                        <p className="text-[10px] text-slate-400">Masukkan tautan Google Drive / Cloud Storage untuk kuitansi, BAST, atau berkas LPJ rincian ini.</p>
                       </div>
                     </div>
 
@@ -3629,6 +4083,116 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
               </DialogContent>
             </Dialog>
           )}
+
+          {/* DIALOG BUKTI RINCIAN LAPORAN */}
+          {selectedBuktiRincian && (
+            <Dialog open={!!selectedBuktiRincian} onOpenChange={() => setSelectedBuktiRincian(null)}>
+              <DialogContent className="max-w-lg rounded-2xl p-6 bg-white">
+                <DialogHeader>
+                  <DialogTitle className="text-base font-black text-slate-900 flex items-center gap-2">
+                    <FileCheck className="text-emerald-600" size={20} />
+                    Bukti Rincian Laporan PertUM BAZNAS
+                  </DialogTitle>
+                </DialogHeader>
+
+                <div className="space-y-4 text-xs mt-2">
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                    <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                      <span className="text-slate-500 font-medium">No. Doc / Bukti:</span>
+                      <span className="font-mono font-bold text-slate-900">
+                        No. Doc {selectedBuktiRincian.noDoc} — {selectedBuktiRincian.noBukti || '-'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                      <span className="text-slate-500 font-medium">Kode Budget:</span>
+                      <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                        {selectedBuktiRincian.kodeBudget}
+                      </span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                      <span className="text-slate-500 font-medium">Tanggal:</span>
+                      <span className="font-mono font-bold text-slate-800">{selectedBuktiRincian.tanggalBudget || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                      <span className="text-slate-500 font-medium">Keterangan:</span>
+                      <span className="font-bold text-slate-900 text-right">{selectedBuktiRincian.keterangan}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-slate-200 pb-1.5">
+                      <span className="text-slate-500 font-medium">Total Nominal Credit:</span>
+                      <span className="font-mono font-black text-emerald-700 text-sm">
+                        Rp {(selectedBuktiRincian.details?.reduce((sum: number, d: any) => sum + ((d.qty || 0) * (d.hargaSatuan || 0)), 0) || 0).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* TAUTAN BUKTI */}
+                  <div className="space-y-2">
+                    <p className="font-bold text-slate-800">Tautan Berkas & Bukti LPJ:</p>
+                    {(() => {
+                      const link = selectedBuktiRincian.linkBukti || selectedBuktiRincian.buktiUrl;
+                      if (link && typeof link === 'string' && link.trim().length > 0) {
+                        const href = link.startsWith('http') ? link : `https://${link}`;
+                        return (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 transition-colors font-bold text-xs"
+                          >
+                            <span className="flex items-center gap-2">
+                              <ExternalLink size={16} className="text-blue-600 shrink-0" />
+                              Buka File / Google Drive Bukti LPJ
+                            </span>
+                            <span className="text-[10px] bg-blue-600 text-white px-2.5 py-1 rounded-lg font-extrabold shadow-2xs">Buka Link ↗</span>
+                          </a>
+                        );
+                      }
+                      return (
+                        <div className="p-4 rounded-xl bg-slate-100 text-slate-500 text-center text-xs space-y-2">
+                          <p className="font-medium">Belum ada tautan berkas / Google Drive Bukti Rincian Laporan.</p>
+                          <Button
+                            size="sm"
+                            type="button"
+                            onClick={() => {
+                              const item = selectedBuktiRincian;
+                              setSelectedBuktiRincian(null);
+                              handleEditRincian(item);
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8 rounded-lg font-bold"
+                          >
+                            + Tambahkan Link Bukti Sekarang
+                          </Button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                <DialogFooter className="mt-4 flex justify-between items-center border-t pt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const item = selectedBuktiRincian;
+                      setSelectedBuktiRincian(null);
+                      handleEditRincian(item);
+                    }}
+                    className="text-xs font-bold border-slate-200 rounded-xl"
+                  >
+                    <Edit2 size={12} className="mr-1" /> Edit Bukti / Data
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => setSelectedBuktiRincian(null)}
+                    className="bg-slate-900 text-white hover:bg-slate-800 text-xs rounded-xl px-4 font-bold"
+                  >
+                    Tutup
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       ) : (
         /* ORIGINAL STANDARD REALISASI VIEW */
@@ -3696,6 +4260,20 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                         value={bastLink} 
                         onChange={e => setBastLink(e.target.value)}
                         placeholder="https://..."
+                        className="rounded-xl bg-slate-50 border-slate-200"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-slate-500 flex items-center justify-between">
+                        <span>Link Bukti Rincian Laporan</span>
+                        <span className="text-[10px] text-blue-600 font-normal">Opsional</span>
+                      </Label>
+                      <Input 
+                        type="url" 
+                        value={linkRincian} 
+                        onChange={e => setLinkRincian(e.target.value)}
+                        placeholder="https://drive.google.com/..."
                         className="rounded-xl bg-slate-50 border-slate-200"
                       />
                     </div>
@@ -3891,53 +4469,95 @@ export const LaporanManager = ({ userUid, isReadOnly = false }: { userUid: strin
                     <TableHead className="font-bold text-xs text-slate-500">Tanggal Laporan</TableHead>
                     <TableHead className="font-bold text-xs text-slate-500">Nominal</TableHead>
                     <TableHead className="font-bold text-xs text-slate-500 text-center">Bukti BAST</TableHead>
+                    <TableHead className="font-bold text-xs text-slate-500 text-center">Bukti Rincian Laporan</TableHead>
                     {!isExportingPDF && <TableHead className="font-bold text-xs text-slate-500 text-center action-cell-pdf">Aksi</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredData.map(item => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-semibold text-sm">
-                        {item.month} {item.year}
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-600">
-                        {item.keterangan || '-'}
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-600">
-                        {new Date(item.date).toLocaleDateString('id-ID', {
-                          day: 'numeric', month: 'long', year: 'numeric'
-                        })}
-                      </TableCell>
-                      <TableCell className="font-bold text-sm text-slate-800">
-                        Rp {item.amount.toLocaleString('id-ID')}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <a 
-                          href={item.bastLink} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
-                        >
-                          Lihat <ExternalLink size={12} />
-                        </a>
-                      </TableCell>
-                      {!isExportingPDF && (
-                        <TableCell className="text-center action-cell-pdf">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(item)} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg shrink-0">
-                              <Edit2 size={16} />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg shrink-0">
-                              <Trash2 size={16} />
-                            </Button>
-                          </div>
+                  {filteredData.map(item => {
+                    const rincianUrl = item.linkRincian || (item as any).buktiRincianLink || (item as any).rincianLink;
+                    const hrefRincian = rincianUrl && typeof rincianUrl === 'string' && rincianUrl.trim().length > 0
+                      ? (rincianUrl.startsWith('http') ? rincianUrl : `https://${rincianUrl}`)
+                      : null;
+
+                    const bastUrl = item.bastLink && typeof item.bastLink === 'string' && item.bastLink.trim().length > 0
+                      ? (item.bastLink.startsWith('http') ? item.bastLink : `https://${item.bastLink}`)
+                      : null;
+
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-semibold text-sm">
+                          {item.month} {item.year}
                         </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
+                        <TableCell className="text-sm text-slate-600">
+                          {item.keterangan || '-'}
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-600">
+                          {item.date ? (
+                            isNaN(new Date(item.date).getTime()) ? item.date : new Date(item.date).toLocaleDateString('id-ID', {
+                              day: 'numeric', month: 'long', year: 'numeric'
+                            })
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell className="font-bold text-sm text-slate-800">
+                          Rp {item.amount.toLocaleString('id-ID')}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {bastUrl ? (
+                            <a 
+                              href={bastUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-all shadow-2xs"
+                            >
+                              Lihat BAST <ExternalLink size={12} />
+                            </a>
+                          ) : (
+                            <span className="text-xs text-slate-400 font-medium">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {hrefRincian ? (
+                            <a 
+                              href={hrefRincian} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 text-xs font-extrabold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition-all shadow-2xs"
+                              title="Buka Link Bukti Rincian Laporan"
+                            >
+                              Lihat Rincian <ExternalLink size={12} />
+                            </a>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(item)}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-blue-700 hover:bg-blue-50 border border-dashed border-slate-200 rounded-lg px-2.5 py-1 h-7"
+                              title="Tambah Link Bukti Rincian"
+                            >
+                              <Plus size={12} />
+                              <span>+ Add Link</span>
+                            </Button>
+                          )}
+                        </TableCell>
+                        {!isExportingPDF && (
+                          <TableCell className="text-center action-cell-pdf">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(item)} className="h-8 w-8 p-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-lg shrink-0">
+                                <Edit2 size={16} />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(item.id)} className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg shrink-0">
+                                <Trash2 size={16} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    );
+                  })}
                   {filteredData.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center text-slate-500 font-medium">
+                      <TableCell colSpan={7} className="h-24 text-center text-slate-500 font-medium">
                         Belum ada data laporan.
                       </TableCell>
                     </TableRow>

@@ -17,6 +17,8 @@ export interface BaznasRincianItem {
   tanggalBudget: string;
   keterangan: string;
   details: RincianDetailItem[];
+  linkBukti?: string;
+  buktiUrl?: string;
 }
 
 export const DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026: BaznasRincianItem[] = [
