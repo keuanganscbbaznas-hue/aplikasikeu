@@ -596,16 +596,6 @@ export function SettlementOtomatis({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500">No. WhatsApp PIC</Label>
-                  <Input
-                    value={picWhatsapp}
-                    onChange={(e) => setPicWhatsapp(e.target.value)}
-                    placeholder="08123456789"
-                    className="h-10 rounded-xl border-slate-200 text-xs font-medium"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
                   <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Divisi / Unit</Label>
                   <Select value={divisi} onValueChange={setDivisi}>
                     <SelectTrigger className="h-10 rounded-xl border-slate-200 text-xs font-medium">
@@ -615,21 +605,6 @@ export function SettlementOtomatis({
                       <SelectItem value="Operasional">Operasional</SelectItem>
                       <SelectItem value="Asrama">Asrama</SelectItem>
                       <SelectItem value="Akademik/Kesiswaan">Akademik/Kesiswaan</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Sumber Rekening Kas</Label>
-                  <Select value={sumberRekening} onValueChange={setSumberRekening}>
-                    <SelectTrigger className="h-10 rounded-xl border-slate-200 text-xs font-medium">
-                      <SelectValue placeholder="Pilih Rekening" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="SMP">Kas SMP (7179071988)</SelectItem>
-                      <SelectItem value="SMA">Kas SMA (7179072507)</SelectItem>
-                      <SelectItem value="Donasi SMP">Donasi SMP</SelectItem>
-                      <SelectItem value="Donasi SMA">Donasi SMA</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -968,7 +943,7 @@ export function SettlementOtomatis({
               </div>
 
               {/* Action Buttons Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-4 border-t border-slate-800">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-slate-800">
                 <Button
                   onClick={handleSaveSettlement}
                   className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 h-12 rounded-2xl font-black text-xs uppercase tracking-wider gap-2 shadow-lg shadow-emerald-500/10"
@@ -981,13 +956,6 @@ export function SettlementOtomatis({
                   className="bg-blue-600 hover:bg-blue-500 text-white h-12 rounded-2xl font-black text-xs uppercase tracking-wider gap-2 shadow-lg shadow-blue-600/10"
                 >
                   <Download size={16} /> Unduh PDF Settlement
-                </Button>
-
-                <Button
-                  onClick={handleSendWA}
-                  className="bg-teal-600 hover:bg-teal-500 text-white h-12 rounded-2xl font-black text-xs uppercase tracking-wider gap-2 shadow-lg shadow-teal-600/10"
-                >
-                  <Send size={16} /> Kirim Ringkasan WA
                 </Button>
 
                 <Button

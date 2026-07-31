@@ -31,7 +31,7 @@ export async function generateSettlementPDF(settlement: SettlementReport) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
     doc.setTextColor(15, 23, 42); // slate-900
-    doc.text("LAPORAN SETTLEMENT & REALISASI ANGGARAN", 105, y + 6, { align: "center" });
+    doc.text("SETTLEMENT REALISASI ANGGARAN", 105, y + 6, { align: "center" });
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
@@ -77,37 +77,32 @@ export async function generateSettlementPDF(settlement: SettlementReport) {
 
     // Right Column
     doc.setFont("helvetica", "bold");
-    doc.text("Sumber Rekening :", 115, y + 6);
-    doc.setFont("helvetica", "normal");
-    doc.text(settlement.sumberRekening || "-", 148, y + 6);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("Uang Muka Awal :", 115, y + 12);
+    doc.text("Uang Muka Awal :", 115, y + 6);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(16, 185, 129); // emerald-600
-    doc.text(`Rp ${settlement.nominalUangMuka.toLocaleString('id-ID')}`, 148, y + 12);
+    doc.text(`Rp ${settlement.nominalUangMuka.toLocaleString('id-ID')}`, 148, y + 6);
 
     doc.setFont("helvetica", "bold");
     doc.setTextColor(15, 23, 42);
-    doc.text("Total Realisasi :", 115, y + 18);
+    doc.text("Total Realisasi :", 115, y + 12);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(30, 64, 175); // blue-800
-    doc.text(`Rp ${settlement.totalRealisasi.toLocaleString('id-ID')}`, 148, y + 18);
+    doc.text(`Rp ${settlement.totalRealisasi.toLocaleString('id-ID')}`, 148, y + 12);
 
     doc.setFont("helvetica", "bold");
     doc.setTextColor(15, 23, 42);
-    doc.text("Status Selisih :", 115, y + 24);
+    doc.text("Status Selisih :", 115, y + 18);
     doc.setFont("helvetica", "bold");
 
     if (settlement.statusBalance === 'sisa') {
       doc.setTextColor(16, 185, 129); // emerald
-      doc.text(`Sisa (Pengembalian): Rp ${settlement.selisihDana.toLocaleString('id-ID')}`, 148, y + 24);
+      doc.text(`Sisa (Pengembalian): Rp ${settlement.selisihDana.toLocaleString('id-ID')}`, 148, y + 18);
     } else if (settlement.statusBalance === 'kurang') {
       doc.setTextColor(225, 29, 72); // rose
-      doc.text(`Kurang (Reimburse): Rp ${Math.abs(settlement.selisihDana).toLocaleString('id-ID')}`, 148, y + 24);
+      doc.text(`Kurang (Reimburse): Rp ${Math.abs(settlement.selisihDana).toLocaleString('id-ID')}`, 148, y + 18);
     } else {
       doc.setTextColor(100, 116, 139); // slate
-      doc.text("Nihil (Pas 100%)", 148, y + 24);
+      doc.text("Nihil (Pas 100%)", 148, y + 18);
     }
 
     doc.setTextColor(0, 0, 0);
@@ -297,7 +292,7 @@ export async function generateSettlementPDF(settlement: SettlementReport) {
     doc.text(settlement.signatures?.verifikator?.name || "Keuangan SCB", col3X + sigColWidth / 2, y + 28, { align: "center" });
 
     // Save PDF
-    const filename = `Laporan_Settlement_${(settlement.settlementNo || '01').replace(/[/\\?%*:|"<>]/g, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`;
+    const filename = `Settlement_Realisasi_Anggaran_${(settlement.settlementNo || '01').replace(/[/\\?%*:|"<>]/g, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`;
     doc.save(filename);
 
     toast.success("PDF Laporan Settlement berhasil diunduh!", { id: toastId });
