@@ -292,7 +292,12 @@ export async function generateSettlementPDF(settlement: SettlementReport) {
     doc.text(settlement.signatures?.verifikator?.name || "Keuangan SCB", col3X + sigColWidth / 2, y + 28, { align: "center" });
 
     // Save PDF
-    const filename = `Settlement_Realisasi_Anggaran_${(settlement.settlementNo || '01').replace(/[/\\?%*:|"<>]/g, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`;
+    const rawTitle = (settlement.title || `Settlement_${settlement.settlementNo || '01'}`).trim();
+    let cleanTitle = rawTitle.replace(/[/\\?%*:|"<>]/g, '_').replace(/\s+/g, '_');
+    if (cleanTitle.toLowerCase().endsWith('.pdf')) {
+      cleanTitle = cleanTitle.slice(0, -4);
+    }
+    const filename = `${cleanTitle}_${format(new Date(), 'yyyyMMdd')}.pdf`;
     doc.save(filename);
 
     toast.success("PDF Laporan Settlement berhasil diunduh!", { id: toastId });
