@@ -155,3 +155,50 @@ export interface DonationConfirmation {
   status: 'pending' | 'verified' | 'rejected';
   createdAt: any;
 }
+
+export interface SettlementItemDetail {
+  id: string;
+  description: string;
+  qty: number;
+  unit: string;
+  unitPrice: number;
+  totalAmount: number;
+  notes?: string;
+  receiptNo?: string;
+  evidenceUrl?: string;
+}
+
+export interface SettlementCategoryGroup {
+  id: string;
+  categoryName: string;
+  budgetCode?: string;
+  items: SettlementItemDetail[];
+  categoryTotal: number;
+}
+
+export interface SettlementReport {
+  id?: string;
+  submissionId?: string;
+  title: string;
+  settlementNo: string;
+  picName: string;
+  picWhatsapp?: string;
+  divisi?: string;
+  sumberRekening?: string;
+  tanggalSettlement: string;
+  nominalUangMuka: number;
+  categories: SettlementCategoryGroup[];
+  totalRealisasi: number;
+  selisihDana: number;
+  statusBalance: 'sisa' | 'nihil' | 'kurang';
+  catatan?: string;
+  createdByName?: string;
+  createdByEmail?: string;
+  createdAt?: any;
+  updatedAt?: any;
+  signatures?: {
+    pic?: SignatureData;
+    headDept?: SignatureData;
+    verifikator?: SignatureData;
+  };
+}

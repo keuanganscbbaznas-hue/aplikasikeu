@@ -62,7 +62,9 @@ import { generateLPJPDF } from './lib/lpjGenerator';
 import { FPPPGeneratorSettings } from './components/FPPPGeneratorSettings';
 import { DonationConfirmation } from './components/administrasi/DonationConfirmation';
 import { DocumentTemplates } from './components/administrasi/DocumentTemplates';
+import { SettlementOtomatis } from './components/SettlementOtomatis';
 import { 
+  Calculator,
   LayoutDashboard, 
   Plus, 
   Minus,
@@ -1673,6 +1675,22 @@ export default function App() {
                                  <ScrollArea className="flex-1 w-full h-full">
                                    <div className="p-6 md:p-12 lg:p-16">
                                      <DocumentTemplates isOwner={user?.email === OWNER_EMAIL || profile?.email === OWNER_EMAIL} />
+                                   </div>
+                                 </ScrollArea>
+                              </DialogContent>
+                            </Dialog>
+
+                            <Dialog>
+                              <DialogTrigger render={
+                                <Button className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl px-6 h-12 font-bold text-sm shadow-xl shadow-emerald-900/40 transition-all text-white">
+                                   <Calculator size={18} className="mr-2" />
+                                   Settlement Otomatis
+                                </Button>
+                              } />
+                              <DialogContent className="max-w-7xl sm:max-w-7xl w-[95vw] h-[92vh] max-h-[92vh] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl bg-white flex flex-col">
+                                 <ScrollArea className="flex-1 w-full h-full">
+                                   <div className="p-6 md:p-10">
+                                     <SettlementOtomatis profile={profile} user={user} submissions={submissions} />
                                    </div>
                                  </ScrollArea>
                               </DialogContent>

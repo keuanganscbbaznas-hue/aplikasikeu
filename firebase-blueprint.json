@@ -275,9 +275,30 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["account", "year", "amount", "createdAt"]
+    },
+    "SettlementReport": {
+      "title": "SettlementReport",
+      "description": "Settlement reports generated for budget breakdown.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "settlementNo": { "type": "string" },
+        "picName": { "type": "string" },
+        "totalRealisasi": { "type": "number" },
+        "nominalUangMuka": { "type": "number" },
+        "selisihDana": { "type": "number" },
+        "statusBalance": { "type": "string", "enum": ["sisa", "nihil", "kurang"] },
+        "categories": { "type": "array" }
+      },
+      "required": ["title", "settlementNo", "picName", "nominalUangMuka", "totalRealisasi", "statusBalance"]
     }
   },
   "firestore": {
+    "/settlements/{settlementId}": {
+      "schema": "SettlementReport",
+      "description": "Collection of automated settlement reports."
+    },
     "/submissions/{submissionId}": {
       "schema": "Submission",
       "description": "Collection of document submissions."
