@@ -158,6 +158,7 @@ export interface DonationConfirmation {
 
 export interface SettlementItemDetail {
   id: string;
+  itemDate?: string;
   description: string;
   qty: number;
   unit: string;

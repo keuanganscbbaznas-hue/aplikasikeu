@@ -73,6 +73,14 @@ export function SettlementOtomatis({
   const [savedSettlements, setSavedSettlements] = useState<SettlementReport[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(true);
 
+  // Search Filter for Uang Muka Submissions
+  const [searchSubmissionQuery, setSearchSubmissionQuery] = useState('');
+
+  // Auto-Save Draft State
+  const DRAFT_STORAGE_KEY = 'settlement_form_draft_v2';
+  const [hasDraft, setHasDraft] = useState(false);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+
   // Form State
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<string>('');
   const [title, setTitle] = useState('');
@@ -85,13 +93,21 @@ export function SettlementOtomatis({
   const [nominalUangMuka, setNominalUangMuka] = useState<string>('0');
   const [catatan, setCatatan] = useState('');
 
-  // Category Groups State - Hanya menampilkan kategori yang memiliki item/anggaran aktif
+  // Category Groups State - Setiap item memiliki tanggal pengeluaran (itemDate)
   const [categories, setCategories] = useState<SettlementCategoryGroup[]>([
     {
       id: 'cat-1',
       categoryName: 'Konsumsi & Jamuan',
       items: [
-        { id: 'item-1', description: 'Makan Peserta/Panitia', qty: 10, unit: 'Porsi', unitPrice: 25000, totalAmount: 250000 }
+        {
+          id: 'item-1',
+          itemDate: format(new Date(), 'yyyy-MM-dd'),
+          description: 'Makan Peserta/Panitia',
+          qty: 10,
+          unit: 'Porsi',
+          unitPrice: 25000,
+          totalAmount: 250000
+        }
       ],
       categoryTotal: 250000
     }
@@ -102,6 +118,116 @@ export function SettlementOtomatis({
 
   // Search & Filter List
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Load Draft from LocalStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          setHasDraft(true);
+          if (parsed.savedAt) {
+            try {
+              setDraftSavedAt(format(new Date(parsed.savedAt), 'dd/MM/yyyy HH:mm'));
+            } catch {
+              setDraftSavedAt(null);
+            }
+          }
+          if (parsed.selectedSubmissionId) setSelectedSubmissionId(parsed.selectedSubmissionId);
+          if (parsed.title) setTitle(parsed.title);
+          if (parsed.settlementNo) setSettlementNo(parsed.settlementNo);
+          if (parsed.picName) setPicName(parsed.picName);
+          if (parsed.picWhatsapp) setPicWhatsapp(parsed.picWhatsapp);
+          if (parsed.divisi) setDivisi(parsed.divisi);
+          if (parsed.sumberRekening) setSumberRekening(parsed.sumberRekening);
+          if (parsed.tanggalSettlement) setTanggalSettlement(parsed.tanggalSettlement);
+          if (parsed.nominalUangMuka !== undefined) setNominalUangMuka(parsed.nominalUangMuka.toString());
+          if (parsed.catatan !== undefined) setCatatan(parsed.catatan);
+          if (Array.isArray(parsed.categories) && parsed.categories.length > 0) {
+            setCategories(parsed.categories);
+          }
+          toast.info("Draf pengisian settlement sebelumnya otomatis dimuat.", { id: 'draft-restore' });
+        }
+      }
+    } catch (err) {
+      console.error("Gagal memuat draf settlement:", err);
+    }
+  }, []);
+
+  // Helper Auto-Save Draft
+  const saveDraft = () => {
+    if (editingSettlementId) return; // Tidak menimpa draf jika sedang edit dokumen Firestore
+    const draftObj = {
+      selectedSubmissionId,
+      title,
+      settlementNo,
+      picName,
+      picWhatsapp,
+      divisi,
+      sumberRekening,
+      tanggalSettlement,
+      nominalUangMuka,
+      catatan,
+      categories,
+      savedAt: new Date().toISOString()
+    };
+    try {
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftObj));
+      setHasDraft(true);
+      setDraftSavedAt(format(new Date(), 'HH:mm:ss'));
+    } catch (e) {
+      console.error("Gagal menyimpan draf settlement:", e);
+    }
+  };
+
+  // Debounced Auto-Save
+  useEffect(() => {
+    if (activeTab === 'create' && !editingSettlementId) {
+      const handler = setTimeout(() => {
+        saveDraft();
+      }, 500);
+      return () => clearTimeout(handler);
+    }
+  }, [
+    selectedSubmissionId,
+    title,
+    settlementNo,
+    picName,
+    picWhatsapp,
+    divisi,
+    sumberRekening,
+    tanggalSettlement,
+    nominalUangMuka,
+    catatan,
+    categories,
+    activeTab,
+    editingSettlementId
+  ]);
+
+  // Window Unload & Leave Page Auto-Save
+  useEffect(() => {
+    const handleUnload = () => {
+      if (!editingSettlementId) {
+        saveDraft();
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [
+    selectedSubmissionId,
+    title,
+    settlementNo,
+    picName,
+    picWhatsapp,
+    divisi,
+    sumberRekening,
+    tanggalSettlement,
+    nominalUangMuka,
+    catatan,
+    categories,
+    editingSettlementId
+  ]);
 
   // Load Settlements from Firestore
   useEffect(() => {
@@ -124,6 +250,19 @@ export function SettlementOtomatis({
   const uangMukaSubmissions = useMemo(() => {
     return submissions.filter(s => s.type === 'uang_muka');
   }, [submissions]);
+
+  // Filter Uang Muka Submissions with search query
+  const filteredUangMukaSubmissions = useMemo(() => {
+    if (!searchSubmissionQuery.trim()) return uangMukaSubmissions;
+    const q = searchSubmissionQuery.toLowerCase().trim();
+    return uangMukaSubmissions.filter(s =>
+      (s.title || '').toLowerCase().includes(q) ||
+      (s.submittedByName || '').toLowerCase().includes(q) ||
+      (s.picName || '').toLowerCase().includes(q) ||
+      (s.noDokumen || '').toLowerCase().includes(q) ||
+      (s.divisi || '').toLowerCase().includes(q)
+    );
+  }, [uangMukaSubmissions, searchSubmissionQuery]);
 
   // When selecting a submission from dropdown
   const handleSelectSubmission = (subId: string) => {
@@ -186,6 +325,7 @@ export function SettlementOtomatis({
       items: [
         {
           id: `item-${Date.now()}-1`,
+          itemDate: tanggalSettlement || format(new Date(), 'yyyy-MM-dd'),
           description: '',
           qty: 1,
           unit: 'Buah',
@@ -211,6 +351,7 @@ export function SettlementOtomatis({
       if (cat.id === catId) {
         const newItem: SettlementItemDetail = {
           id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          itemDate: tanggalSettlement || format(new Date(), 'yyyy-MM-dd'),
           description: '',
           qty: 1,
           unit: 'Porsi',
@@ -341,6 +482,11 @@ export function SettlementOtomatis({
         }
       }
 
+      // Clear local draft upon successful save
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      setHasDraft(false);
+      setDraftSavedAt(null);
+
       setActiveTab('list');
     } catch (error: any) {
       console.error("Error saving settlement:", error);
@@ -401,11 +547,16 @@ export function SettlementOtomatis({
     window.open(url, '_blank');
   };
 
-  // Reset form
+  // Reset form & delete draft
   const handleResetForm = () => {
     setSelectedSubmissionId('');
     setTitle('');
     setSettlementNo(`STL.${format(new Date(), 'ddMM')}.${Math.floor(1000 + Math.random() * 9000)}`);
+    setPicName(profile?.displayName || '');
+    setPicWhatsapp(profile?.whatsapp || '');
+    setDivisi('Operasional');
+    setSumberRekening('SMP');
+    setTanggalSettlement(format(new Date(), 'yyyy-MM-dd'));
     setNominalUangMuka('0');
     setCatatan('');
     setEditingSettlementId(null);
@@ -413,23 +564,24 @@ export function SettlementOtomatis({
       {
         id: 'cat-1',
         categoryName: 'Konsumsi & Jamuan',
-        items: [],
-        categoryTotal: 0
-      },
-      {
-        id: 'cat-2',
-        categoryName: 'Perlengkapan & ATK',
-        items: [],
-        categoryTotal: 0
-      },
-      {
-        id: 'cat-3',
-        categoryName: 'Akomodasi & Transportasi',
-        items: [],
-        categoryTotal: 0
+        items: [
+          {
+            id: 'item-1',
+            itemDate: format(new Date(), 'yyyy-MM-dd'),
+            description: 'Makan Peserta/Panitia',
+            qty: 10,
+            unit: 'Porsi',
+            unitPrice: 25000,
+            totalAmount: 250000
+          }
+        ],
+        categoryTotal: 250000
       }
     ]);
-    toast.info("Formulir telah dibersihkan.");
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+    setHasDraft(false);
+    setDraftSavedAt(null);
+    toast.info("Formulir telah dibersihkan & draf dihapus.");
   };
 
   // Load saved settlement for edit
@@ -520,6 +672,30 @@ export function SettlementOtomatis({
       {activeTab === 'create' ? (
         /* CREATE / EDIT FORM VIEW */
         <div className="space-y-8">
+          {/* Draft Auto-Save Notification Banner */}
+          {hasDraft && !editingSettlementId && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-amber-900 shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <Save size={18} className="text-amber-600 shrink-0" />
+                <div>
+                  <span className="font-bold text-amber-950">Fitur Simpan Otomatis Aktif (Draf Tersimpan)</span>
+                  <p className="text-[11px] text-amber-700">
+                    Formulir pengisian settlement otomatis tersimpan sebagai draf. Jika Anda tidak sengaja keluar atau berpindah halaman, isian Anda tidak hilang.
+                    {draftSavedAt && ` (Waktu tersimpan: ${draftSavedAt})`}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResetForm}
+                className="h-8 text-[11px] font-bold border-amber-300 text-amber-900 hover:bg-amber-100 rounded-xl shrink-0"
+              >
+                Hapus Draf & Reset Form
+              </Button>
+            </div>
+          )}
+
           {/* Section 1: Informasi Header */}
           <Card className="border-slate-100 shadow-md rounded-3xl overflow-hidden bg-white">
             <CardHeader className="bg-slate-50/70 border-b border-slate-100 py-4 px-6">
@@ -543,19 +719,45 @@ export function SettlementOtomatis({
             </CardHeader>
 
             <CardContent className="p-6 space-y-6">
-              {/* Optional Link to Uang Muka Submission */}
+              {/* Optional Link to Uang Muka Submission with Search Filter */}
               {uangMukaSubmissions.length > 0 && (
-                <div className="p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl space-y-2">
-                  <Label className="text-xs font-black text-emerald-800 uppercase tracking-wider block">
-                    ⚡ Muat Dari Data Pengajuan Uang Muka
-                  </Label>
+                <div className="p-4 bg-emerald-50/60 border border-emerald-100 rounded-2xl space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <Label className="text-xs font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                      ⚡ Cari & Muat Dari Data Pengajuan Uang Muka
+                    </Label>
+                    <span className="text-[11px] font-bold text-emerald-600 bg-emerald-100/80 px-2.5 py-0.5 rounded-full">
+                      {filteredUangMukaSubmissions.length} pengajuan ditemukan
+                    </span>
+                  </div>
+
+                  {/* Search Input Filter for Uang Muka Submissions */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-emerald-500" />
+                    <Input
+                      placeholder="Ketik untuk memfilter nama pengajuan, nama pemohon/PIC, atau no. dokumen..."
+                      value={searchSubmissionQuery}
+                      onChange={(e) => setSearchSubmissionQuery(e.target.value)}
+                      className="pl-9 pr-8 h-10 rounded-xl border-emerald-200 text-xs font-medium bg-white focus:ring-emerald-500"
+                    />
+                    {searchSubmissionQuery && (
+                      <button
+                        onClick={() => setSearchSubmissionQuery('')}
+                        className="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-600 font-bold"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Select Dropdown */}
                   <Select value={selectedSubmissionId} onValueChange={handleSelectSubmission}>
                     <SelectTrigger className="bg-white border-emerald-200 h-10 rounded-xl text-xs font-semibold">
                       <SelectValue placeholder="-- Pilih Pengajuan Uang Muka untuk Dimuat --" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl max-h-60">
                       <SelectItem value="">-- Manual Input (Kosongkan Link) --</SelectItem>
-                      {uangMukaSubmissions.map(s => (
+                      {filteredUangMukaSubmissions.map(s => (
                         <SelectItem key={s.id} value={s.id}>
                           {s.noDokumen ? `[${s.noDokumen}] ` : ''}{s.title} - Rp {s.amount.toLocaleString('id-ID')} ({s.picName || s.submittedByName})
                         </SelectItem>
@@ -763,8 +965,9 @@ export function SettlementOtomatis({
                     ) : (
                       <>
                         <div className="grid grid-cols-12 gap-2 px-2 text-[9px] font-black text-slate-400 uppercase tracking-widest hidden md:grid">
-                          <div className="col-span-5">Uraian / Keterangan Item *</div>
-                          <div className="col-span-2 text-center">Vol / Qty</div>
+                          <div className="col-span-2">Tanggal *</div>
+                          <div className="col-span-4">Uraian / Keterangan Item *</div>
+                          <div className="col-span-1 text-center">Qty</div>
                           <div className="col-span-2 text-center">Satuan</div>
                           <div className="col-span-2 text-right">Harga Satuan (Rp)</div>
                           <div className="col-span-1 text-center">Aksi</div>
@@ -775,8 +978,19 @@ export function SettlementOtomatis({
                             key={item.id}
                             className="grid grid-cols-1 md:grid-cols-12 gap-2 p-3 bg-white rounded-xl border border-slate-200 items-center shadow-2xs"
                           >
+                            {/* Tanggal Pengeluaran */}
+                            <div className="col-span-1 md:col-span-2 space-y-1">
+                              <span className="text-[9px] font-bold text-slate-400 md:hidden uppercase">Tanggal</span>
+                              <Input
+                                type="date"
+                                value={item.itemDate || tanggalSettlement || ''}
+                                onChange={(e) => handleUpdateItem(cat.id, item.id, 'itemDate', e.target.value)}
+                                className="h-9 rounded-xl border-slate-200 text-xs font-medium px-2"
+                              />
+                            </div>
+
                             {/* Uraian */}
-                            <div className="col-span-1 md:col-span-5 space-y-1">
+                            <div className="col-span-1 md:col-span-4 space-y-1">
                               <span className="text-[9px] font-bold text-slate-400 md:hidden uppercase">Uraian</span>
                               <Input
                                 placeholder="Contoh: Consumable ATK / Lunch Panitia"
@@ -787,14 +1001,14 @@ export function SettlementOtomatis({
                             </div>
 
                             {/* Qty */}
-                            <div className="col-span-1 md:col-span-2 space-y-1">
+                            <div className="col-span-1 md:col-span-1 space-y-1">
                               <span className="text-[9px] font-bold text-slate-400 md:hidden uppercase">Qty</span>
                               <Input
                                 type="number"
                                 min="1"
                                 value={item.qty}
                                 onChange={(e) => handleUpdateItem(cat.id, item.id, 'qty', e.target.value)}
-                                className="h-9 rounded-xl border-slate-200 text-xs text-center font-bold"
+                                className="h-9 rounded-xl border-slate-200 text-xs text-center font-bold px-1"
                               />
                             </div>
 

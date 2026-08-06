@@ -157,10 +157,11 @@ export async function generateSettlementPDF(settlement: SettlementReport) {
 
         doc.setFontSize(7.5);
         doc.setFont("helvetica", "bold");
-        doc.text("No", 18, y + 4.5);
-        doc.text("Uraian / Keterangan Item", 28, y + 4.5);
-        doc.text("Vol/Qty", 110, y + 4.5, { align: 'center' });
-        doc.text("Satuan", 128, y + 4.5, { align: 'center' });
+        doc.text("No", 17, y + 4.5);
+        doc.text("Tanggal", 24, y + 4.5);
+        doc.text("Uraian / Keterangan Item", 43, y + 4.5);
+        doc.text("Vol/Qty", 112, y + 4.5, { align: 'center' });
+        doc.text("Satuan", 130, y + 4.5, { align: 'center' });
         doc.text("Harga Satuan (Rp)", 158, y + 4.5, { align: 'right' });
         doc.text("Total (Rp)", 192, y + 4.5, { align: 'right' });
         y += 6;
@@ -176,15 +177,26 @@ export async function generateSettlementPDF(settlement: SettlementReport) {
           }
 
           doc.rect(15, y, 180, 6, 'S');
-          doc.text((itemIdx + 1).toString(), 18, y + 4.5);
+          doc.text((itemIdx + 1).toString(), 17, y + 4.5);
+
+          // Tanggal
+          let dateStr = '-';
+          if (item.itemDate) {
+            try {
+              dateStr = format(new Date(item.itemDate), 'dd/MM/yy');
+            } catch {
+              dateStr = item.itemDate;
+            }
+          }
+          doc.text(dateStr, 24, y + 4.5);
 
           // Truncate long descriptions
           let descStr = item.description || '-';
-          if (descStr.length > 52) descStr = descStr.substring(0, 49) + '...';
-          doc.text(descStr, 28, y + 4.5);
+          if (descStr.length > 40) descStr = descStr.substring(0, 37) + '...';
+          doc.text(descStr, 43, y + 4.5);
 
-          doc.text((item.qty || 1).toString(), 110, y + 4.5, { align: 'center' });
-          doc.text(item.unit || "Buah", 128, y + 4.5, { align: 'center' });
+          doc.text((item.qty || 1).toString(), 112, y + 4.5, { align: 'center' });
+          doc.text(item.unit || "Buah", 130, y + 4.5, { align: 'center' });
           doc.text((item.unitPrice || 0).toLocaleString('id-ID'), 158, y + 4.5, { align: 'right' });
           doc.text((item.totalAmount || 0).toLocaleString('id-ID'), 192, y + 4.5, { align: 'right' });
 
