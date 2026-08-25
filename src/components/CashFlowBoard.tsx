@@ -12,11 +12,15 @@ const monthMap: Record<string, number> = {
   'jul': 7, 'agu': 8, 'aug': 8, 'sep': 9, 'okt': 10, 'oct': 10, 'nov': 11, 'des': 12, 'dec': 12
 };
 
-const parseRupiah = (val: string) => {
-  if (!val || typeof val !== 'string') return 0;
-  let cleaned = val.trim();
-  let isNegative = false;
+const parseRupiah = (val: any): number => {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  if (typeof val !== 'string') return 0;
   
+  let cleaned = val.trim();
+  if (!cleaned || cleaned === '-' || cleaned === '0') return 0;
+
+  let isNegative = false;
   if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
     isNegative = true;
     cleaned = cleaned.slice(1, -1);
@@ -27,11 +31,14 @@ const parseRupiah = (val: string) => {
   }
 
   cleaned = cleaned.replace(/Rp/gi, '').trim();
-  
-  // Handle decimals like 1.000,50 or 1,000.50
-  const decimalMatch = cleaned.match(/[,.](\d{1,2})$/);
-  if (decimalMatch) {
-    cleaned = cleaned.substring(0, cleaned.length - (decimalMatch[1].length + 1));
+
+  if (cleaned.includes(',') && !cleaned.includes('.')) {
+    const parts = cleaned.split(',');
+    if (parts.length === 2 && parts[1].length <= 2) {
+      cleaned = parts[0];
+    }
+  } else if (cleaned.includes('.') && cleaned.includes(',')) {
+    cleaned = cleaned.split(',')[0];
   }
 
   cleaned = cleaned.replace(/[^0-9]/g, '');
@@ -83,9 +90,11 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
       );
 
       const tglIdx = findIdx(['tgl', 'tanggal']);
+      const docIdx = findIdx(['no. doc', 'no doc', 'dokumen']);
       const debetIdx = findIdx(['debet', 'penerimaan', 'masuk']);
       const kreditIdx = findIdx(['kredit', 'pengeluaran', 'keluar']);
       const saldoIdx = findIdx(['saldo akhir', 'saldo']);
+      const ketIdx = findIdx(['keterangan', 'uraian']);
 
       // Find initial saldo
       let saldoAwal = 0;
@@ -107,60 +116,91 @@ export const CashFlowBoard = ({ sheetGid }: { sheetGid: string }) => {
       currentSaldo = saldoAwal;
 
       // Extract rows
+      let lastKnownMonth = 0;
+      let lastKnownYear = selectedYear;
+
       const rows = rawData; 
       rows.forEach(row => {
-        if (!row || row.length < 5) return;
+        if (!row || row.length < 4) return;
         
-        const tgl = tglIdx >= 0 ? (row[tglIdx] || '') : '';
-        if (!tgl || tgl.toLowerCase().includes('tgl')) return;
+        const tgl = tglIdx >= 0 ? (row[tglIdx] || '').trim() : '';
+        const docStr = docIdx >= 0 ? (row[docIdx] || '').trim() : '';
+        const ketStr = ketIdx >= 0 ? (row[ketIdx] || '').trim() : '';
 
         const isSaldoAwalRow = row.some(cell => 
           cell && typeof cell === 'string' && cell.toLowerCase().includes('saldo awal')
         );
         if (isSaldoAwalRow) return;
+
+        const penerimaan = debetIdx >= 0 ? parseRupiah(row[debetIdx]) : 0;
+        const pengeluaran = kreditIdx >= 0 ? parseRupiah(row[kreditIdx]) : 0;
+        const saldoAkhir = saldoIdx >= 0 ? parseRupiah(row[saldoIdx]) : 0;
+
+        const hasContent = (tgl.length > 0 && !tgl.toLowerCase().includes('tgl')) ||
+                           docStr.length > 0 ||
+                           ketStr.length > 0 ||
+                           penerimaan > 0 ||
+                           pengeluaran > 0;
+
+        if (!hasContent) return;
         
         let monthNum = 0;
-        let yearFull = selectedYear;
+        let yearFull = lastKnownYear;
 
         // Try parsing variations like 9/Jan/26, 09-01-2026, 9 Jan 2026
-        const parts = tgl.split(/[\/\- ]/);
-        if (parts.length >= 2) {
-          const mText = parts[1].toLowerCase();
-          
-          if (isNaN(Number(mText))) {
-            monthNum = monthMap[mText] || monthMap[mText.substring(0,3)] || 0;
-          } else {
-            monthNum = Number(mText);
-          }
+        if (tgl && !tgl.toLowerCase().includes('tgl')) {
+          const parts = tgl.split(/[\/\- ]/);
+          if (parts.length >= 2) {
+            const mText = parts[1].toLowerCase();
+            if (isNaN(Number(mText))) {
+              monthNum = monthMap[mText] || monthMap[mText.substring(0,3)] || 0;
+            } else {
+              monthNum = Number(mText);
+            }
 
-          if (parts[2]) {
-            const yText = parts[2];
-            if (yText.length === 2) {
-              yearFull = "20" + yText;
-            } else if (yText.length === 4) {
-              yearFull = yText;
+            if (parts[2]) {
+              const yText = parts[2];
+              if (yText.length === 2) {
+                yearFull = "20" + yText;
+              } else if (yText.length === 4) {
+                yearFull = yText;
+              }
             }
           }
         }
 
-        yearsSet.add(yearFull);
+        // If date not in column 0, extract from doc code e.g. CA.03.210826 -> month 8, year 2026
+        if (!monthNum && docStr) {
+          const docMatch = docStr.match(/\.(\d{2})(\d{2})(\d{2})$/);
+          if (docMatch) {
+            monthNum = parseInt(docMatch[2], 10);
+            yearFull = "20" + docMatch[3];
+          }
+        }
 
-        const penerimaan = debetIdx >= 0 ? parseRupiah(row[debetIdx]) : 0;
-        const pengeluaran = kreditIdx >= 0 ? parseRupiah(row[kreditIdx]) : 0;
-        
+        if (!monthNum) {
+          monthNum = lastKnownMonth;
+        } else {
+          lastKnownMonth = monthNum;
+          lastKnownYear = yearFull;
+        }
+
+        if (yearFull) {
+          yearsSet.add(yearFull);
+        }
+
         totalPener += penerimaan;
         totalPengel += pengeluaran;
 
-        if (yearFull === selectedYear && monthNum) {
+        if (yearFull === selectedYear && monthNum >= 1 && monthNum <= 12) {
           chartData[monthNum - 1].penerimaan += penerimaan;
           chartData[monthNum - 1].pengeluaran += pengeluaran;
         }
 
         // Saldo Akhir based on the row's Saldo Akhir column if present
-        const s = saldoIdx >= 0 ? parseRupiah(row[saldoIdx]) : 0;
         if (saldoIdx >= 0 && row[saldoIdx] && row[saldoIdx].trim() !== '' && row[saldoIdx].trim() !== '-') {
-          currentSaldo = s;
-        } else {
+          currentSaldo = saldoAkhir;
+        } else if (penerimaan > 0 || pengeluaran > 0) {
           currentSaldo = currentSaldo + penerimaan - pengeluaran;
         }
       });

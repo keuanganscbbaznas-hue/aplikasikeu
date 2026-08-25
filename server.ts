@@ -397,13 +397,22 @@ async function startServer() {
       if (!spreadsheetId) {
         return res.status(400).send("Missing spreadsheetId");
       }
-      const targetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${gid || '0'}`;
-      const response = await fetch(targetUrl);
+      const timestamp = Date.now();
+      const targetUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${gid || '0'}&_t=${timestamp}`;
+      const response = await fetch(targetUrl, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
       if (!response.ok) {
         throw new Error(`Google Sheets responded with ${response.status}`);
       }
       const csvStr = await response.text();
       res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.send(csvStr);
     } catch (error: any) {
       console.error("Sheets Proxy Error:", error.message);
