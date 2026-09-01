@@ -10,10 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
-import { FileText, Plus, Search, ExternalLink, Download, Upload, Trash2, Edit2, FileDown, Calendar, Printer, RefreshCw, BarChart2, Settings, Calculator, ClipboardCheck, CheckCircle2, Coins, Layers, BarChart3, Clock, FileCheck } from 'lucide-react';
+import { FileText, Plus, Search, ExternalLink, Download, Upload, Trash2, Edit2, FileDown, Calendar, Printer, RefreshCw, BarChart2, Settings, Calculator, ClipboardCheck, CheckCircle2, Coins, Layers, BarChart3, Clock, FileCheck, FileSpreadsheet, Check } from 'lucide-react';
 import Papa from 'papaparse';
 import { toast } from 'sonner';
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 import { DEFAULT_BAZNAS_RINCIAN_SMP_JAN_2026, DEFAULT_BAZNAS_RINCIAN_SMA_JAN_2026, DEFAULT_BAZNAS_SETTLEMENT_SMA_JUNI_2026, BaznasRincianItem, RincianDetailItem } from './baznasDefaultRincian';
 import { UM_STAGES, TRANSACTION_STAGES, getDisplayAmount } from '../types';
 
@@ -251,6 +253,11 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
 
   // Detail Dialog State for inspecting complete report info
   const [selectedDetailItem, setSelectedDetailItem] = useState<any | null>(null);
+
+  // Rekap Export Dialog Modal
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportCategoryChoice, setExportCategoryChoice] = useState<'ALL' | 'cat1' | 'cat2' | 'cat3'>('ALL');
+  const [exportFormatChoice, setExportFormatChoice] = useState<'excel' | 'pdf'>('excel');
 
   const getItemTime = (item: any): number => {
     if (!item) return 0;
@@ -538,6 +545,232 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
       });
   }, [activeCategoryObj, searchTerm, filterMonth, filterYear, sortOption]);
 
+  const getSpecificStageName = (item: any): string => {
+    const type = item.type || 'uang_muka';
+    const stages = type === 'uang_muka' ? UM_STAGES : TRANSACTION_STAGES;
+    const stageName = stages[item.currentStageIndex];
+    if (stageName) return stageName;
+    if (item.status) return item.status;
+    return 'Dalam Proses';
+  };
+
+  const getItemLink = (item: any): string => {
+    const link = item.lpjUrl || item.evidenceUrl || item.linkDriveLPJ || item.driveLink || item.linkLaporan || item.linkPenyelesaian || item.bastLink;
+    return (link && typeof link === 'string') ? link.trim() : '';
+  };
+
+  const handleExportExcel = (itemsToExport: any[], categoryTitle: string) => {
+    if (!itemsToExport || itemsToExport.length === 0) {
+      toast.error('Tidak ada data transaksi untuk diekspor ke Excel.');
+      return;
+    }
+
+    try {
+      const exportRows = itemsToExport.map((item, idx) => ({
+        'No': idx + 1,
+        'No. Dokumen': item.noDokumen || '-',
+        'Judul Pengajuan': item.title || '-',
+        'Uraian / Keterangan': item.description || item.uraian || item.keterangan || '-',
+        'PIC / Pengaju': item.picName || item.submittedByName || '-',
+        'Tanggal Transaksi': formatItemDate(item),
+        'Tahap Status Spesifik': getSpecificStageName(item),
+        'Sumber Rekening': item.sumberRekening || '-',
+        'Link LPJ / Drive': getItemLink(item) || '-',
+        'Nominal (Rp)': getSubAmt(item)
+      }));
+
+      const totalAmount = itemsToExport.reduce((sum, item) => sum + getSubAmt(item), 0);
+
+      const ws = XLSX.utils.json_to_sheet(exportRows);
+
+      XLSX.utils.sheet_add_json(ws, [
+        {
+          'No': '',
+          'No. Dokumen': '',
+          'Judul Pengajuan': 'TOTAL AKUMULASI',
+          'Uraian / Keterangan': '',
+          'PIC / Pengaju': '',
+          'Tanggal Transaksi': '',
+          'Tahap Status Spesifik': `${itemsToExport.length} Transaksi`,
+          'Sumber Rekening': '',
+          'Link LPJ / Drive': '',
+          'Nominal (Rp)': totalAmount
+        }
+      ], { skipHeader: true, origin: -1 });
+
+      ws['!cols'] = [
+        { wch: 6 },
+        { wch: 22 },
+        { wch: 40 },
+        { wch: 35 },
+        { wch: 24 },
+        { wch: 18 },
+        { wch: 34 },
+        { wch: 20 },
+        { wch: 35 },
+        { wch: 20 },
+      ];
+
+      const wb = XLSX.utils.book_new();
+      const safeSheetName = (categoryTitle || 'Rincian Transaksi').replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 31);
+      XLSX.utils.book_append_sheet(wb, ws, safeSheetName || 'Rincian');
+
+      const dateStamp = new Date().toISOString().split('T')[0];
+      const safeFileName = `Rincian_Transaksi_${(categoryTitle || 'Status').replace(/\s+/g, '_')}_${dateStamp}.xlsx`;
+      XLSX.writeFile(wb, safeFileName);
+
+      toast.success(`File Excel berhasil diunduh: ${safeFileName}`);
+    } catch (error: any) {
+      console.error('Export Excel Error:', error);
+      toast.error(`Gagal mengekspor data ke Excel: ${error?.message || 'Terjadi kesalahan'}`);
+    }
+  };
+
+  const handleExportPDF = (itemsToExport: any[], categoryTitle: string) => {
+    if (!itemsToExport || itemsToExport.length === 0) {
+      toast.error('Tidak ada data transaksi untuk diekspor ke PDF.');
+      return;
+    }
+
+    try {
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const totalAmount = itemsToExport.reduce((sum, item) => sum + getSubAmt(item), 0);
+
+      // Header Banner
+      doc.setFillColor(15, 23, 42); // slate-900
+      doc.rect(0, 0, 297, 24, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SEKOLAH CENDEKIA BAZNAS (SCB) - SISTEM KEUANGAN', 14, 10);
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      doc.text(`RINCIAN TRANSAKSI PENGAJUAN: ${(categoryTitle || '').toUpperCase()}`, 14, 17);
+
+      let filterText = 'Semua Periode';
+      if (globalStartDate || globalEndDate) {
+        filterText = `Periode ${globalStartDate || '...'} s/d ${globalEndDate || '...'}`;
+      } else if (globalMonth !== 'ALL' || globalYear !== 'ALL') {
+        filterText = `Bulan: ${globalMonth !== 'ALL' ? globalMonth : 'Semua'}, Tahun: ${globalYear !== 'ALL' ? globalYear : 'Semua'}`;
+      }
+
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(51, 65, 85);
+      doc.text(`Filter Aktif: ${filterText}   |   Total Data: ${itemsToExport.length} Transaksi   |   Total Akumulasi: Rp ${totalAmount.toLocaleString('id-ID')}`, 14, 30);
+
+      const tableData = itemsToExport.map((item, idx) => [
+        idx + 1,
+        item.noDokumen || '-',
+        item.title || '-',
+        item.picName || item.submittedByName || '-',
+        formatItemDate(item),
+        getSpecificStageName(item),
+        item.sumberRekening || '-',
+        getItemLink(item) ? (getItemLink(item).length > 25 ? getItemLink(item).substring(0, 22) + '...' : getItemLink(item)) : '-',
+        `Rp ${getSubAmt(item).toLocaleString('id-ID')}`
+      ]);
+
+      let headerColor: [number, number, number] = [30, 41, 59];
+      if (categoryTitle.toLowerCase().includes('belum')) {
+        headerColor = [180, 83, 9]; // amber-700
+      } else if (categoryTitle.toLowerCase().includes('diverifikasi')) {
+        headerColor = [29, 78, 216]; // blue-700
+      } else if (categoryTitle.toLowerCase().includes('disusun')) {
+        headerColor = [4, 120, 87]; // emerald-700
+      }
+
+      autoTable(doc, {
+        head: [['No', 'No. Dokumen', 'Judul Pengajuan', 'PIC / Pengaju', 'Tanggal', 'Tahap / Status Laporan', 'Sumber Rek', 'Link LPJ', 'Nominal (Rp)']],
+        body: tableData,
+        foot: [['', '', 'TOTAL AKUMULASI', '', '', `${itemsToExport.length} Transaksi`, '', '', `Rp ${totalAmount.toLocaleString('id-ID')}`]],
+        startY: 34,
+        theme: 'striped',
+        headStyles: {
+          fillColor: headerColor,
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 7.5,
+          halign: 'center'
+        },
+        bodyStyles: {
+          fontSize: 7,
+          textColor: [30, 41, 59],
+          cellPadding: 2
+        },
+        footStyles: {
+          fillColor: [15, 23, 42],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 7.5
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 10 },
+          1: { cellWidth: 26 },
+          2: { cellWidth: 62 },
+          3: { cellWidth: 26 },
+          4: { halign: 'center', cellWidth: 20 },
+          5: { cellWidth: 42 },
+          6: { halign: 'center', cellWidth: 20 },
+          7: { cellWidth: 35 },
+          8: { halign: 'right', fontStyle: 'bold', cellWidth: 26 }
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        margin: { left: 14, right: 14, top: 34, bottom: 16 },
+        didDrawPage: (data) => {
+          const pageCount = (doc as any).internal.getNumberOfPages();
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(148, 163, 184);
+          doc.text(
+            `Halaman ${data.pageNumber} dari ${pageCount}  •  Dicetak: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
+            14,
+            205
+          );
+          doc.text('Sekolah Cendekia BAZNAS (SCB)', 240, 205);
+        }
+      });
+
+      const dateStamp = new Date().toISOString().split('T')[0];
+      const safeFileName = `Rincian_Transaksi_${(categoryTitle || 'Status').replace(/\s+/g, '_')}_${dateStamp}.pdf`;
+      doc.save(safeFileName);
+
+      toast.success(`File PDF berhasil diunduh: ${safeFileName}`);
+    } catch (error: any) {
+      console.error('Export PDF Error:', error);
+      toast.error(`Gagal mengekspor data ke PDF: ${error?.message || 'Terjadi kesalahan'}`);
+    }
+  };
+
+  const handleTriggerExportDialog = () => {
+    let itemsToProcess = dateFilteredSubmissions;
+    let titleToProcess = 'Semua Status Transaksi';
+
+    if (exportCategoryChoice === 'cat1') {
+      itemsToProcess = cat1Items;
+      titleToProcess = 'Belum Laporan (Masih di PIC)';
+    } else if (exportCategoryChoice === 'cat2') {
+      itemsToProcess = cat2Items;
+      titleToProcess = 'Laporan Sedang Diverifikasi';
+    } else if (exportCategoryChoice === 'cat3') {
+      itemsToProcess = cat3Items;
+      titleToProcess = 'Laporan Sedang Disusun';
+    }
+
+    if (exportFormatChoice === 'excel') {
+      handleExportExcel(itemsToProcess, titleToProcess);
+    } else {
+      handleExportPDF(itemsToProcess, titleToProcess);
+    }
+
+    setShowExportModal(false);
+  };
+
   return (
     <div className="mt-10 space-y-6 pt-6 border-t-2 border-slate-200" id="settlement-tracking-summary-section">
       {/* HEADER SECTION */}
@@ -558,8 +791,16 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
           </p>
         </div>
 
-        {/* METRIC PILLS */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* ACTION BUTTONS & METRIC PILLS */}
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <Button
+            onClick={() => setShowExportModal(true)}
+            className="h-10 px-4 text-xs font-black rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2 shadow-md border border-emerald-400/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
+            <FileDown size={16} />
+            <span>Download Rekap Transaksi</span>
+          </Button>
+
           <div className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl text-right">
             <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Total Transaksi</p>
             <p className="text-base font-black text-white">{grandTotalCount} Transaksi</p>
@@ -767,9 +1008,41 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
                   </p>
                 </div>
 
-                {/* Status List Preview */}
+                {/* Status List Preview & Quick Export */}
                 <div className="space-y-2 pt-2 border-t border-slate-200/60">
-                  <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">Daftar Status Termasuk:</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[9px] font-black uppercase tracking-wider text-slate-500">Daftar Status Termasuk:</p>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleExportExcel(cat.items, cat.name);
+                        }}
+                        className="h-6 px-1.5 text-[10px] font-bold text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/80 rounded-md border border-emerald-300/60 bg-emerald-50/80 flex items-center gap-1 shadow-2xs"
+                        title={`Download Excel ${cat.name}`}
+                      >
+                        <FileSpreadsheet size={12} />
+                        <span>Excel</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleExportPDF(cat.items, cat.name);
+                        }}
+                        className="h-6 px-1.5 text-[10px] font-bold text-rose-700 hover:text-rose-800 hover:bg-rose-100/80 rounded-md border border-rose-300/60 bg-rose-50/80 flex items-center gap-1 shadow-2xs"
+                        title={`Download PDF ${cat.name}`}
+                      >
+                        <Printer size={12} />
+                        <span>PDF</span>
+                      </Button>
+                    </div>
+                  </div>
                   <div className="flex flex-wrap gap-1">
                     {cat.statuses.map((st, idx) => (
                       <span key={idx} className="text-[9px] font-semibold bg-white text-slate-700 px-1.5 py-0.5 rounded border border-slate-200/80">
@@ -1050,9 +1323,32 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
               )}
             </div>
 
-            <span className="text-[11px] font-bold text-emerald-400 bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-700 shrink-0">
-              Menampilkan {filteredAndSortedItems.length} dari {activeCategoryObj.items.length} Transaksi
-            </span>
+            {/* ACTION DOWNLOAD BUTTONS & INFO */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                onClick={() => handleExportExcel(filteredAndSortedItems, activeCategoryObj.name)}
+                className="h-8 px-3 text-xs font-black rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-xs border border-emerald-500/40"
+                title="Download Data Terfilter ke Excel (.xlsx)"
+              >
+                <FileSpreadsheet size={14} />
+                <span>Download Excel</span>
+              </Button>
+
+              <Button
+                type="button"
+                onClick={() => handleExportPDF(filteredAndSortedItems, activeCategoryObj.name)}
+                className="h-8 px-3 text-xs font-black rounded-xl bg-rose-600 hover:bg-rose-500 text-white flex items-center gap-1.5 shadow-xs border border-rose-500/40"
+                title="Download Data Terfilter ke PDF (.pdf)"
+              >
+                <Printer size={14} />
+                <span>Download PDF</span>
+              </Button>
+
+              <span className="text-[11px] font-bold text-emerald-400 bg-slate-900 px-2.5 py-1 rounded-xl border border-slate-700 shrink-0">
+                Menampilkan {filteredAndSortedItems.length} dari {activeCategoryObj.items.length} Transaksi
+              </span>
+            </div>
           </div>
 
           <CardContent className="p-0">
@@ -1291,6 +1587,169 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
           </DialogContent>
         </Dialog>
       )}
+
+      {/* MODAL DIALOG EXPORT REKAPITULASI TRANSAKSI */}
+      <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
+        <DialogContent className="max-w-md rounded-2xl p-6 bg-white border border-slate-200 text-slate-900 shadow-2xl">
+          <DialogHeader>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border border-emerald-200">
+                EKSPOR DOKUMEN
+              </span>
+            </div>
+            <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+              <FileDown className="text-emerald-600" size={22} />
+              Download Rekap Transaksi Pengajuan
+            </DialogTitle>
+            <p className="text-xs text-slate-500 font-medium">
+              Pilih kategori status transaksi dan format file dokumen yang ingin Anda unduh.
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2 text-xs">
+            {/* PILIH KATEGORI STATUS */}
+            <div>
+              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5 block">
+                Pilih Kategori Status Transaksi
+              </Label>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setExportCategoryChoice('ALL')}
+                  className={`w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between ${
+                    exportCategoryChoice === 'ALL'
+                      ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  <div>
+                    <p className="font-black text-xs">Semua Kategori Status Transaksi</p>
+                    <p className={`text-[10px] ${exportCategoryChoice === 'ALL' ? 'text-slate-300' : 'text-slate-500'}`}>
+                      Akumulasi seluruh transaksi ({dateFilteredSubmissions.length} Transaksi)
+                    </p>
+                  </div>
+                  <span className="font-mono font-bold text-xs">
+                    Rp {grandTotalAmount.toLocaleString('id-ID')}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setExportCategoryChoice('cat1')}
+                  className={`w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between ${
+                    exportCategoryChoice === 'cat1'
+                      ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                      : 'bg-amber-50/60 text-amber-900 border-amber-200 hover:bg-amber-100/70'
+                  }`}
+                >
+                  <div>
+                    <p className="font-black text-xs">Kategori I: Belum Laporan (Masih di PIC)</p>
+                    <p className={`text-[10px] ${exportCategoryChoice === 'cat1' ? 'text-amber-100' : 'text-amber-700'}`}>
+                      LPJ masih berada di PIC ({cat1Items.length} Transaksi)
+                    </p>
+                  </div>
+                  <span className="font-mono font-bold text-xs">
+                    Rp {cat1Amount.toLocaleString('id-ID')}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setExportCategoryChoice('cat2')}
+                  className={`w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between ${
+                    exportCategoryChoice === 'cat2'
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                      : 'bg-blue-50/60 text-blue-900 border-blue-200 hover:bg-blue-100/70'
+                  }`}
+                >
+                  <div>
+                    <p className="font-black text-xs">Kategori II: Laporan Sedang Diverifikasi</p>
+                    <p className={`text-[10px] ${exportCategoryChoice === 'cat2' ? 'text-blue-100' : 'text-blue-700'}`}>
+                      Verifikasi berkas LPJ & selisih ({cat2Items.length} Transaksi)
+                    </p>
+                  </div>
+                  <span className="font-mono font-bold text-xs">
+                    Rp {cat2Amount.toLocaleString('id-ID')}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setExportCategoryChoice('cat3')}
+                  className={`w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between ${
+                    exportCategoryChoice === 'cat3'
+                      ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm'
+                      : 'bg-emerald-50/60 text-emerald-900 border-emerald-200 hover:bg-emerald-100/70'
+                  }`}
+                >
+                  <div>
+                    <p className="font-black text-xs">Kategori III: Laporan Sedang Disusun</p>
+                    <p className={`text-[10px] ${exportCategoryChoice === 'cat3' ? 'text-emerald-100' : 'text-emerald-700'}`}>
+                      Digitalisasi & penyusunan settlement ({cat3Items.length} Transaksi)
+                    </p>
+                  </div>
+                  <span className="font-mono font-bold text-xs">
+                    Rp {cat3Amount.toLocaleString('id-ID')}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* PILIH FORMAT FILE */}
+            <div className="pt-2">
+              <Label className="text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5 block">
+                Pilih Format File Unduhan
+              </Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setExportFormatChoice('excel')}
+                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all ${
+                    exportFormatChoice === 'excel'
+                      ? 'bg-emerald-50 border-emerald-600 text-emerald-800 ring-2 ring-emerald-600 font-black shadow-xs'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 font-bold'
+                  }`}
+                >
+                  <FileSpreadsheet size={24} className={exportFormatChoice === 'excel' ? 'text-emerald-600' : 'text-slate-400'} />
+                  <span className="text-xs">Microsoft Excel (.xlsx)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setExportFormatChoice('pdf')}
+                  className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all ${
+                    exportFormatChoice === 'pdf'
+                      ? 'bg-rose-50 border-rose-600 text-rose-800 ring-2 ring-rose-600 font-black shadow-xs'
+                      : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 font-bold'
+                  }`}
+                >
+                  <Printer size={24} className={exportFormatChoice === 'pdf' ? 'text-rose-600' : 'text-slate-400'} />
+                  <span className="text-xs">Dokumen PDF (.pdf)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-row items-center justify-end gap-2 pt-3 border-t border-slate-100">
+            <Button
+              variant="outline"
+              onClick={() => setShowExportModal(false)}
+              className="h-9 px-4 text-xs font-bold rounded-xl border-slate-300 text-slate-600 hover:bg-slate-100"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleTriggerExportDialog}
+              className={`h-9 px-5 text-xs font-black rounded-xl text-white flex items-center gap-2 shadow-md ${
+                exportFormatChoice === 'excel' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-rose-600 hover:bg-rose-500'
+              }`}
+            >
+              <FileDown size={16} />
+              <span>Unduh {exportFormatChoice.toUpperCase()} Sekarang</span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
