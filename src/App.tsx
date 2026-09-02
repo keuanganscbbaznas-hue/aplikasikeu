@@ -134,7 +134,10 @@ import { Phone, Send } from 'lucide-react';
 const formatWhatsAppMessage = (submission: Submission) => {
   const stages = getStagesByType(submission.type);
   const currentStatus = stages[submission.currentStageIndex];
-  const url = 'https://aplikasikeu.vercel.app';
+  const currentHost = typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : '';
+  const url = (currentHost && !currentHost.includes('localhost') && !currentHost.includes('127.0.0.1'))
+    ? window.location.origin
+    : 'https://aplikasikeu.vercel.app';
   
   return `Assalamu'alaikum \nPIC ${submission.picName || submission.submittedByName}, Informasi Update Pengajuan:\n📦 Judul: ${submission.title}\n💰 Nominal: Rp ${getDisplayAmount(submission).toLocaleString('id-ID')}\n📝 Status: ${currentStatus}\n\nSilakan cek detail selengkapnya di aplikasi: ${url}\n\nTerima kasih.`;
 };
@@ -558,8 +561,22 @@ function SubmissionCard({
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [profile, setProfile] = useState<UserProfile | null>(() => {
+    try {
+      const cached = localStorage.getItem('scb_cached_profile');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [submissions, setSubmissions] = useState<Submission[]>(() => {
+    try {
+      const cached = localStorage.getItem('scb_cached_submissions');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [submissionLimit, setSubmissionLimit] = useState<number>(150);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [logoURL, setLogoURL] = useState<string>('/logo.png');
@@ -755,6 +772,9 @@ export default function App() {
               data.role = 'admin';
               data.allowedMenus = fullAllowed;
             }
+            try {
+              localStorage.setItem('scb_cached_profile', JSON.stringify(data));
+            } catch {}
             setProfile(data);
           } else {
             // Create default profile for new users
@@ -767,20 +787,29 @@ export default function App() {
               allowedMenus: shouldBeAdmin ? fullAllowed : ['dashboard', 'tracking', 'analisis'],
               createdAt: serverTimestamp(),
             };
-            await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
+            try {
+              await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
+            } catch {}
+            try {
+              localStorage.setItem('scb_cached_profile', JSON.stringify(newProfile));
+            } catch {}
             setProfile(newProfile);
           }
         } catch (error) {
-          console.error("Error fetching profile:", error);
+          console.warn("Could not fetch latest profile, using local fallback:", error);
           const userEmail = (firebaseUser.email || '').trim().toLowerCase();
-          setProfile({
+          const fallbackProfile: UserProfile = {
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
             displayName: firebaseUser.displayName || 'User',
             role: isEmailAdmin(userEmail) ? 'admin' : 'staff',
             allowedMenus: ['dashboard', 'tracking', 'analisis', 'buku_kas', 'anggaran', 'laporan', 'realisasi', 'berkas', 'administrasi'],
             createdAt: null
-          });
+          };
+          try {
+            localStorage.setItem('scb_cached_profile', JSON.stringify(fallbackProfile));
+          } catch {}
+          setProfile(fallbackProfile);
         }
       } else {
         setProfile(null);
@@ -799,6 +828,9 @@ export default function App() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
       setSubmissions(docs);
+      try {
+        localStorage.setItem('scb_cached_submissions', JSON.stringify(docs));
+      } catch {}
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'submissions');
     });
@@ -813,6 +845,8 @@ export default function App() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ ...doc.data() } as UserProfile));
       setAllUsers(docs);
+    }, (error) => {
+      console.warn("Could not load users list:", error);
     });
 
     return () => unsubscribe();
@@ -823,6 +857,8 @@ export default function App() {
       if (doc.exists()) {
         setLogoURL(doc.data().logoURL);
       }
+    }, (error) => {
+      console.warn("Could not load app config:", error);
     });
     return () => unsub();
   }, []);
@@ -875,6 +911,8 @@ export default function App() {
           kasirDefaultSign: "",
         });
       }
+    }, (error) => {
+      console.warn("Could not load fppp config:", error);
     });
     return () => unsub();
   }, []);
@@ -3821,6 +3859,8 @@ function ApprovalDialog({
       if (docSnap.exists()) {
         setFpppConfigLocal(docSnap.data());
       }
+    }, (error) => {
+      console.warn("Could not load fppp config local:", error);
     });
     return () => unsub();
   }, []);
@@ -4580,6 +4620,8 @@ function SubmissionDetailView({
           kasirDefaultSign: "",
         });
       }
+    }, (error) => {
+      console.warn("Could not load fppp config local:", error);
     });
     return () => unsub();
   }, []);

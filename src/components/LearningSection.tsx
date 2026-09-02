@@ -90,6 +90,9 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
       })) as GalleryItem[];
       setItems(docs);
       setLoading(false);
+    }, (error) => {
+      console.warn("Could not load dashboard_gallery:", error);
+      setLoading(false);
     });
 
     return () => unsubscribe();

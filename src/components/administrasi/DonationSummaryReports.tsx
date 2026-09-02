@@ -512,6 +512,9 @@ export const DonationSummaryReports = () => {
       }
       
       setLoading(false);
+    }, (error) => {
+      console.warn("Could not load donations summary:", error);
+      setLoading(false);
     });
 
     return () => unsubscribe();

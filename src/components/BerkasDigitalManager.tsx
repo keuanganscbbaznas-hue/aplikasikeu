@@ -42,6 +42,8 @@ export const BerkasDigitalManager = () => {
       const data: any[] = [];
       snapshot.forEach(doc => data.push({id: doc.id, ...doc.data()}));
       setLinks(data);
+    }, (error) => {
+      console.warn("Could not load berkas_digital:", error);
     });
     return () => unsubscribe();
   }, []);

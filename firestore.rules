@@ -27,7 +27,9 @@ service cloud.firestore {
         (request.auth.token.email == "keuanganscbbaznas@gmail.com" || 
          request.auth.token.email == "keuangan.scb@gmail.com" ||
          request.auth.token.email == "kamal2015go@gmail.com" ||
-         request.auth.token.email == "operasional.scb@gmail.com") && 
+         request.auth.token.email == "operasional.scb@gmail.com" ||
+         request.auth.token.email == "latifatul.aminah@baznas.go.id" ||
+         request.auth.token.email == "nnur97637@gmail.com") && 
         request.auth.token.email_verified == true
       );
       

@@ -86,6 +86,9 @@ export const DonationList = () => {
       }));
       setDonations(data);
       setLoading(false);
+    }, (error) => {
+      console.warn("Could not load donations:", error);
+      setLoading(false);
     });
 
     return () => unsubscribe();
