@@ -160,14 +160,16 @@ const ADMIN_EMAILS = [
   'keuangan.scb@gmail.com',
   'tatausahascba@gmail.com',
   'kamal2015go@gmail.com',
-  'operasional.scb@gmail.com'
+  'operasional.scb@gmail.com',
+  'latifatul.aminah@baznas.go.id'
 ];
 const TRACKING_ADMIN_EMAILS = [
   'keuanganscbbaznas@gmail.com',
   'keuangan.scb@gmail.com',
   'tatausahascba@gmail.com',
   'kamal2015go@gmail.com',
-  'operasional.scb@gmail.com'
+  'operasional.scb@gmail.com',
+  'latifatul.aminah@baznas.go.id'
 ];
 
 function DebouncedInput({ 
@@ -589,6 +591,11 @@ export default function App() {
   const isKeuanganSCB = useMemo(() => {
     if (!profile) return false;
     return profile.email === 'keuangan.scb@gmail.com';
+  }, [profile]);
+
+  const isLatifatul = useMemo(() => {
+    if (!profile) return false;
+    return profile.email?.toLowerCase() === 'latifatul.aminah@baznas.go.id';
   }, [profile]);
 
   const isOwner = useMemo(() => {
@@ -1362,9 +1369,9 @@ export default function App() {
 
     return (
       itemAccess === 'all' || 
-      (itemAccess === 'admin' && (isAdmin || (['laporan'].includes(itemId) && (isKamal || isKeuanganSCB)))) || 
+      (itemAccess === 'admin' && (isAdmin || isLatifatul || (['laporan'].includes(itemId) && (isKamal || isKeuanganSCB)))) || 
       (itemAccess === 'superadmin' && isSuperAdmin) ||
-      (itemAccess === 'owner' && (profile?.email === OWNER_EMAIL || (['anggaran'].includes(itemId) && (isKamal || isKeuanganSCB)))) ||
+      (itemAccess === 'owner' && (profile?.email === OWNER_EMAIL || isLatifatul || (['anggaran'].includes(itemId) && (isKamal || isKeuanganSCB)))) ||
       (itemAccess === 'owner_only' && profile?.email === OWNER_EMAIL)
     );
   };
@@ -3542,7 +3549,8 @@ function ImportSubmissionModal({ profile, user, variant = 'default' }: { profile
               'keuanganscbbaznas@gmail.com', 
               'keuangan.scb@gmail.com',
               'kamal2015go@gmail.com',
-              'tatausahascba@gmail.com'
+              'tatausahascba@gmail.com',
+              'latifatul.aminah@baznas.go.id'
             ].includes(profile.email))) {
               const foundIndex = stages.findIndex(s => s.toLowerCase() === row.statusTahap.toLowerCase().trim());
               if (foundIndex !== -1) {
@@ -5660,7 +5668,8 @@ const getDefaultMenusForUser = (p: UserProfile): string[] => {
     pEmail === 'tatausahascba@gmail.com' || 
     pEmail === 'kamal2015go@gmail.com' || 
     pEmail === 'operasional.scb@gmail.com' || 
-    pEmail === 'keuanganscbbaznas@gmail.com'
+    pEmail === 'keuanganscbbaznas@gmail.com' ||
+    pEmail === 'latifatul.aminah@baznas.go.id'
   ) {
     defaults.push('buku_kas', 'laporan', 'realisasi', 'berkas', 'administrasi');
   }
@@ -5673,7 +5682,8 @@ const getDefaultMenusForUser = (p: UserProfile): string[] => {
     pEmail === 'keuanganscbbaznas@gmail.com' || 
     pEmail === 'kamal2015go@gmail.com' || 
     pEmail === 'tatausahascba@gmail.com' || 
-    pEmail === 'keuangan.scb@gmail.com'
+    pEmail === 'keuangan.scb@gmail.com' ||
+    pEmail === 'latifatul.aminah@baznas.go.id'
   ) {
     if (!defaults.includes('anggaran')) {
       defaults.push('anggaran');
