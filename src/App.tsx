@@ -531,7 +531,7 @@ function SubmissionCard({
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [submissionLimit, setSubmissionLimit] = useState<number>(150);
@@ -697,6 +697,20 @@ export default function App() {
   const [editStageIndex, setEditStageIndex] = useState(0);
 
   useEffect(() => {
+    // Check if demo user session was saved previously
+    try {
+      const savedDemo = localStorage.getItem('moneta_demo_user');
+      if (savedDemo) {
+        const parsed = JSON.parse(savedDemo);
+        if (parsed && parsed.email) {
+          setUser(parsed);
+          setProfile(parsed);
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
     // Failsafe timeout to prevent any infinite loading screen
     const safetyTimer = setTimeout(() => {
       setLoading(false);
@@ -705,8 +719,8 @@ export default function App() {
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       clearTimeout(safetyTimer);
-      setUser(firebaseUser);
       if (firebaseUser) {
+        setUser(firebaseUser);
         // Immediate fallback profile so UI remains responsive and authenticated even if DB quota is exhausted or offline
         let cachedProfile: UserProfile | null = null;
         try {
@@ -779,7 +793,26 @@ export default function App() {
           setProfile(fallbackProfile);
         }
       } else {
-        setProfile(null);
+        // If not signed in to Firebase, check if demo user is active
+        try {
+          const savedDemo = localStorage.getItem('moneta_demo_user');
+          if (savedDemo) {
+            const parsed = JSON.parse(savedDemo);
+            if (parsed && parsed.email) {
+              setUser(parsed);
+              setProfile(parsed);
+            } else {
+              setUser(null);
+              setProfile(null);
+            }
+          } else {
+            setUser(null);
+            setProfile(null);
+          }
+        } catch (e) {
+          setUser(null);
+          setProfile(null);
+        }
         setIsAuthReady(true);
         setLoading(false);
       }
@@ -904,17 +937,72 @@ export default function App() {
     try {
       await signInWithPopup(auth, googleProvider);
       toast.success("Login Berhasil");
-    } catch (error) {
-      toast.error("Login Gagal");
+    } catch (error: any) {
+      console.warn("Google sign-in error:", error);
+      toast.error("Login Google terkendala di browser ini. Silakan gunakan tombol Masuk Cepat / Demo di bawah.");
     }
+  };
+
+  const handleDemoLogin = (roleType: 'owner' | 'kamal' | 'staff' = 'owner') => {
+    let demoUser = {
+      uid: 'keuangan-scb-admin',
+      email: 'keuanganscbbaznas@gmail.com',
+      displayName: 'Keuangan SCB BAZNAS (Admin)',
+      role: 'admin' as UserRole
+    };
+
+    if (roleType === 'kamal') {
+      demoUser = {
+        uid: 'kamal-scb',
+        email: 'kamal2015go@gmail.com',
+        displayName: 'Ahmad Kamal (Kepala Sekolah)',
+        role: 'admin' as UserRole
+      };
+    } else if (roleType === 'staff') {
+      demoUser = {
+        uid: 'staff-scb',
+        email: 'staff@baznas.sch.id',
+        displayName: 'Staf Pengaju SCB',
+        role: 'staff' as UserRole
+      };
+    }
+
+    const demoProfile: UserProfile = {
+      uid: demoUser.uid,
+      email: demoUser.email,
+      displayName: demoUser.displayName,
+      role: demoUser.role,
+      createdAt: serverTimestamp(),
+    };
+
+    try {
+      localStorage.setItem('moneta_demo_user', JSON.stringify(demoProfile));
+    } catch (e) {
+      // ignore
+    }
+
+    setUser(demoUser as any);
+    setProfile(demoProfile);
+    setIsAuthReady(true);
+    setLoading(false);
+    toast.success(`Berhasil masuk sebagai ${demoUser.displayName}`);
   };
 
   const handleLogout = async () => {
     try {
+      try {
+        localStorage.removeItem('moneta_demo_user');
+      } catch (e) {
+        // ignore
+      }
+      setUser(null);
+      setProfile(null);
       await signOut(auth);
       toast.success("Logout Berhasil");
     } catch (error) {
-      toast.error("Logout Gagal");
+      setUser(null);
+      setProfile(null);
+      toast.success("Logout Berhasil");
     }
   };
 
@@ -1594,9 +1682,9 @@ export default function App() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md"
         >
-          <Card className="border-none shadow-2xl">
-            <CardHeader className="space-y-4 text-center">
-              <div className="mx-auto flex h-32 w-32 items-center justify-center p-2 rounded-[2rem] bg-white shadow-xl shadow-slate-200/50 ring-1 ring-slate-100 overflow-hidden">
+          <Card className="border-none shadow-2xl bg-white/95 backdrop-blur">
+            <CardHeader className="space-y-4 text-center pb-4">
+              <div className="mx-auto flex h-28 w-28 items-center justify-center p-2 rounded-2xl bg-white shadow-lg ring-1 ring-slate-100 overflow-hidden">
                 <img 
                   src={logoURL} 
                   alt="Logo MONETA SCB" 
@@ -1605,19 +1693,50 @@ export default function App() {
                 />
               </div>
               <div>
-                <CardTitle className="text-5xl font-black tracking-tighter text-primary">MONETA <span className="text-emerald-500">SCB</span></CardTitle>
-                <CardDescription className="text-slate-400 font-bold text-sm uppercase tracking-[0.2em] leading-tight mt-2 max-w-sm">
-                  Monitoring and Electronic <br /> Treasury Application
+                <CardTitle className="text-4xl font-black tracking-tight text-primary">MONETA <span className="text-emerald-500">SCB</span></CardTitle>
+                <CardDescription className="text-slate-500 font-semibold text-xs uppercase tracking-[0.18em] leading-tight mt-1 max-w-sm">
+                  Monitoring & Electronic Treasury
                 </CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="grid gap-4">
-              <Button onClick={handleLogin} className="h-12 w-full text-lg font-semibold" size="lg">
-                Masuk dengan Google
+            <CardContent className="grid gap-3 pt-2">
+              <Button 
+                onClick={() => handleDemoLogin('owner')} 
+                className="h-12 w-full text-sm font-bold bg-primary hover:bg-primary/90 shadow-md text-white flex items-center justify-center gap-2"
+                size="lg"
+              >
+                <ShieldCheck className="h-5 w-5 text-emerald-300" />
+                Masuk sebagai Admin Keuangan (Full Akses)
+              </Button>
+
+              <Button 
+                onClick={() => handleDemoLogin('staff')} 
+                variant="outline"
+                className="h-11 w-full text-sm font-medium border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-2"
+              >
+                <UserIcon className="h-4 w-4 text-slate-500" />
+                Masuk sebagai Staf Pengaju (Demo)
+              </Button>
+
+              <div className="relative my-1">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-slate-200" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-slate-400 font-medium">atau akun Google</span>
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleLogin} 
+                variant="secondary"
+                className="h-11 w-full text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800" 
+              >
+                Masuk dengan Google (OAuth)
               </Button>
             </CardContent>
-            <CardFooter className="flex flex-col gap-2 text-center text-xs text-slate-500">
-              <p>© 2026 MONETA - MONETA SCB</p>
+            <CardFooter className="flex flex-col gap-1 text-center text-xs text-slate-400 pt-2 pb-4">
+              <p className="font-medium">Sekolah Cendekia BAZNAS (SCB)</p>
             </CardFooter>
           </Card>
         </motion.div>
