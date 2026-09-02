@@ -355,31 +355,83 @@ async function startServer() {
     try {
       const auth = getAuthClient();
       const sheets = google.sheets({ version: "v4", auth });
-      const { spreadsheetId, data } = req.body;
+      const { spreadsheetId, data, sheetName } = req.body;
 
-      // Clear the sheet first
-      await sheets.spreadsheets.values.clear({
-        spreadsheetId,
-        range: 'A:Z',
-      });
+      if (!spreadsheetId) {
+        return res.status(400).json({ error: "Missing spreadsheetId" });
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        return res.status(400).json({ error: "Data must be a non-empty array of rows" });
+      }
+
+      // Check spreadsheet info to identify sheet tabs
+      const spreadsheetInfo = await sheets.spreadsheets.get({ spreadsheetId });
+      const sheetsList = spreadsheetInfo.data.sheets || [];
+
+      let targetSheetTitle = sheetName || "Tracking Transaksi";
+      const sheetExists = sheetsList.some(s => s.properties?.title === targetSheetTitle);
+
+      if (!sheetExists && sheetsList.length > 0) {
+        // Attempt to create sheet tab with title
+        try {
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            requestBody: {
+              requests: [
+                {
+                  addSheet: {
+                    properties: {
+                      title: targetSheetTitle,
+                    },
+                  },
+                },
+              ],
+            },
+          });
+        } catch (addErr) {
+          // Fallback to first existing tab if creation is restricted
+          targetSheetTitle = sheetsList[0].properties?.title || "Sheet1";
+        }
+      }
+
+      // Clear the target sheet range first
+      try {
+        await sheets.spreadsheets.values.clear({
+          spreadsheetId,
+          range: `'${targetSheetTitle}'!A:Z`,
+        });
+      } catch (clearErr) {
+        // Fallback without single quotes if needed
+        await sheets.spreadsheets.values.clear({
+          spreadsheetId,
+          range: 'A:Z',
+        });
+      }
 
       // Write new data
-      await sheets.spreadsheets.values.update({
+      const updateResponse = await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: 'A1',
+        range: `'${targetSheetTitle}'!A1`,
         valueInputOption: 'USER_ENTERED',
         requestBody: {
-          values: data
-        }
+          values: data,
+        },
       });
 
-      res.json({ success: true });
+      res.json({ 
+        success: true, 
+        updatedRows: data.length - 1, 
+        sheetTitle: targetSheetTitle,
+        spreadsheetUrl: `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,
+        updates: updateResponse.data 
+      });
     } catch (error: any) {
       console.error("Sheets Sync Error:", error.message);
-      if (error.code === 403 || error.message.includes('permission')) {
+      if (error.code === 403 || (error.message && error.message.includes('permission'))) {
         return res.status(403).json({ 
           error: "Sheets Sync Error: The caller does not have permission",
-          message: `Service Account (${process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL}) tidak memiliki akses ke Spreadsheet ini. Silakan bagikan Spreadsheet tersebut ke email Service Account sebagai 'Editor'.`,
+          message: `Service Account (${process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || 'Service Account'}) tidak memiliki akses ke Spreadsheet ini. Silakan bagikan Spreadsheet tersebut ke email Service Account sebagai 'Editor'.`,
           serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
         });
       }

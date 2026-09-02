@@ -54,6 +54,7 @@ import { GlobalBalanceSummary } from './components/GlobalBalanceSummary';
 import { StatusMultiSelect } from './components/StatusMultiSelect';
 import { GenericMultiSelect } from './components/GenericMultiSelect';
 import { UM_STAGES, TRANSACTION_STAGES } from './types';
+import { GoogleSheetsSyncModal } from './components/GoogleSheetsSyncModal';
 import { BaznasBudgetManager } from './components/BaznasBudgetManager';
 import { LaporanManager, SettlementTrackingSummarySection } from './components/LaporanManager';
 import { AdministrasiManager } from './components/administrasi/AdministrasiManager';
@@ -555,6 +556,7 @@ export default function App() {
   const [editingSubmission, setEditingSubmission] = useState<Submission | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedSubmissions, setSelectedSubmissions] = useState<Set<string>>(new Set());
+  const [isSyncSheetModalOpen, setIsSyncSheetModalOpen] = useState(false);
   const [trackingTab, setTrackingTab] = useState<string>('all');
   const [activeTab, setActiveTab] = useState<'dashboard' | 'tracking' | 'buku_kas' | 'anggaran' | 'laporan' | 'realisasi' | 'berkas' | 'administrasi' | 'analisis' | 'settings'>('dashboard');
   const [bukuKasUnit, setBukuKasUnit] = useState<'smp' | 'sma'>('smp');
@@ -2247,11 +2249,12 @@ export default function App() {
 
                           {isAdmin && (
                             <Button 
-                              onClick={syncSubmissionsToSheets}
+                              onClick={() => setIsSyncSheetModalOpen(true)}
                               variant="outline" 
                               className="h-10 bg-white border-slate-100 shadow-lg shadow-slate-200/40 rounded-xl px-4 flex items-center gap-2 group hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-700 transition-all font-black text-[10px] uppercase tracking-wider"
+                              title="Buka Menu Sinkronisasi Google Sheets"
                             >
-                              <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
+                              <RefreshCw size={14} className="group-hover:rotate-180 transition-transform duration-500 text-emerald-600" />
                               <span>Sync to Sheets</span>
                             </Button>
                           )}
@@ -2876,6 +2879,14 @@ export default function App() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <GoogleSheetsSyncModal
+        isOpen={isSyncSheetModalOpen}
+        onClose={() => setIsSyncSheetModalOpen(false)}
+        allSubmissions={submissions}
+        filteredSubmissions={filteredSubmissions}
+        selectedSubmissionIds={selectedSubmissions}
+      />
 
       <Toaster position="top-right" />
     </>
