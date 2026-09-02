@@ -31,7 +31,14 @@ import {
   SubmissionType,
   HistoryEntry 
 } from './types';
-import { handleFirestoreError, OperationType } from './lib/firebaseUtils';
+import { 
+  handleFirestoreError, 
+  OperationType,
+  FIRESTORE_UPGRADE_URL,
+  FIRESTORE_PRICING_URL,
+  isQuotaExceededError,
+  onFirestoreError
+} from './lib/firebaseUtils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -134,10 +141,7 @@ import { Phone, Send } from 'lucide-react';
 const formatWhatsAppMessage = (submission: Submission) => {
   const stages = getStagesByType(submission.type);
   const currentStatus = stages[submission.currentStageIndex];
-  const currentHost = typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : '';
-  const url = (currentHost && !currentHost.includes('localhost') && !currentHost.includes('127.0.0.1'))
-    ? window.location.origin
-    : 'https://aplikasikeu.vercel.app';
+  const url = 'https://aplikasikeu.vercel.app';
   
   return `Assalamu'alaikum \nPIC ${submission.picName || submission.submittedByName}, Informasi Update Pengajuan:\n📦 Judul: ${submission.title}\n💰 Nominal: Rp ${getDisplayAmount(submission).toLocaleString('id-ID')}\n📝 Status: ${currentStatus}\n\nSilakan cek detail selengkapnya di aplikasi: ${url}\n\nTerima kasih.`;
 };
@@ -163,48 +167,15 @@ const ADMIN_EMAILS = [
   'keuangan.scb@gmail.com',
   'tatausahascba@gmail.com',
   'kamal2015go@gmail.com',
-  'operasional.scb@gmail.com',
-  'latifatul.aminah@baznas.go.id',
-  'nnur97637@gmail.com'
+  'operasional.scb@gmail.com'
 ];
 const TRACKING_ADMIN_EMAILS = [
   'keuanganscbbaznas@gmail.com',
   'keuangan.scb@gmail.com',
   'tatausahascba@gmail.com',
   'kamal2015go@gmail.com',
-  'operasional.scb@gmail.com',
-  'latifatul.aminah@baznas.go.id',
-  'nnur97637@gmail.com'
+  'operasional.scb@gmail.com'
 ];
-
-export const isSpecialStaff = (email?: string | null): boolean => {
-  if (!email) return false;
-  const clean = email.trim().toLowerCase();
-  return (
-    clean === 'latifatul.aminah@baznas.go.id' ||
-    clean === 'nnur97637@gmail.com' ||
-    clean.includes('latifatul.aminah') ||
-    clean.includes('nnur97637')
-  );
-};
-
-export const isEmailAdmin = (email?: string | null): boolean => {
-  if (!email) return false;
-  const clean = email.trim().toLowerCase();
-  return (
-    ADMIN_EMAILS.some(e => e.trim().toLowerCase() === clean) ||
-    isSpecialStaff(clean)
-  );
-};
-
-export const isEmailTrackingAdmin = (email?: string | null): boolean => {
-  if (!email) return false;
-  const clean = email.trim().toLowerCase();
-  return (
-    TRACKING_ADMIN_EMAILS.some(e => e.trim().toLowerCase() === clean) ||
-    isSpecialStaff(clean)
-  );
-};
 
 function DebouncedInput({ 
   value, 
@@ -561,28 +532,15 @@ function SubmissionCard({
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(() => {
-    try {
-      const cached = localStorage.getItem('scb_cached_profile');
-      return cached ? JSON.parse(cached) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [submissions, setSubmissions] = useState<Submission[]>(() => {
-    try {
-      const cached = localStorage.getItem('scb_cached_submissions');
-      return cached ? JSON.parse(cached) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [submissionLimit, setSubmissionLimit] = useState<number>(150);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-  const [logoURL, setLogoURL] = useState<string>('/logo.png');
+  const [logoURL, setLogoURL] = useState<string>('/baznas-logo.png');
   const [fpppConfig, setFpppConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [hasQuotaExceeded, setHasQuotaExceeded] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string[]>([]);
@@ -602,6 +560,15 @@ export default function App() {
   const [bukuKasUnit, setBukuKasUnit] = useState<'smp' | 'sma'>('smp');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
+  useEffect(() => {
+    const unsubscribeError = onFirestoreError((errInfo) => {
+      if (isQuotaExceededError(errInfo.error)) {
+        setHasQuotaExceeded(true);
+      }
+    });
+    return () => unsubscribeError();
+  }, []);
+
   const toggleSelection = (id: string) => {
     setSelectedSubmissions(prev => {
       const newSet = new Set(prev);
@@ -616,57 +583,36 @@ export default function App() {
 
   // Super Admin check
   const isSuperAdmin = useMemo(() => {
-    const uEmail = (user?.email || '').trim().toLowerCase();
-    const pEmail = (profile?.email || '').trim().toLowerCase();
-    return SUPER_ADMIN_EMAILS.some(e => e.toLowerCase() === uEmail || e.toLowerCase() === pEmail);
-  }, [profile, user]);
+    if (!profile) return false;
+    return SUPER_ADMIN_EMAILS.includes(profile.email);
+  }, [profile]);
 
-  // Admin check - includes special staff latifatul & nnur97637 and other admins
+  // Admin check
   const isAdmin = useMemo(() => {
-    const uEmail = (user?.email || '').trim().toLowerCase();
-    const pEmail = (profile?.email || '').trim().toLowerCase();
-    if (isEmailAdmin(uEmail) || isEmailAdmin(pEmail)) return true;
-    if (profile?.role === 'admin') return true;
-    return false;
-  }, [profile, user]);
+    if (!profile) return false;
+    return profile.role === 'admin' || ADMIN_EMAILS.includes(profile.email);
+  }, [profile]);
 
   const isTrackingAdmin = useMemo(() => {
-    const uEmail = (user?.email || '').trim().toLowerCase();
-    const pEmail = (profile?.email || '').trim().toLowerCase();
-    if (isEmailTrackingAdmin(uEmail) || isEmailTrackingAdmin(pEmail)) return true;
-    if (profile?.role === 'admin') return true;
-    return false;
-  }, [profile, user]);
+    if (!profile) return false;
+    return TRACKING_ADMIN_EMAILS.includes(profile.email);
+  }, [profile]);
 
   const isKamal = useMemo(() => {
-    const uEmail = (user?.email || '').trim().toLowerCase();
-    const pEmail = (profile?.email || '').trim().toLowerCase();
-    return uEmail === 'kamal2015go@gmail.com' || pEmail === 'kamal2015go@gmail.com' ||
-           uEmail === 'tatausahascba@gmail.com' || pEmail === 'tatausahascba@gmail.com';
-  }, [profile, user]);
+    if (!profile) return false;
+    return profile.email === 'kamal2015go@gmail.com' || profile.email === 'tatausahascba@gmail.com';
+  }, [profile]);
 
   const isKeuanganSCB = useMemo(() => {
-    const uEmail = (user?.email || '').trim().toLowerCase();
-    const pEmail = (profile?.email || '').trim().toLowerCase();
-    return uEmail === 'keuangan.scb@gmail.com' || pEmail === 'keuangan.scb@gmail.com';
-  }, [profile, user]);
-
-  const isLatifatul = useMemo(() => {
-    const uEmail = (user?.email || '').trim().toLowerCase();
-    const pEmail = (profile?.email || '').trim().toLowerCase();
-    return isSpecialStaff(uEmail) || isSpecialStaff(pEmail);
-  }, [profile, user]);
+    if (!profile) return false;
+    return profile.email === 'keuangan.scb@gmail.com';
+  }, [profile]);
 
   const isOwner = useMemo(() => {
-    const uEmail = (user?.email || '').trim().toLowerCase();
-    const pEmail = (profile?.email || '').trim().toLowerCase();
-    return uEmail === OWNER_EMAIL.toLowerCase() || pEmail === OWNER_EMAIL.toLowerCase() || 
-           uEmail === 'keuangan.scb@gmail.com' || pEmail === 'keuangan.scb@gmail.com';
-  }, [user, profile]);
-
-  const canViewAnalisis = useMemo(() => {
-    return isAdmin || isLatifatul || isOwner || isKamal || isKeuanganSCB;
-  }, [isAdmin, isLatifatul, isOwner, isKamal, isKeuanganSCB]);
+    if (!user?.email) return false;
+    return user.email.toLowerCase() === OWNER_EMAIL.toLowerCase() || 
+           user.email.toLowerCase() === 'keuangan.scb@gmail.com';
+  }, [user]);
 
   useEffect(() => {
     let isAlreadyInjected = false;
@@ -751,74 +697,98 @@ export default function App() {
   const [editStageIndex, setEditStageIndex] = useState(0);
 
   useEffect(() => {
+    // Failsafe timeout to prevent any infinite loading screen
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+      setIsAuthReady(true);
+    }, 600);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      clearTimeout(safetyTimer);
       setUser(firebaseUser);
       if (firebaseUser) {
+        // Immediate fallback profile so UI remains responsive and authenticated even if DB quota is exhausted or offline
+        let cachedProfile: UserProfile | null = null;
         try {
-          const userEmail = (firebaseUser.email || '').trim().toLowerCase();
-          const shouldBeAdmin = isEmailAdmin(userEmail);
+          const cachedStr = localStorage.getItem(`cached_user_profile_${firebaseUser.uid}`);
+          if (cachedStr) {
+            cachedProfile = JSON.parse(cachedStr);
+          }
+        } catch (e) {
+          // ignore localStorage parse error
+        }
+
+        const fallbackProfile: UserProfile = cachedProfile || {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email || '',
+          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Pengguna',
+          role: (firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email)) ? 'admin' : 'staff',
+          createdAt: serverTimestamp(),
+        };
+
+        // Immediately set profile and unlock UI without blocking on remote getDoc
+        setProfile(fallbackProfile);
+        setIsAuthReady(true);
+        setLoading(false);
+
+        try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          
           if (userDoc.exists()) {
             const data = userDoc.data() as UserProfile;
-            const fullAllowed = ['dashboard', 'tracking', 'analisis', 'buku_kas', 'anggaran', 'laporan', 'realisasi', 'berkas', 'administrasi'];
-            
-            // Ensure specific emails are always admins & have all required menus
-            if (shouldBeAdmin && (data.role !== 'admin' || !data.allowedMenus || !data.allowedMenus.includes('analisis') || !data.allowedMenus.includes('anggaran'))) {
-              await updateDoc(doc(db, 'users', firebaseUser.uid), { 
-                role: 'admin',
-                allowedMenus: fullAllowed
-              });
+            // Ensure specific emails are always admins
+            if (firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email) && data.role !== 'admin') {
+              try {
+                await updateDoc(doc(db, 'users', firebaseUser.uid), { role: 'admin' });
+              } catch (upErr) {
+                console.warn("Could not sync admin role in users doc:", upErr);
+              }
               data.role = 'admin';
-              data.allowedMenus = fullAllowed;
             }
-            try {
-              localStorage.setItem('scb_cached_profile', JSON.stringify(data));
-            } catch {}
             setProfile(data);
+            try {
+              localStorage.setItem(`cached_user_profile_${firebaseUser.uid}`, JSON.stringify(data));
+            } catch (e) {
+              // ignore localStorage write error
+            }
           } else {
             // Create default profile for new users
-            const fullAllowed = ['dashboard', 'tracking', 'analisis', 'buku_kas', 'anggaran', 'laporan', 'realisasi', 'berkas', 'administrasi'];
             const newProfile: UserProfile = {
               uid: firebaseUser.uid,
               email: firebaseUser.email || '',
               displayName: firebaseUser.displayName || 'User',
-              role: shouldBeAdmin ? 'admin' : 'staff',
-              allowedMenus: shouldBeAdmin ? fullAllowed : ['dashboard', 'tracking', 'analisis'],
+              role: (firebaseUser.email && ADMIN_EMAILS.includes(firebaseUser.email)) ? 'admin' : 'staff',
               createdAt: serverTimestamp(),
             };
             try {
               await setDoc(doc(db, 'users', firebaseUser.uid), newProfile);
-            } catch {}
-            try {
-              localStorage.setItem('scb_cached_profile', JSON.stringify(newProfile));
-            } catch {}
+            } catch (setErr) {
+              console.warn("Could not set new user profile doc:", setErr);
+            }
             setProfile(newProfile);
+            try {
+              localStorage.setItem(`cached_user_profile_${firebaseUser.uid}`, JSON.stringify(newProfile));
+            } catch (e) {
+              // ignore localStorage write error
+            }
           }
         } catch (error) {
-          console.warn("Could not fetch latest profile, using local fallback:", error);
-          const userEmail = (firebaseUser.email || '').trim().toLowerCase();
-          const fallbackProfile: UserProfile = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            displayName: firebaseUser.displayName || 'User',
-            role: isEmailAdmin(userEmail) ? 'admin' : 'staff',
-            allowedMenus: ['dashboard', 'tracking', 'analisis', 'buku_kas', 'anggaran', 'laporan', 'realisasi', 'berkas', 'administrasi'],
-            createdAt: null
-          };
-          try {
-            localStorage.setItem('scb_cached_profile', JSON.stringify(fallbackProfile));
-          } catch {}
+          console.warn("Notice fetching profile (using fallback):", error);
+          if (isQuotaExceededError(error)) {
+            setHasQuotaExceeded(true);
+          }
           setProfile(fallbackProfile);
         }
       } else {
         setProfile(null);
+        setIsAuthReady(true);
+        setLoading(false);
       }
-      setIsAuthReady(true);
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(safetyTimer);
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -828,11 +798,15 @@ export default function App() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Submission));
       setSubmissions(docs);
-      try {
-        localStorage.setItem('scb_cached_submissions', JSON.stringify(docs));
-      } catch {}
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'submissions');
+      if (isQuotaExceededError(error)) {
+        setHasQuotaExceeded(true);
+      }
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'submissions');
+      } catch (e) {
+        // Handled via firestore error logger
+      }
     });
 
     return () => unsubscribe();
@@ -846,19 +820,25 @@ export default function App() {
       const docs = snapshot.docs.map(doc => ({ ...doc.data() } as UserProfile));
       setAllUsers(docs);
     }, (error) => {
-      console.warn("Could not load users list:", error);
+      if (isQuotaExceededError(error)) {
+        setHasQuotaExceeded(true);
+      }
+      console.warn("Users snapshot notice:", error);
     });
 
     return () => unsubscribe();
   }, [isAuthReady, user, isAdmin]);
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'config', 'app'), (doc) => {
-      if (doc.exists()) {
-        setLogoURL(doc.data().logoURL);
+    const unsub = onSnapshot(doc(db, 'config', 'app'), (docSnap) => {
+      if (docSnap.exists()) {
+        setLogoURL(docSnap.data().logoURL);
       }
     }, (error) => {
-      console.warn("Could not load app config:", error);
+      if (isQuotaExceededError(error)) {
+        setHasQuotaExceeded(true);
+      }
+      console.warn("App config read error:", error);
     });
     return () => unsub();
   }, []);
@@ -912,7 +892,10 @@ export default function App() {
         });
       }
     }, (error) => {
-      console.warn("Could not load fppp config:", error);
+      if (isQuotaExceededError(error)) {
+        setHasQuotaExceeded(true);
+      }
+      console.warn("FPPP config read error:", error);
     });
     return () => unsub();
   }, []);
@@ -1467,24 +1450,16 @@ export default function App() {
   const deferredFilterPIC = useDeferredValue(filterPIC);
 
   const checkMenuAccess = (itemId: string, itemAccess: string = 'all') => {
-    const currentEmail = (user?.email || profile?.email || '').trim().toLowerCase();
-    
-    // Admins and Special Staff (latifatul.aminah@baznas.go.id, nnur97637@gmail.com) have access to all business & report menus
-    if (isSpecialStaff(currentEmail) || isEmailAdmin(currentEmail)) {
-      if (itemId === 'settings') return isSuperAdmin || currentEmail === OWNER_EMAIL;
-      return true;
-    }
-
-    if (profile?.allowedMenus && Array.isArray(profile.allowedMenus) && profile.allowedMenus.length > 0) {
+    if (profile?.allowedMenus && Array.isArray(profile.allowedMenus)) {
       if (itemId === 'settings' && profile.email === OWNER_EMAIL) return true;
-      if (profile.allowedMenus.includes(itemId)) return true;
+      return profile.allowedMenus.includes(itemId);
     }
 
     return (
       itemAccess === 'all' || 
-      (itemAccess === 'admin' && (isAdmin || isLatifatul || (['laporan', 'analisis'].includes(itemId) && (isKamal || isKeuanganSCB)))) || 
+      (itemAccess === 'admin' && (isAdmin || (['laporan'].includes(itemId) && (isKamal || isKeuanganSCB)))) || 
       (itemAccess === 'superadmin' && isSuperAdmin) ||
-      (itemAccess === 'owner' && (profile?.email === OWNER_EMAIL || isLatifatul || (['anggaran', 'analisis'].includes(itemId) && (isKamal || isKeuanganSCB)))) ||
+      (itemAccess === 'owner' && (profile?.email === OWNER_EMAIL || (['anggaran'].includes(itemId) && (isKamal || isKeuanganSCB)))) ||
       (itemAccess === 'owner_only' && profile?.email === OWNER_EMAIL)
     );
   };
@@ -1492,7 +1467,6 @@ export default function App() {
   const sidebarItems = [
     { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, access: 'all' },
     { id: 'tracking', label: 'Tracking Transaksi', icon: MessageSquare, access: 'all' },
-    { id: 'analisis', label: 'Analisis Anggaran vs Laporan', icon: BarChart3, access: 'admin' },
     { id: 'buku_kas', label: 'Buku Kas', icon: BookOpen, access: 'admin' },
     { id: 'anggaran', label: 'Pengajuan Anggaran ke BAZNAS', icon: PieChart, access: 'owner' },
     { id: 'laporan', label: 'Laporan PertUM ke BAZNAS', icon: FileText, access: 'admin' },
@@ -1752,6 +1726,33 @@ export default function App() {
           </div>
         </header>
 
+        {hasQuotaExceeded && (
+          <div className="bg-gradient-to-r from-amber-600 via-amber-500 to-orange-500 text-white px-4 py-2.5 shadow-md flex flex-wrap items-center justify-between gap-3 text-xs shrink-0 z-40 border-b border-amber-400/30">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 rounded-full bg-white animate-ping" />
+              <span>
+                <strong>Batas Kuota Harian Firestore Tercapai (Quota Exceeded):</strong> Penggunaan unit baca gratis telah mencapai batas harian. Kuota di-reset otomatis besok.
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={FIRESTORE_UPGRADE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 bg-white text-amber-900 px-3 py-1 rounded-lg text-xs font-bold hover:bg-amber-50 transition shadow-sm"
+              >
+                Upgrade Database
+              </a>
+              <button
+                onClick={() => setHasQuotaExceeded(false)}
+                className="text-white/80 hover:text-white px-2 py-1 text-xs font-semibold rounded hover:bg-white/10 transition"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
         <main className="flex-1 overflow-y-auto p-4 lg:p-8">
            <AnimatePresence mode="wait">
              <motion.div
@@ -1838,10 +1839,10 @@ export default function App() {
                     </div>
 
                     {/* Balance Summary Section */}
-                    {canViewAnalisis && <GlobalBalanceSummary />}
+                    {isAdmin && <GlobalBalanceSummary />}
 
                     {/* Accumulation Section - Moved from Tracking */}
-                    {canViewAnalisis && (
+                    {isAdmin && (
                       <div className="space-y-6">
                         <div className="flex items-center gap-4">
                           <div className="h-10 w-10 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600">
@@ -1862,14 +1863,14 @@ export default function App() {
                       </div>
                     )}
                     {/* Rekapitulasi Status Tracking Summary Section */}
-                    {canViewAnalisis && (
+                    {isAdmin && (
                       <SettlementTrackingSummarySection submissions={submissions} />
                     )}
 
                     {/* Analysis Section - Moved from its own tab */}
-                    {canViewAnalisis && (
+                    {isAdmin && (
 
-                      <div className="space-y-6 pt-4 border-t border-slate-200" id="section-analisis-anggaran">
+                      <div className="space-y-6 pt-4 border-t border-slate-200">
                          <div className="flex items-center gap-4">
                             <div className="h-10 w-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
                                <PieChart size={20} />
@@ -1882,7 +1883,7 @@ export default function App() {
                             </div>
                           </div>
                           <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-2">
-                             <AnalisisManager userUid={user?.uid || profile?.uid || 'user'} isReadOnly={isKeuanganSCB} />
+                             <AnalisisManager userUid={user?.uid || ''} isReadOnly={isKeuanganSCB} />
                           </div>
                       </div>
                     )}
@@ -2306,25 +2307,6 @@ export default function App() {
                         </div>
                       </TabsContent>
                     </Tabs>
-                  </div>
-                )}
-
-                {activeTab === 'analisis' && checkMenuAccess('analisis', 'admin') && (
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600">
-                         <PieChart size={20} />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-black tracking-tighter text-slate-900 uppercase">
-                          Analisis Anggaran vs Laporan
-                        </h2>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">Perbandingan realisasi anggaran BAZNAS</p>
-                      </div>
-                    </div>
-                    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm p-4">
-                       <AnalisisManager userUid={user?.uid || profile?.uid || 'user'} isReadOnly={isKeuanganSCB} />
-                    </div>
                   </div>
                 )}
 
@@ -3682,9 +3664,7 @@ function ImportSubmissionModal({ profile, user, variant = 'default' }: { profile
               'keuanganscbbaznas@gmail.com', 
               'keuangan.scb@gmail.com',
               'kamal2015go@gmail.com',
-              'tatausahascba@gmail.com',
-              'latifatul.aminah@baznas.go.id',
-              'nnur97637@gmail.com'
+              'tatausahascba@gmail.com'
             ].includes(profile.email))) {
               const foundIndex = stages.findIndex(s => s.toLowerCase() === row.statusTahap.toLowerCase().trim());
               if (foundIndex !== -1) {
@@ -3860,7 +3840,7 @@ function ApprovalDialog({
         setFpppConfigLocal(docSnap.data());
       }
     }, (error) => {
-      console.warn("Could not load fppp config local:", error);
+      console.warn("FPPP modal config snapshot notice:", error);
     });
     return () => unsub();
   }, []);
@@ -4621,7 +4601,7 @@ function SubmissionDetailView({
         });
       }
     }, (error) => {
-      console.warn("Could not load fppp config local:", error);
+      console.warn("LPJ modal fppp config snapshot notice:", error);
     });
     return () => unsub();
   }, []);
@@ -5787,7 +5767,6 @@ const GitHubInfo = () => (
 const ALL_MENU_ITEMS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'tracking', label: 'Tracking Transaksi' },
-  { id: 'analisis', label: 'Analisis Anggaran' },
   { id: 'buku_kas', label: 'Buku Kas' },
   { id: 'anggaran', label: 'Pengajuan Anggaran' },
   { id: 'laporan', label: 'Laporan PertUM' },
@@ -5798,19 +5777,33 @@ const ALL_MENU_ITEMS = [
 ];
 
 const getDefaultMenusForUser = (p: UserProfile): string[] => {
-  const defaults: string[] = ['dashboard', 'tracking', 'analisis'];
-  const pEmail = (p.email || '').toLowerCase().trim();
+  const defaults: string[] = ['dashboard', 'tracking'];
+  const pEmail = p.email.toLowerCase();
   
   if (
     p.role === 'admin' || 
-    isEmailAdmin(pEmail) ||
-    isSpecialStaff(pEmail)
+    pEmail === 'keuangan.scb@gmail.com' || 
+    pEmail === 'tatausahascba@gmail.com' || 
+    pEmail === 'kamal2015go@gmail.com' || 
+    pEmail === 'operasional.scb@gmail.com' || 
+    pEmail === 'keuanganscbbaznas@gmail.com'
   ) {
-    defaults.push('buku_kas', 'laporan', 'realisasi', 'berkas', 'administrasi', 'anggaran');
+    defaults.push('buku_kas', 'laporan', 'realisasi', 'berkas', 'administrasi');
   }
   
   if (pEmail === 'keuanganscbbaznas@gmail.com' || pEmail === 'kamal2015go@gmail.com') {
     defaults.push('settings');
+  }
+  
+  if (
+    pEmail === 'keuanganscbbaznas@gmail.com' || 
+    pEmail === 'kamal2015go@gmail.com' || 
+    pEmail === 'tatausahascba@gmail.com' || 
+    pEmail === 'keuangan.scb@gmail.com'
+  ) {
+    if (!defaults.includes('anggaran')) {
+      defaults.push('anggaran');
+    }
   }
 
   return defaults;

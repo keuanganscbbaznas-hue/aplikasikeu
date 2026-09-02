@@ -87,7 +87,7 @@ export const DonationList = () => {
       setDonations(data);
       setLoading(false);
     }, (error) => {
-      console.warn("Could not load donations:", error);
+      console.warn("Donation list snapshot notice:", error);
       setLoading(false);
     });
 

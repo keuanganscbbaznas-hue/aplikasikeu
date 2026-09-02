@@ -14,19 +14,21 @@ const MONTHS = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
-export function AnalisisManager({ userUid, isReadOnly = false }: { userUid?: string, isReadOnly?: boolean }) {
+export function AnalisisManager({ userUid, isReadOnly = false }: { userUid: string, isReadOnly?: boolean }) {
   const [budgets, setBudgets] = useState<any[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [year, setYear] = useState(new Date().getFullYear().toString());
 
   useEffect(() => {
+    if (!userUid) return;
+
     const qBudgets = query(collection(db, 'baznas_budgets'), orderBy('createdAt', 'desc'));
     const unsubBudgets = onSnapshot(qBudgets, (snap) => {
         const data: any[] = [];
         snap.forEach(doc => data.push({id: doc.id, ...doc.data()}));
         setBudgets(data);
-    }, (error) => {
-        console.warn("Could not load baznas_budgets:", error);
+    }, (err) => {
+        console.warn("Analisis budgets snapshot notice:", err);
     });
 
     const qReports = query(collection(db, 'laporan_baznas'), orderBy('createdAt', 'desc'));
@@ -34,8 +36,8 @@ export function AnalisisManager({ userUid, isReadOnly = false }: { userUid?: str
         const data: any[] = [];
         snap.forEach(doc => data.push({id: doc.id, ...doc.data()}));
         setReports(data);
-    }, (error) => {
-        console.warn("Could not load laporan_baznas:", error);
+    }, (err) => {
+        console.warn("Analisis reports snapshot notice:", err);
     });
 
     return () => { unsubBudgets(); unsubReports(); };

@@ -91,7 +91,7 @@ export const LearningSection = ({ isOwner }: { isOwner: boolean }) => {
       setItems(docs);
       setLoading(false);
     }, (error) => {
-      console.warn("Could not load dashboard_gallery:", error);
+      console.warn("Gallery snapshot notice:", error);
       setLoading(false);
     });
 
