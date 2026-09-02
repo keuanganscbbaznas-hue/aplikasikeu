@@ -161,7 +161,8 @@ const ADMIN_EMAILS = [
   'tatausahascba@gmail.com',
   'kamal2015go@gmail.com',
   'operasional.scb@gmail.com',
-  'latifatul.aminah@baznas.go.id'
+  'latifatul.aminah@baznas.go.id',
+  'nnur97637@gmail.com'
 ];
 const TRACKING_ADMIN_EMAILS = [
   'keuanganscbbaznas@gmail.com',
@@ -169,7 +170,8 @@ const TRACKING_ADMIN_EMAILS = [
   'tatausahascba@gmail.com',
   'kamal2015go@gmail.com',
   'operasional.scb@gmail.com',
-  'latifatul.aminah@baznas.go.id'
+  'latifatul.aminah@baznas.go.id',
+  'nnur97637@gmail.com'
 ];
 
 function DebouncedInput({ 
@@ -595,7 +597,8 @@ export default function App() {
 
   const isLatifatul = useMemo(() => {
     if (!profile) return false;
-    return profile.email?.toLowerCase() === 'latifatul.aminah@baznas.go.id';
+    const email = profile.email?.toLowerCase();
+    return email === 'latifatul.aminah@baznas.go.id' || email === 'nnur97637@gmail.com';
   }, [profile]);
 
   const isOwner = useMemo(() => {
@@ -3550,7 +3553,8 @@ function ImportSubmissionModal({ profile, user, variant = 'default' }: { profile
               'keuangan.scb@gmail.com',
               'kamal2015go@gmail.com',
               'tatausahascba@gmail.com',
-              'latifatul.aminah@baznas.go.id'
+              'latifatul.aminah@baznas.go.id',
+              'nnur97637@gmail.com'
             ].includes(profile.email))) {
               const foundIndex = stages.findIndex(s => s.toLowerCase() === row.statusTahap.toLowerCase().trim());
               if (foundIndex !== -1) {
@@ -5669,7 +5673,8 @@ const getDefaultMenusForUser = (p: UserProfile): string[] => {
     pEmail === 'kamal2015go@gmail.com' || 
     pEmail === 'operasional.scb@gmail.com' || 
     pEmail === 'keuanganscbbaznas@gmail.com' ||
-    pEmail === 'latifatul.aminah@baznas.go.id'
+    pEmail === 'latifatul.aminah@baznas.go.id' ||
+    pEmail === 'nnur97637@gmail.com'
   ) {
     defaults.push('buku_kas', 'laporan', 'realisasi', 'berkas', 'administrasi');
   }
@@ -5683,7 +5688,8 @@ const getDefaultMenusForUser = (p: UserProfile): string[] => {
     pEmail === 'kamal2015go@gmail.com' || 
     pEmail === 'tatausahascba@gmail.com' || 
     pEmail === 'keuangan.scb@gmail.com' ||
-    pEmail === 'latifatul.aminah@baznas.go.id'
+    pEmail === 'latifatul.aminah@baznas.go.id' ||
+    pEmail === 'nnur97637@gmail.com'
   ) {
     if (!defaults.includes('anggaran')) {
       defaults.push('anggaran');
