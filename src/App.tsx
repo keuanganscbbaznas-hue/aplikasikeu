@@ -1702,8 +1702,7 @@ export default function App() {
               </div>
             </CardHeader>
             <CardContent className="grid gap-3 pt-2">
-              {/* Tombol Utama Google Login untuk Semua Staf */}
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Button 
                   onClick={handleLogin} 
                   className="h-12 w-full text-sm font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-emerald-900/10 text-white flex items-center justify-center gap-2.5 rounded-xl transition-all"
@@ -1713,28 +1712,9 @@ export default function App() {
                   <span>Masuk dengan Google</span>
                 </Button>
                 <p className="text-[11px] text-center text-slate-500 font-medium">
-                  Wajib menggunakan akun Google bagi seluruh staf pengaju & pengguna SCB
+                  Masuk menggunakan akun Google untuk mengakses sistem
                 </p>
               </div>
-
-              <div className="relative my-1.5">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-slate-200" />
-                </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
-                  <span className="bg-white px-2.5 text-slate-400">Khusus Owner</span>
-                </div>
-              </div>
-
-              {/* Akses Khusus Owner */}
-              <Button 
-                onClick={() => handleDemoLogin('owner')} 
-                variant="outline"
-                className="h-11 w-full text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-emerald-800 hover:border-emerald-300 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
-              >
-                <ShieldCheck className="h-4 w-4 text-emerald-600" />
-                <span>Masuk sebagai Owner (Admin Keuangan)</span>
-              </Button>
             </CardContent>
             <CardFooter className="flex flex-col gap-1 text-center text-xs text-slate-400 pt-2 pb-4">
               <p className="font-medium">Sekolah Cendekia BAZNAS (SCB)</p>
