@@ -78,6 +78,7 @@ import {
   Minus,
   Search,
   Filter,
+  LogIn,
   LogOut, 
   CheckCircle2, 
   XCircle,
@@ -705,8 +706,13 @@ export default function App() {
       if (savedDemo) {
         const parsed = JSON.parse(savedDemo);
         if (parsed && parsed.email) {
-          setUser(parsed);
-          setProfile(parsed);
+          // Hanya izinkan sesi demo tersimpan untuk Owner / Admin, staf wajib Google login
+          if (parsed.role === 'admin' || ADMIN_EMAILS.includes(parsed.email)) {
+            setUser(parsed);
+            setProfile(parsed);
+          } else {
+            localStorage.removeItem('moneta_demo_user');
+          }
         }
       }
     } catch (e) {
@@ -800,10 +806,11 @@ export default function App() {
           const savedDemo = localStorage.getItem('moneta_demo_user');
           if (savedDemo) {
             const parsed = JSON.parse(savedDemo);
-            if (parsed && parsed.email) {
+            if (parsed && parsed.email && (parsed.role === 'admin' || ADMIN_EMAILS.includes(parsed.email))) {
               setUser(parsed);
               setProfile(parsed);
             } else {
+              localStorage.removeItem('moneta_demo_user');
               setUser(null);
               setProfile(null);
             }
@@ -941,15 +948,15 @@ export default function App() {
       toast.success("Login Berhasil");
     } catch (error: any) {
       console.warn("Google sign-in error:", error);
-      toast.error("Login Google terkendala di browser ini. Silakan gunakan tombol Masuk Cepat / Demo di bawah.");
+      toast.error("Login Google terkendala atau dibatalkan. Pastikan izin pop-up diaktifkan di browser Anda.");
     }
   };
 
-  const handleDemoLogin = (roleType: 'owner' | 'kamal' | 'staff' = 'owner') => {
+  const handleDemoLogin = (roleType: 'owner' | 'kamal' = 'owner') => {
     let demoUser = {
       uid: 'keuangan-scb-admin',
       email: 'keuanganscbbaznas@gmail.com',
-      displayName: 'Keuangan SCB BAZNAS (Admin)',
+      displayName: 'Keuangan SCB BAZNAS (Admin / Owner)',
       role: 'admin' as UserRole
     };
 
@@ -959,13 +966,6 @@ export default function App() {
         email: 'kamal2015go@gmail.com',
         displayName: 'Ahmad Kamal (Kepala Sekolah)',
         role: 'admin' as UserRole
-      };
-    } else if (roleType === 'staff') {
-      demoUser = {
-        uid: 'staff-scb',
-        email: 'staff@baznas.sch.id',
-        displayName: 'Staf Pengaju SCB',
-        role: 'staff' as UserRole
       };
     }
 
@@ -1702,39 +1702,38 @@ export default function App() {
               </div>
             </CardHeader>
             <CardContent className="grid gap-3 pt-2">
-              <Button 
-                onClick={() => handleDemoLogin('owner')} 
-                className="h-12 w-full text-sm font-bold bg-primary hover:bg-primary/90 shadow-md text-white flex items-center justify-center gap-2"
-                size="lg"
-              >
-                <ShieldCheck className="h-5 w-5 text-emerald-300" />
-                Masuk sebagai Admin Keuangan (Full Akses)
-              </Button>
+              {/* Tombol Utama Google Login untuk Semua Staf */}
+              <div className="space-y-1.5">
+                <Button 
+                  onClick={handleLogin} 
+                  className="h-12 w-full text-sm font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-emerald-900/10 text-white flex items-center justify-center gap-2.5 rounded-xl transition-all"
+                  size="lg"
+                >
+                  <LogIn className="h-5 w-5 text-emerald-300" />
+                  <span>Masuk dengan Google</span>
+                </Button>
+                <p className="text-[11px] text-center text-slate-500 font-medium">
+                  Wajib menggunakan akun Google bagi seluruh staf pengaju & pengguna SCB
+                </p>
+              </div>
 
-              <Button 
-                onClick={() => handleDemoLogin('staff')} 
-                variant="outline"
-                className="h-11 w-full text-sm font-medium border-slate-200 text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-2"
-              >
-                <UserIcon className="h-4 w-4 text-slate-500" />
-                Masuk sebagai Staf Pengaju (Demo)
-              </Button>
-
-              <div className="relative my-1">
+              <div className="relative my-1.5">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t border-slate-200" />
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-slate-400 font-medium">atau akun Google</span>
+                <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-wider">
+                  <span className="bg-white px-2.5 text-slate-400">Khusus Owner</span>
                 </div>
               </div>
 
+              {/* Akses Khusus Owner */}
               <Button 
-                onClick={handleLogin} 
-                variant="secondary"
-                className="h-11 w-full text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800" 
+                onClick={() => handleDemoLogin('owner')} 
+                variant="outline"
+                className="h-11 w-full text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-emerald-800 hover:border-emerald-300 rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm"
               >
-                Masuk dengan Google (OAuth)
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                <span>Masuk sebagai Owner (Admin Keuangan)</span>
               </Button>
             </CardContent>
             <CardFooter className="flex flex-col gap-1 text-center text-xs text-slate-400 pt-2 pb-4">
