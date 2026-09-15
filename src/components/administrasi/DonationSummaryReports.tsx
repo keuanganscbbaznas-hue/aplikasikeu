@@ -286,43 +286,45 @@ export const ALL_CASHFLOWS = {
   },
   2026: {
     smp: {
-      saldoAwal: 29814299,
+      saldoAwal: 30759759,
       penerimaan: {
         danaTerikat: [
-          { name: "Titipan Uang Saku BAZNAS Daerah", amount: 35000004 },
-          { name: "Dana PIP (Program Indonesia Pintar)", amount: 15000000 },
-          { name: "Donasi Laptop", amount: 75000000 }
+          { name: "Titipan Uang Saku BAZNAS Daerah", amount: 15600000 },
+          { name: "Donasi Laptop SMA SCB", amount: 88000000 },
+          { name: "Wakaf Sumur SCB", amount: 2150000 },
+          { name: "BOSP", amount: 110000 }
         ],
         danaTidakTerikat: [
-          { name: "Donasi Tunjangan Profesi dan Sertifikasi (PPG) Tendik", amount: 25000000 },
-          { name: "Donasi Unit Usaha", amount: 4500000 },
-          { name: "Donasi Lainnya (Infaq Tendik dll)", amount: 35000000 }
+          { name: "Donasi Tunjangan Profesi dan Sertifikasi (PPG/TPG) Tendik", amount: 10814034 },
+          { name: "Donasi Unit Usaha / Koperasi (SHU Sosial)", amount: 2810305 },
+          { name: "Donasi ZIS & MBG (Umum)", amount: 13573500 },
+          { name: "FINANCE (Talangan Kembali, Penukaran Uang)", amount: 28325271 }
         ]
       },
       pengeluaran: {
         nonProgram: [
-          { name: "Pengambilan Titipan Uang Saku BAZNAS Daerah", amount: 42000000 }
+          { name: "Pengambilan / Penyaluran Titipan Uang Saku BAZNAS Daerah", amount: 17250000 },
+          { name: "FINANCE (Penukaran Uang Koperasi & BPJS TK)", amount: 31325269 }
         ],
         program: {
           standarProses: [
-            { name: "Penguatan Komunitas Belajar", amount: 5000000 },
-            { name: "Penguatan Pendidikan Karakter", amount: 7500000 },
-            { name: "Pengadaan Sarana Penunjang Kegiatan KBM", amount: 13000000 },
-            { name: "Penyaluran Donasi Laptop", amount: 72000000 }
+            { name: "Penyaluran Donasi Laptop SMA SCB", amount: 88005350 }
           ],
-          pengembanganSDM: [
-            { name: "Kegiatan Pelaksanaan Pengembangan SDM", amount: 18000000 }
-          ],
+          pengembanganSDM: [],
           standarSarana: [],
           standarPengelolaan: [
-            { name: "Biaya Transportasi", amount: 32000000 }
+            { name: "Biaya Transportasi (BBM, Survei, Antar Santri/Tamu)", amount: 13350000 },
+            { name: "Biaya Rumah Tangga & Sarpras (Konsumsi, Perbaikan TOA, Retribusi PBG, Pipa)", amount: 11177150 },
+            { name: "Biaya Cetak dan Fotokopi / ATK", amount: 137500 }
           ],
           standarPembiayaan: [
-            { name: "Administrasi Bank", amount: 150000 }
+            { name: "Kegiatan Subrayon & Penggantian Admin BOS", amount: 4705500 },
+            { name: "Pengurusan Dana PIP Siswa", amount: 1965000 },
+            { name: "Administrasi Bank", amount: 120000 }
           ]
         }
       },
-      saldoAkhir: 29164299
+      saldoAkhir: 25058148
     },
     sma: {
       saldoAwal: 56084526,

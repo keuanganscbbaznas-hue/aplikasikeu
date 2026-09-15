@@ -200,6 +200,11 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
+    match /monthly_donation_ledger/{ledgerId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
     match /donations/{donationId} {
       allow read: if isAdmin() || getRole() in ['finance', 'accountant', 'management'];
       allow create: if isValidDonation(incoming()) && incoming().createdAt == request.time;
