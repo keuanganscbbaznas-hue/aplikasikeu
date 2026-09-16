@@ -129,7 +129,7 @@ function splitCsvLine(line: string, delimiter: string = ','): string[] {
 export function parseDonationDatabaseCsv(csvText: string, account: 'smp' | 'sma' = 'smp'): ParseResult {
   const errors: string[] = [];
   const items: DonationLedgerItem[] = [];
-  let detectedSaldoAwal = 30759759; // Default SMP 2026
+  let detectedSaldoAwal = account === 'sma' ? 56084526 : 30759759; // Default based on account
 
   if (!csvText || !csvText.trim()) {
     return {
@@ -179,6 +179,7 @@ export function parseDonationDatabaseCsv(csvText: string, account: 'smp' | 'sma'
 
   let runningSaldo = detectedSaldoAwal;
   let counter = 1;
+  let hasJjColumn = false;
 
   for (const line of cleanLines) {
     if (!line.trim()) continue;
@@ -188,6 +189,9 @@ export function parseDonationDatabaseCsv(csvText: string, account: 'smp' | 'sma'
 
     // Check if header line
     if (lineUpper.includes('TGL') && (lineUpper.includes('ALOKASI') || lineUpper.includes('DEBET') || lineUpper.includes('KETERANGAN'))) {
+      if (lineUpper.includes(', JJ ,') || lineUpper.includes(' JJ ') || cols.some(c => c.trim().toUpperCase() === 'JJ') || cols.length >= 9) {
+        hasJjColumn = true;
+      }
       continue;
     }
 
@@ -207,22 +211,21 @@ export function parseDonationDatabaseCsv(csvText: string, account: 'smp' | 'sma'
     // Must have at least date or keterangan or debet/kredit
     if (cols.length < 5) continue;
 
-    // Typical format:
-    // 0: TGL
-    // 1: NO. DOC
-    // 2: ALOKASI ANGGARAN
-    // 3: PIC
-    // 4: KETERANGAN
-    // 5: DEBET
-    // 6: KREDIT
-    // 7: SALDO AKHIR
+    // Detect format based on column length or header
+    // 8-column layout (SMP):
+    // 0: TGL, 1: NO. DOC, 2: ALOKASI, 3: PIC, 4: KETERANGAN, 5: DEBET, 6: KREDIT, 7: SALDO AKHIR
+    //
+    // 9-column layout (SMA):
+    // 0: TGL, 1: NO. DOC, 2: JJ, 3: ALOKASI, 4: PIC, 5: KETERANGAN, 6: DEBET, 7: KREDIT, 8: SALDO AKHIR
+    const isNineCol = hasJjColumn || cols.length >= 9;
+
     const dateStr = cols[0] || '';
     const docNo = cols[1] || '-';
-    let allocation = cols[2] || 'Donasi';
-    const pic = cols[3] || '-';
-    const description = cols[4] || '';
-    const debet = cleanCurrency(cols[5]);
-    const kredit = cleanCurrency(cols[6]);
+    let allocation = isNineCol ? (cols[3] || cols[2] || 'Donasi') : (cols[2] || 'Donasi');
+    const pic = isNineCol ? (cols[4] || '-') : (cols[3] || '-');
+    const description = isNineCol ? (cols[5] || '') : (cols[4] || '');
+    const debet = cleanCurrency(isNineCol ? cols[6] : cols[5]);
+    const kredit = cleanCurrency(isNineCol ? cols[7] : cols[6]);
 
     // If both debet and kredit are 0 and no date, skip
     if (debet === 0 && kredit === 0 && !dateStr) continue;

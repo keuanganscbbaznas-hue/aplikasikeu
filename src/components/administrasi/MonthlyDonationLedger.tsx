@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../firebase';
 import { 
   collection, 
@@ -25,9 +25,7 @@ import {
   Search, 
   Calendar, 
   TrendingUp, 
-  TrendingDown, 
   Coins, 
-  Users, 
   ArrowUpRight, 
   ArrowDownLeft, 
   Filter, 
@@ -56,13 +54,13 @@ import {
   ChevronDown, 
   Eye, 
   Sparkles,
-  DollarSign,
   UploadCloud,
   Link2,
   Globe,
   RefreshCw,
   AlertCircle,
-  FileText
+  FileText,
+  HeartPulse
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -83,8 +81,11 @@ import { toast } from 'sonner';
 import { 
   DonationLedgerItem, 
   INITIAL_DONATION_LEDGER_SMP, 
+  INITIAL_DONATION_LEDGER_SMA,
   INITIAL_SALDO_AWAL_2026_SMP,
-  DEFAULT_RAW_CSV_SMP_2026
+  INITIAL_SALDO_AWAL_2026_SMA,
+  DEFAULT_RAW_CSV_SMP_2026,
+  DEFAULT_RAW_CSV_SMA_2026
 } from './donationLedgerData';
 import { parseDonationDatabaseCsv } from './donationCsvParser';
 
@@ -145,6 +146,13 @@ const ALLOCATION_CONFIG: Record<string, { label: string; color: string; bg: stri
     border: '#0d9488',
     icon: BookOpen
   },
+  'BOSP SMA': {
+    label: 'BOSP SMA',
+    color: 'text-teal-700',
+    bg: 'bg-teal-50 text-teal-700 border-teal-200',
+    border: '#0f766e',
+    icon: BookOpen
+  },
   'Biaya Transport': {
     label: 'Biaya Transport',
     color: 'text-orange-700',
@@ -166,6 +174,13 @@ const ALLOCATION_CONFIG: Record<string, { label: string; color: string; bg: stri
     border: '#0284c7',
     icon: Award
   },
+  'PIP SMA': {
+    label: 'Dana PIP SMA',
+    color: 'text-sky-700',
+    bg: 'bg-sky-50 text-sky-700 border-sky-200',
+    border: '#0369a1',
+    icon: Award
+  },
   'Biaya Cetak dan FC': {
     label: 'Biaya Cetak & FC / ATK',
     color: 'text-violet-700',
@@ -179,6 +194,20 @@ const ALLOCATION_CONFIG: Record<string, { label: string; color: string; bg: stri
     bg: 'bg-slate-100 text-slate-700 border-slate-300',
     border: '#64748b',
     icon: CreditCard
+  },
+  'Pengembangan Tendik': {
+    label: 'Pengembangan Tendik',
+    color: 'text-purple-700',
+    bg: 'bg-purple-50 text-purple-700 border-purple-200',
+    border: '#9333ea',
+    icon: Sparkles
+  },
+  'Biaya Kesehatan Siswa': {
+    label: 'Biaya Kesehatan Siswa',
+    color: 'text-red-700',
+    bg: 'bg-red-50 text-red-700 border-red-200',
+    border: '#e11d48',
+    icon: HeartPulse
   }
 };
 
@@ -186,23 +215,67 @@ const formatRupiah = (val: number): string => {
   return 'Rp ' + (val || 0).toLocaleString('id-ID');
 };
 
+// Helper chunk array
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const res: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    res.push(arr.slice(i, i + size));
+  }
+  return res;
+}
+
 export const MonthlyDonationLedger = () => {
-  // Account state (Default to 'smp' as requested by user)
+  // Account state ('smp' | 'sma')
   const [selectedAccount, setSelectedAccount] = useState<'smp' | 'sma'>('smp');
 
   // Database state (Firestore collection 'monthly_donation_ledger')
   const [items, setItems] = useState<DonationLedgerItem[]>(INITIAL_DONATION_LEDGER_SMP);
+  const [dbSaldoAwal, setDbSaldoAwal] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [isFirestoreConnected, setIsFirestoreConnected] = useState(false);
 
-  // Active view tab
-  const [activeTab, setActiveTab] = useState<'categories' | 'monthly' | 'charts'>('categories');
+  // Active view tab: 'categories' | 'monthly' | 'charts' | 'ledger'
+  const [activeTab, setActiveTab] = useState<'categories' | 'monthly' | 'charts' | 'ledger'>('categories');
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSheetsModalOpen, setIsSheetsModalOpen] = useState(false);
+  const [isSaldoAwalModalOpen, setIsSaldoAwalModalOpen] = useState(false);
+  const [tempSaldoAwalInput, setTempSaldoAwalInput] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
+  // Search & Filter state for Ledger Table
+  const [searchQuery, setSearchQuery] = useState('');
+  const [monthFilter, setMonthFilter] = useState('ALL');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'pemasukan' | 'pengeluaran'>('ALL');
+  const [allocationFilter, setAllocationFilter] = useState('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
+
+  // Selected item being edited
+  const [editingItem, setEditingItem] = useState<DonationLedgerItem | null>(null);
+
+  // Dynamic Saldo Awal & Default Dataset based on selected account
+  const activeDefaultSaldoAwal = useMemo(() => {
+    return selectedAccount === 'sma' ? INITIAL_SALDO_AWAL_2026_SMA : INITIAL_SALDO_AWAL_2026_SMP;
+  }, [selectedAccount]);
+
+  const activeSaldoAwal = useMemo(() => {
+    if (dbSaldoAwal !== null && typeof dbSaldoAwal === 'number') {
+      return dbSaldoAwal;
+    }
+    return activeDefaultSaldoAwal;
+  }, [dbSaldoAwal, activeDefaultSaldoAwal]);
+
+  const defaultRawCsv = useMemo(() => {
+    return selectedAccount === 'sma' ? DEFAULT_RAW_CSV_SMA_2026 : DEFAULT_RAW_CSV_SMP_2026;
+  }, [selectedAccount]);
+
+  const defaultDataset = useMemo(() => {
+    return selectedAccount === 'sma' ? INITIAL_DONATION_LEDGER_SMA : INITIAL_DONATION_LEDGER_SMP;
+  }, [selectedAccount]);
 
   // CSV & Sheets Import State
   const [pastedCsv, setPastedCsv] = useState<string>(DEFAULT_RAW_CSV_SMP_2026);
@@ -211,7 +284,7 @@ export const MonthlyDonationLedger = () => {
   });
   const [isFetchingSheets, setIsFetchingSheets] = useState(false);
 
-  // Form State for Add & Edit
+  // Form State for Add
   const [formData, setFormData] = useState({
     date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' }),
     docNo: '',
@@ -222,16 +295,55 @@ export const MonthlyDonationLedger = () => {
     amount: ''
   });
 
+  // When selectedAccount changes, sync CSV template and Google Sheets URL
+  useEffect(() => {
+    setPastedCsv(defaultRawCsv);
+    const storedUrl = localStorage.getItem(`scb_${selectedAccount}_donation_sheets_url`) || '';
+    setGoogleSheetsUrl(storedUrl);
+    setCurrentPage(1);
+  }, [selectedAccount, defaultRawCsv]);
+
+  // Recalculate running balance
+  const recalculateBalances = (list: DonationLedgerItem[], startBalance = activeSaldoAwal): DonationLedgerItem[] => {
+    let running = startBalance;
+    return list.map(item => {
+      running = running + (item.debet || 0) - (item.kredit || 0);
+      return {
+        ...item,
+        saldoAkhir: running
+      };
+    });
+  };
+
   // 1. Connect Firestore Listener for real-time synchronization
   useEffect(() => {
+    let unsubCol = () => {};
+    let unsubSaldo = () => {};
+
     try {
+      // 1. Listener for starting balance
+      const saldoDocRef = doc(db, 'donation_saldo_awal', `${selectedAccount}_2026`);
+      unsubSaldo = onSnapshot(saldoDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const val = docSnap.data();
+          if (val && typeof val.amount === 'number') {
+            setDbSaldoAwal(val.amount);
+          }
+        } else {
+          setDbSaldoAwal(null);
+        }
+      }, (err) => {
+        console.warn("Notice: Firestore donation starting balance snapshot:", err);
+      });
+
+      // 2. Listener for ledger items collection
       const colRef = collection(db, 'monthly_donation_ledger');
-      const unsubscribe = onSnapshot(colRef, (snapshot) => {
+      unsubCol = onSnapshot(colRef, (snapshot) => {
         if (!snapshot.empty) {
           const loaded: DonationLedgerItem[] = [];
           snapshot.forEach((docSnap) => {
             const data = docSnap.data() as any;
-            if (!data.account || data.account === selectedAccount) {
+            if (data.account === selectedAccount || (!data.account && selectedAccount === 'smp')) {
               loaded.push({ id: docSnap.id, ...data });
             }
           });
@@ -242,51 +354,64 @@ export const MonthlyDonationLedger = () => {
             return a.id.localeCompare(b.id);
           });
           
+          const effectiveStart = dbSaldoAwal !== null ? dbSaldoAwal : (selectedAccount === 'sma' ? INITIAL_SALDO_AWAL_2026_SMA : INITIAL_SALDO_AWAL_2026_SMP);
+
           if (loaded.length > 0) {
-            setItems(loaded);
+            setItems(recalculateBalances(loaded, effectiveStart));
           } else {
-            setItems(INITIAL_DONATION_LEDGER_SMP);
+            const fallback = selectedAccount === 'sma' ? INITIAL_DONATION_LEDGER_SMA : INITIAL_DONATION_LEDGER_SMP;
+            setItems(recalculateBalances(fallback, effectiveStart));
           }
           setIsFirestoreConnected(true);
         } else {
-          // If empty, items will default to INITIAL_DONATION_LEDGER_SMP
+          const fallback = selectedAccount === 'sma' ? INITIAL_DONATION_LEDGER_SMA : INITIAL_DONATION_LEDGER_SMP;
+          const effectiveStart = dbSaldoAwal !== null ? dbSaldoAwal : (selectedAccount === 'sma' ? INITIAL_SALDO_AWAL_2026_SMA : INITIAL_SALDO_AWAL_2026_SMP);
+          setItems(recalculateBalances(fallback, effectiveStart));
           setIsFirestoreConnected(false);
         }
       }, (err) => {
         console.warn("Notice: Firestore monthly ledger snapshot:", err);
       });
 
-      return () => unsubscribe();
     } catch (e) {
       console.warn("Could not listen to Firestore collection:", e);
     }
-  }, [selectedAccount]);
 
-  // Sync / Seed to Firestore
+    return () => {
+      unsubCol();
+      unsubSaldo();
+    };
+  }, [selectedAccount, dbSaldoAwal]);
+
+  // Sync / Seed active account to Firestore
   const handleSyncToFirestore = async () => {
     setLoading(true);
-    const toastId = toast.loading("Menyinkronkan data Rekening Donasi SMP ke database Firestore...");
+    const accountTitle = selectedAccount === 'sma' ? 'Rekening Donasi SMA' : 'Rekening Donasi SMP';
+    const currentDataset = selectedAccount === 'sma' ? INITIAL_DONATION_LEDGER_SMA : INITIAL_DONATION_LEDGER_SMP;
+    const currentSaldoAwal = selectedAccount === 'sma' ? INITIAL_SALDO_AWAL_2026_SMA : INITIAL_SALDO_AWAL_2026_SMP;
+    const toastId = toast.loading(`Menyinkronkan data ${accountTitle} ke database Firestore...`);
     try {
-      const batch = writeBatch(db);
-      
-      // 1. Write each item to monthly_donation_ledger
-      INITIAL_DONATION_LEDGER_SMP.forEach((item) => {
-        const docRef = doc(db, 'monthly_donation_ledger', item.id);
-        batch.set(docRef, { ...item, account: "smp" });
-      });
+      const chunks = chunkArray(currentDataset, 400);
+      for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        chunk.forEach((item) => {
+          const docRef = doc(db, 'monthly_donation_ledger', item.id);
+          batch.set(docRef, { ...item, account: selectedAccount });
+        });
+        await batch.commit();
+      }
 
-      // 2. Write starting balance for SMP 2026 to donation_saldo_awal
-      const saldoRef = doc(db, 'donation_saldo_awal', 'smp_2026');
-      batch.set(saldoRef, {
-        account: "smp",
+      // Write starting balance to donation_saldo_awal
+      const saldoRef = doc(db, 'donation_saldo_awal', `${selectedAccount}_2026`);
+      await setDoc(saldoRef, {
+        account: selectedAccount,
         year: 2026,
-        amount: INITIAL_SALDO_AWAL_2026_SMP,
+        amount: currentSaldoAwal,
         updatedAt: new Date().toISOString()
       });
 
-      await batch.commit();
       setIsFirestoreConnected(true);
-      toast.success(`${INITIAL_DONATION_LEDGER_SMP.length} Transaksi Rekening Donasi SMP 2026 berhasil disinkronkan ke Database Firestore!`, { id: toastId });
+      toast.success(`${currentDataset.length} Transaksi ${accountTitle} 2026 berhasil disinkronkan ke Database Firestore!`, { id: toastId });
     } catch (error: any) {
       console.error("Firestore sync error:", error);
       toast.error("Gagal sinkronisasi Firestore: " + error.message, { id: toastId });
@@ -295,24 +420,86 @@ export const MonthlyDonationLedger = () => {
     }
   };
 
-  // Reset to initial local dataset
-  const handleResetData = () => {
-    if (window.confirm(`Kembalikan database ke ${INITIAL_DONATION_LEDGER_SMP.length} data buku kas donasi rekening SMP bawaan tahun 2026?`)) {
-      setItems(INITIAL_DONATION_LEDGER_SMP);
-      toast.success("Data berhasil di-reset ke data Rekening Donasi SMP");
+  // Sync BOTH SMP and SMA to Firestore
+  const handleSyncAllToFirestore = async () => {
+    setLoading(true);
+    const toastId = toast.loading("Menyinkronkan seluruh database Rekening SMP & SMA ke Firestore...");
+    try {
+      // 1. Write SMP
+      const smpChunks = chunkArray(INITIAL_DONATION_LEDGER_SMP, 400);
+      for (const chunk of smpChunks) {
+        const batch = writeBatch(db);
+        chunk.forEach((item) => {
+          const docRef = doc(db, 'monthly_donation_ledger', item.id);
+          batch.set(docRef, { ...item, account: 'smp' });
+        });
+        await batch.commit();
+      }
+      await setDoc(doc(db, 'donation_saldo_awal', 'smp_2026'), {
+        account: 'smp',
+        year: 2026,
+        amount: INITIAL_SALDO_AWAL_2026_SMP,
+        updatedAt: new Date().toISOString()
+      });
+
+      // 2. Write SMA
+      const smaChunks = chunkArray(INITIAL_DONATION_LEDGER_SMA, 400);
+      for (const chunk of smaChunks) {
+        const batch = writeBatch(db);
+        chunk.forEach((item) => {
+          const docRef = doc(db, 'monthly_donation_ledger', item.id);
+          batch.set(docRef, { ...item, account: 'sma' });
+        });
+        await batch.commit();
+      }
+      await setDoc(doc(db, 'donation_saldo_awal', 'sma_2026'), {
+        account: 'sma',
+        year: 2026,
+        amount: INITIAL_SALDO_AWAL_2026_SMA,
+        updatedAt: new Date().toISOString()
+      });
+
+      setIsFirestoreConnected(true);
+      toast.success("Berhasil sinkronisasi database: SMP (149 transaksi - Saldo Rp 27.477.600) & SMA (239 transaksi - Saldo Rp 21.333.045) ke Firestore!", { id: toastId });
+    } catch (error: any) {
+      console.error("Firestore sync all error:", error);
+      toast.error("Gagal sinkronisasi database: " + error.message, { id: toastId });
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Recalculate running balance
-  const recalculateBalances = (list: DonationLedgerItem[]): DonationLedgerItem[] => {
-    let running = INITIAL_SALDO_AWAL_2026_SMP;
-    return list.map(item => {
-      running = running + (item.debet || 0) - (item.kredit || 0);
-      return {
-        ...item,
-        saldoAkhir: running
-      };
-    });
+  // Save customized Saldo Awal
+  const handleSaveSaldoAwal = async () => {
+    const cleanNum = Number(tempSaldoAwalInput.replace(/\D/g, ''));
+    if (isNaN(cleanNum) || cleanNum < 0) {
+      toast.error("Nominal saldo awal tidak valid");
+      return;
+    }
+    const toastId = toast.loading("Menyimpan saldo awal ke database...");
+    try {
+      const saldoRef = doc(db, 'donation_saldo_awal', `${selectedAccount}_2026`);
+      await setDoc(saldoRef, {
+        account: selectedAccount,
+        year: 2026,
+        amount: cleanNum,
+        updatedAt: new Date().toISOString()
+      });
+      setDbSaldoAwal(cleanNum);
+      setIsSaldoAwalModalOpen(false);
+      toast.success(`Saldo awal ${selectedAccount.toUpperCase()} berhasil diperbarui: ${formatRupiah(cleanNum)}`, { id: toastId });
+    } catch (err: any) {
+      toast.error("Gagal memperbarui saldo awal: " + err.message, { id: toastId });
+    }
+  };
+
+  // Reset to initial local dataset
+  const handleResetData = () => {
+    const accountTitle = selectedAccount === 'sma' ? 'Rekening Donasi SMA' : 'Rekening Donasi SMP';
+    if (window.confirm(`Kembalikan database ke ${defaultDataset.length} data buku kas donasi ${accountTitle} bawaan tahun 2026?`)) {
+      setItems(recalculateBalances(defaultDataset, activeDefaultSaldoAwal));
+      toast.success(`Data berhasil di-reset ke data ${accountTitle}`);
+    }
   };
 
   // Handle Add Item
@@ -324,19 +511,17 @@ export const MonthlyDonationLedger = () => {
 
     const numAmount = Number(formData.amount);
     const isPemasukan = formData.type === 'pemasukan';
-    
-    // Determine monthKey & monthName from date
-    const monthKey = "2026-08"; // default
-    const monthName = "Agustus 2026";
+    const prefix = selectedAccount === 'sma' ? 'TX-SMA-2026' : 'TX-SMP-2026';
+    const accountTitle = selectedAccount === 'sma' ? 'Rekening Donasi SMA' : 'Rekening Donasi SMP';
 
     const newItem: DonationLedgerItem = {
-      id: `TX-SMP-2026-${String(items.length + 1).padStart(3, '0')}`,
-      account: "smp",
-      accountName: "Rekening Donasi SMP",
+      id: `${prefix}-${String(items.length + 1).padStart(3, '0')}`,
+      account: selectedAccount,
+      accountName: accountTitle,
       date: formData.date,
       isoDate: new Date().toISOString().split('T')[0],
-      monthKey,
-      monthName,
+      monthKey: "2026-08",
+      monthName: "Agustus 2026",
       docNo: formData.docNo || '-',
       allocation: formData.allocation,
       pic: formData.pic || '-',
@@ -351,15 +536,13 @@ export const MonthlyDonationLedger = () => {
     setItems(updated);
     setIsAddModalOpen(false);
 
-    // Save to Firestore if connected
     try {
       await setDoc(doc(db, 'monthly_donation_ledger', newItem.id), newItem);
-      toast.success("Transaksi baru Rekening SMP berhasil ditambahkan ke database!");
+      toast.success(`Transaksi baru ${accountTitle} berhasil ditambahkan ke database!`);
     } catch {
       toast.success("Transaksi baru ditambahkan ke database lokal");
     }
 
-    // Reset form
     setFormData({
       date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' }),
       docNo: '',
@@ -369,6 +552,49 @@ export const MonthlyDonationLedger = () => {
       type: 'pemasukan',
       amount: ''
     });
+  };
+
+  // Handle Open Edit Modal
+  const handleOpenEdit = (item: DonationLedgerItem) => {
+    setEditingItem({ ...item });
+    setIsEditModalOpen(true);
+  };
+
+  // Handle Save Edit
+  const handleSaveEdit = async () => {
+    if (!editingItem) return;
+    if (!editingItem.description || (editingItem.debet === 0 && editingItem.kredit === 0)) {
+      toast.error("Harap lengkapi keterangan dan nominal transaksi");
+      return;
+    }
+
+    const updatedList = items.map(it => it.id === editingItem.id ? editingItem : it);
+    const recalculated = recalculateBalances(updatedList);
+    setItems(recalculated);
+    setIsEditModalOpen(false);
+
+    try {
+      await setDoc(doc(db, 'monthly_donation_ledger', editingItem.id), editingItem);
+      toast.success(`Transaksi ${editingItem.id} berhasil diperbarui di database!`);
+    } catch {
+      toast.success("Transaksi berhasil diperbarui di database lokal");
+    }
+  };
+
+  // Handle Delete Item
+  const handleDeleteItem = async (id: string) => {
+    if (!window.confirm(`Hapus transaksi ID ${id} dari database?`)) return;
+
+    const filtered = items.filter(it => it.id !== id);
+    const recalculated = recalculateBalances(filtered);
+    setItems(recalculated);
+
+    try {
+      await deleteDoc(doc(db, 'monthly_donation_ledger', id));
+      toast.success(`Transaksi ${id} berhasil dihapus dari database.`);
+    } catch {
+      toast.success("Transaksi berhasil dihapus dari database lokal");
+    }
   };
 
   // Apply CSV / Excel pasted text to Database
@@ -387,7 +613,6 @@ export const MonthlyDonationLedger = () => {
         return;
       }
 
-      // Recalculate balances with detected saldo awal
       let running = result.saldoAwal;
       const recalculated = result.items.map(it => {
         running = running + (it.debet || 0) - (it.kredit || 0);
@@ -396,7 +621,6 @@ export const MonthlyDonationLedger = () => {
 
       setItems(recalculated);
 
-      // Save to Firestore in batches of 400
       const chunkSize = 400;
       for (let i = 0; i < recalculated.length; i += chunkSize) {
         const chunk = recalculated.slice(i, i + chunkSize);
@@ -408,7 +632,6 @@ export const MonthlyDonationLedger = () => {
         await batch.commit();
       }
 
-      // Save starting balance
       try {
         await setDoc(doc(db, 'donation_saldo_awal', `${selectedAccount}_2026`), {
           account: selectedAccount,
@@ -444,7 +667,7 @@ export const MonthlyDonationLedger = () => {
     setIsFetchingSheets(true);
     const toastId = toast.loading("Mengambil pembaruan data dari Google Sheets...");
     try {
-      localStorage.setItem('scb_smp_donation_sheets_url', googleSheetsUrl.trim());
+      localStorage.setItem(`scb_${selectedAccount}_donation_sheets_url`, googleSheetsUrl.trim());
       const res = await fetch(fetchUrl);
       if (!res.ok) {
         throw new Error(`Gagal mengambil data (Status ${res.status}). Pastikan Google Sheets sudah dipublikasikan ke web dalam format CSV.`);
@@ -465,7 +688,6 @@ export const MonthlyDonationLedger = () => {
 
       setItems(recalculated);
 
-      // Save in batches to Firestore
       const chunkSize = 400;
       for (let i = 0; i < recalculated.length; i += chunkSize) {
         const chunk = recalculated.slice(i, i + chunkSize);
@@ -510,10 +732,10 @@ export const MonthlyDonationLedger = () => {
     const totalPengeluaran = items.reduce((acc, curr) => acc + (curr.kredit || 0), 0);
     const countPemasukan = items.filter(i => i.debet > 0).length;
     const countPengeluaran = items.filter(i => i.kredit > 0).length;
-    const saldoAkhir = INITIAL_SALDO_AWAL_2026_SMP + totalPemasukan - totalPengeluaran;
+    const saldoAkhir = activeSaldoAwal + totalPemasukan - totalPengeluaran;
 
     return {
-      saldoAwal: INITIAL_SALDO_AWAL_2026_SMP,
+      saldoAwal: activeSaldoAwal,
       totalPemasukan,
       totalPengeluaran,
       saldoAkhir,
@@ -521,9 +743,9 @@ export const MonthlyDonationLedger = () => {
       countPengeluaran,
       totalTransactions: items.length
     };
-  }, [items]);
+  }, [items, activeSaldoAwal]);
 
-  // Breakdown by Allocation (Categorization requirement)
+  // Breakdown by Allocation
   const allocationBreakdown = useMemo(() => {
     const map: Record<string, { 
       allocation: string; 
@@ -560,7 +782,6 @@ export const MonthlyDonationLedger = () => {
       }
     });
 
-    // Separate into Pemasukan and Pengeluaran lists
     const pemasukanList = Object.values(map)
       .filter(x => x.pemasukan > 0)
       .sort((a, b) => b.pemasukan - a.pemasukan);
@@ -589,12 +810,11 @@ export const MonthlyDonationLedger = () => {
       { key: '2026-08', label: 'Agustus 2026', short: 'Agu' },
     ];
 
-    let currentSaldo = INITIAL_SALDO_AWAL_2026_SMP;
+    let currentSaldo = activeSaldoAwal;
 
     return monthsOrder.map(m => {
       const monthItems = items.filter(item => {
-        // match monthKey or check date
-        return item.monthKey === m.key || item.date.includes(`-${m.short}-`);
+        return item.monthKey === m.key || item.date.includes(`-${m.short}-`) || item.date.includes(`/${m.short}/`);
       });
 
       const pemasukan = monthItems.reduce((acc, curr) => acc + (curr.debet || 0), 0);
@@ -603,60 +823,115 @@ export const MonthlyDonationLedger = () => {
       const saldoAkhirBulan = saldoAwalBulan + pemasukan - pengeluaran;
       currentSaldo = saldoAkhirBulan;
 
-      // Top allocation for income and expense
-      const allocInMap: Record<string, number> = {};
-      const allocOutMap: Record<string, number> = {};
-
-      monthItems.forEach(it => {
-        if (it.debet > 0) allocInMap[it.allocation] = (allocInMap[it.allocation] || 0) + it.debet;
-        if (it.kredit > 0) allocOutMap[it.allocation] = (allocOutMap[it.allocation] || 0) + it.kredit;
+      // Find top in and out allocations
+      const inAllocMap: Record<string, number> = {};
+      const outAllocMap: Record<string, number> = {};
+      monthItems.forEach(i => {
+        if (i.debet > 0) inAllocMap[i.allocation] = (inAllocMap[i.allocation] || 0) + i.debet;
+        if (i.kredit > 0) outAllocMap[i.allocation] = (outAllocMap[i.allocation] || 0) + i.kredit;
       });
 
-      const topAllocIn = Object.entries(allocInMap).sort((a, b) => b[1] - a[1])[0] || ['-', 0];
-      const topAllocOut = Object.entries(allocOutMap).sort((a, b) => b[1] - a[1])[0] || ['-', 0];
+      const topIn = Object.entries(inAllocMap).sort((a, b) => b[1] - a[1])[0] || ['-', 0];
+      const topOut = Object.entries(outAllocMap).sort((a, b) => b[1] - a[1])[0] || ['-', 0];
 
       return {
-        ...m,
-        itemsCount: monthItems.length,
+        key: m.key,
+        label: m.label,
+        short: m.short,
+        saldoAwalBulan,
         pemasukan,
         pengeluaran,
-        saldoAwalBulan,
         saldoAkhirBulan,
         netFlow: pemasukan - pengeluaran,
-        topAllocIn: topAllocIn[0],
-        topAllocInAmount: topAllocIn[1],
-        topAllocOut: topAllocOut[0],
-        topAllocOutAmount: topAllocOut[1]
+        itemsCount: monthItems.length,
+        topAllocIn: topIn[0],
+        topAllocInAmount: topIn[1],
+        topAllocOut: topOut[0],
+        topAllocOutAmount: topOut[1]
       };
     });
-  }, [items]);
+  }, [items, activeSaldoAwal]);
 
-  // Live parser preview for pasted CSV modal
+  // Filtered Items for Ledger View
+  const filteredLedgerItems = useMemo(() => {
+    return items.filter(item => {
+      // Search
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const match = 
+          item.id.toLowerCase().includes(q) ||
+          item.date.toLowerCase().includes(q) ||
+          (item.docNo && item.docNo.toLowerCase().includes(q)) ||
+          (item.allocation && item.allocation.toLowerCase().includes(q)) ||
+          (item.pic && item.pic.toLowerCase().includes(q)) ||
+          (item.description && item.description.toLowerCase().includes(q)) ||
+          item.debet.toString().includes(q) ||
+          item.kredit.toString().includes(q);
+        if (!match) return false;
+      }
+
+      // Month
+      if (monthFilter !== 'ALL') {
+        if (item.monthKey !== monthFilter && !item.date.includes(monthFilter)) return false;
+      }
+
+      // Type
+      if (typeFilter !== 'ALL') {
+        if (typeFilter === 'pemasukan' && item.debet <= 0) return false;
+        if (typeFilter === 'pengeluaran' && item.kredit <= 0) return false;
+      }
+
+      // Allocation
+      if (allocationFilter !== 'ALL') {
+        if (item.allocation !== allocationFilter) return false;
+      }
+
+      return true;
+    });
+  }, [items, searchQuery, monthFilter, typeFilter, allocationFilter]);
+
+  // Paginated Items
+  const paginatedItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredLedgerItems.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredLedgerItems, currentPage]);
+
+  const totalPages = Math.ceil(filteredLedgerItems.length / itemsPerPage) || 1;
+
+  // Live parsed preview for CSV Modal
   const parsedPreview = useMemo(() => {
     if (!pastedCsv.trim()) return null;
     try {
-      const parsed = parseDonationDatabaseCsv(pastedCsv, selectedAccount);
-      const totalDebet = parsed.items.reduce((sum, it) => sum + (it.debet || 0), 0);
-      const totalKredit = parsed.items.reduce((sum, it) => sum + (it.kredit || 0), 0);
-      const saldoAkhir = parsed.saldoAwal + totalDebet - totalKredit;
+      const res = parseDonationDatabaseCsv(pastedCsv, selectedAccount);
       return {
-        count: parsed.items.length,
-        saldoAwal: parsed.saldoAwal,
-        totalDebet,
-        totalKredit,
-        saldoAkhir,
-        previewItems: parsed.items.slice(0, 5),
-        isValid: parsed.items.length > 0
+        count: res.items.length,
+        saldoAwal: res.saldoAwal,
+        totalDebet: res.totalDebet,
+        totalKredit: res.totalKredit,
+        saldoAkhir: res.saldoAkhir,
+        isValid: res.items.length > 0
       };
     } catch {
       return null;
     }
   }, [pastedCsv, selectedAccount]);
 
-  // Export to CSV
+  // Export CSV
   const handleExportCSV = () => {
-    const headers = ["ID", "TGL", "NO. DOC", "ALOKASI ANGGARAN", "PIC", "KETERANGAN", "DEBET", "KREDIT", "SALDO AKHIR"];
-    const rows = items.map((item) => [
+    const accountCode = selectedAccount === 'sma' ? 'SMA' : 'SMP';
+    const headers = [
+      "ID Transaksi",
+      "Tanggal",
+      "No. Dokumen",
+      "Alokasi Anggaran",
+      "PIC",
+      "Keterangan",
+      "Debet (Pemasukan)",
+      "Kredit (Pengeluaran)",
+      "Saldo Akhir"
+    ];
+
+    const rows = items.map(item => [
       item.id,
       item.date,
       item.docNo || '-',
@@ -672,14 +947,13 @@ export const MonthlyDonationLedger = () => {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Laporan_Donasi_Rekening_SMP_2026.csv`);
+    link.setAttribute("download", `Laporan_Donasi_Rekening_${accountCode}_2026.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success("Data buku kas donasi Rekening SMP berhasil diexport ke CSV!");
+    toast.success(`Data buku kas donasi Rekening ${accountCode} berhasil diexport ke CSV!`);
   };
 
-  // Print view
   const handlePrint = () => {
     window.print();
   };
@@ -687,6 +961,9 @@ export const MonthlyDonationLedger = () => {
   const toggleExpand = (categoryName: string) => {
     setExpandedCategories(prev => ({ ...prev, [categoryName]: !prev[categoryName] }));
   };
+
+  const accountTitle = selectedAccount === 'sma' ? 'Rekening Donasi SMA' : 'Rekening Donasi SMP';
+  const accountTag = selectedAccount === 'sma' ? 'Rekening SMA 2026' : 'Rekening SMP 2026';
 
   return (
     <div className="space-y-6">
@@ -699,6 +976,7 @@ export const MonthlyDonationLedger = () => {
             <div className="inline-flex p-1 bg-slate-100/90 rounded-2xl border border-slate-200">
               <button
                 type="button"
+                id="btn-select-smp"
                 onClick={() => setSelectedAccount('smp')}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                   selectedAccount === 'smp'
@@ -711,14 +989,15 @@ export const MonthlyDonationLedger = () => {
                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
                   selectedAccount === 'smp' ? 'bg-emerald-700/60 text-white' : 'bg-slate-200 text-slate-700'
                 }`}>
-                  {items.length} Data
+                  {selectedAccount === 'smp' ? items.length : INITIAL_DONATION_LEDGER_SMP.length} Data
                 </span>
               </button>
               <button
                 type="button"
+                id="btn-select-sma"
                 onClick={() => {
                   setSelectedAccount('sma');
-                  toast.info("Menampilkan tampilan Rekening SMA");
+                  toast.info("Menampilkan Database Rekening Donasi SMA");
                 }}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                   selectedAccount === 'sma'
@@ -728,13 +1007,18 @@ export const MonthlyDonationLedger = () => {
               >
                 <Building2 size={15} />
                 <span>Rekening Donasi SMA</span>
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                  selectedAccount === 'sma' ? 'bg-emerald-700/60 text-white' : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {selectedAccount === 'sma' ? items.length : INITIAL_DONATION_LEDGER_SMA.length} Data
+                </span>
               </button>
             </div>
           </div>
 
           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Rekening Aktif: <strong>{selectedAccount === 'smp' ? 'SMP (Sekolah Menengah Pertama)' : 'SMA'}</strong></span>
+            <span>Rekening Aktif: <strong>{selectedAccount === 'smp' ? 'SMP (Sekolah Menengah Pertama)' : 'SMA (Sekolah Menengah Atas)'}</strong></span>
           </div>
         </div>
 
@@ -743,7 +1027,7 @@ export const MonthlyDonationLedger = () => {
           <div className="space-y-2 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
               <span className="px-2.5 py-0.5 bg-emerald-600 text-white text-[10px] font-black rounded-full uppercase tracking-wider shadow-xs">
-                Rekening SMP 2026
+                {accountTag}
               </span>
               <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-black rounded-full uppercase tracking-wider border border-slate-200">
                 Sekolah Cendekia BAZNAS
@@ -757,13 +1041,13 @@ export const MonthlyDonationLedger = () => {
             </div>
             <div>
               <h2 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight flex items-baseline gap-2.5 flex-wrap">
-                <span>Data Donasi Rekening SMP</span>
+                <span>Laporan Donasi {selectedAccount === 'sma' ? 'SMA' : 'SMP'}</span>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                   Buku Kas & Alokasi Anggaran
                 </span>
               </h2>
               <p className="text-xs lg:text-sm font-medium text-slate-500 mt-1 leading-relaxed">
-                Database mutasi kas, pengelompokan alokasi anggaran debet-kredit, dan pemantauan saldo secara real-time.
+                Database mutasi kas {selectedAccount === 'sma' ? 'SMA' : 'SMP'}, pengelompokan alokasi anggaran debet-kredit, dan pemantauan saldo secara real-time.
               </p>
             </div>
           </div>
@@ -779,29 +1063,16 @@ export const MonthlyDonationLedger = () => {
                 <Plus size={15} />
                 Tambah Transaksi
               </Button>
-              <div className="inline-flex items-center p-0.5 bg-slate-100/90 rounded-xl border border-slate-200/80">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setIsImportModalOpen(true)}
-                  className="h-8 px-3 text-xs font-bold rounded-lg text-slate-700 hover:text-emerald-800 hover:bg-white transition-all gap-1.5"
-                  title="Perbarui database dengan menempel teks CSV / data Excel"
-                >
-                  <UploadCloud size={14} className="text-emerald-600" />
-                  Update / Tempel CSV
-                </Button>
-                <div className="h-4 w-px bg-slate-200" />
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setIsSheetsModalOpen(true)}
-                  className="h-8 px-3 text-xs font-bold rounded-lg text-slate-700 hover:text-emerald-800 hover:bg-white transition-all gap-1.5"
-                  title="Tautkan link publikasi Google Sheets untuk sinkronisasi otomatis"
-                >
-                  <Link2 size={14} className="text-emerald-600" />
-                  Google Sheets
-                </Button>
-              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsImportModalOpen(true)}
+                className="h-9 px-3.5 text-xs font-bold rounded-xl border-slate-200 text-slate-700 hover:text-emerald-800 hover:bg-emerald-50 hover:border-emerald-200 transition-all gap-1.5 shadow-2xs"
+                title="Perbarui database dengan menempel teks CSV / data Excel"
+              >
+                <UploadCloud size={14} className="text-emerald-600" />
+                Update / Tempel CSV
+              </Button>
             </div>
 
             {/* Cloud Sync & Export Utilities Group */}
@@ -809,13 +1080,24 @@ export const MonthlyDonationLedger = () => {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={handleSyncAllToFirestore}
+                disabled={loading}
+                className="h-8 px-3 rounded-xl border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-black text-xs gap-1.5 transition-all shadow-xs"
+                title="Sinkronkan seluruh database Rekening SMP dan SMA ke Cloud Firestore sekaligus"
+              >
+                <Sparkles size={13} className="text-amber-500" />
+                {loading ? "Menyinkronkan..." : "Sinkronkan Semua (SMP & SMA)"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleSyncToFirestore}
                 disabled={loading}
                 className="h-8 px-3 rounded-xl border-slate-200 hover:border-emerald-300 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 font-bold text-xs gap-1.5 transition-all"
-                title="Sinkronkan seluruh data Rekening Donasi SMP ke Cloud Firestore"
+                title={`Sinkronkan seluruh data ${accountTitle} ke Cloud Firestore`}
               >
-                <Sparkles size={13} className="text-amber-500" />
-                {loading ? "Menyinkronkan..." : "Sinkron Firestore"}
+                <RefreshCw size={13} className={loading ? "animate-spin text-emerald-600" : "text-emerald-600"} />
+                Sinkron {selectedAccount.toUpperCase()}
               </Button>
               <Button
                 variant="outline"
@@ -842,7 +1124,7 @@ export const MonthlyDonationLedger = () => {
                 size="sm"
                 onClick={handleResetData}
                 className="h-8 w-8 p-0 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-all"
-                title="Kembalikan ke data default Rekening SMP"
+                title={`Kembalikan ke data default ${accountTitle}`}
               >
                 <RotateCcw size={13} />
               </Button>
@@ -853,18 +1135,36 @@ export const MonthlyDonationLedger = () => {
         {/* 4 Core Financial Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
           {/* Card 1: Saldo Awal */}
-          <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-200/60">
+          <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-200/60 relative group">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">Saldo Awal (1 Jan 2026)</span>
-              <div className="p-2 bg-white rounded-xl shadow-xs text-slate-600 border border-slate-100">
-                <Wallet size={18} />
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setTempSaldoAwalInput(activeSaldoAwal.toString());
+                    setIsSaldoAwalModalOpen(true);
+                  }}
+                  className="h-6 px-1.5 text-[10px] font-bold text-slate-500 hover:text-emerald-700 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-all"
+                  title="Ubah nominal saldo awal tahun 2026"
+                >
+                  <Edit3 size={11} className="mr-1" />
+                  Edit
+                </Button>
+                <div className="p-1.5 bg-white rounded-xl shadow-xs text-slate-600 border border-slate-100">
+                  <Wallet size={16} />
+                </div>
               </div>
             </div>
             <p className="text-xl lg:text-2xl font-black text-slate-900 mt-2">
               {formatRupiah(metrics.saldoAwal)}
             </p>
-            <p className="text-[11px] text-slate-500 mt-1 font-medium">
-              Buku Kas Donasi SCB 2026
+            <p className="text-[11px] text-slate-500 mt-1 font-medium flex items-center justify-between">
+              <span>Buku Kas Donasi {selectedAccount === 'sma' ? 'SMA' : 'SMP'} 2026</span>
+              {dbSaldoAwal !== null && (
+                <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">Database</span>
+              )}
             </p>
           </div>
 
@@ -933,11 +1233,11 @@ export const MonthlyDonationLedger = () => {
               <div className="flex items-center gap-2">
                 <span className="font-black text-sm text-slate-900">Database Firestore Terhubung & Dinamis</span>
                 <Badge className="bg-emerald-100 text-emerald-800 font-bold text-[10px] border-none">
-                  Collection: monthly_donation_ledger ({metrics.totalTransactions} Transaksi)
+                  Collection: monthly_donation_ledger ({metrics.totalTransactions} Transaksi {selectedAccount.toUpperCase()})
                 </Badge>
               </div>
               <p className="text-xs text-slate-600 mt-0.5">
-                Jika data base ini berubah, baik nominal maupun keterangannya (lewat <strong>Tombol Edit Baris</strong>, <strong>Tempel CSV Excel</strong>, atau <strong>Google Sheets</strong>), maka di aplikasi pun seketika berubah.
+                Setiap perubahan pada akun {selectedAccount.toUpperCase()} (lewat <strong>Edit Transaksi</strong>, <strong>Tempel CSV Excel</strong>, atau <strong>Google Sheets</strong>) akan langsung tersimpan dan tersinkronisasi otomatis.
               </p>
             </div>
           </div>
@@ -999,10 +1299,21 @@ export const MonthlyDonationLedger = () => {
             <BarChart3 size={15} />
             3. Grafik & Analisis
           </button>
+          <button
+            onClick={() => setActiveTab('ledger')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+              activeTab === 'ledger'
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <FileSpreadsheet size={15} />
+            4. Buku Kas & Transaksi ({items.length})
+          </button>
         </div>
 
         <div className="text-xs font-bold text-slate-500 pr-2">
-          Tahun Anggaran: <span className="text-slate-900 font-black">2026</span>
+          Akun: <span className="text-emerald-700 font-black">{accountTitle}</span> | Tahun Anggaran: <span className="text-slate-900 font-black">2026</span>
         </div>
       </div>
 
@@ -1018,7 +1329,7 @@ export const MonthlyDonationLedger = () => {
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-slate-900 tracking-tight">
-                    Pemasukan Berdasarkan Alokasi Anggaran
+                    Pemasukan Berdasarkan Alokasi Anggaran ({accountTitle})
                   </h3>
                   <p className="text-xs text-slate-500 font-medium">
                     Total: <span className="font-bold text-emerald-700">{formatRupiah(metrics.totalPemasukan)}</span> ({metrics.countPemasukan} transaksi masuk)
@@ -1123,7 +1434,7 @@ export const MonthlyDonationLedger = () => {
                 </div>
                 <div>
                   <h3 className="text-xl font-black text-slate-900 tracking-tight">
-                    Pengeluaran Berdasarkan Alokasi Anggaran
+                    Pengeluaran Berdasarkan Alokasi Anggaran ({accountTitle})
                   </h3>
                   <p className="text-xs text-slate-500 font-medium">
                     Total: <span className="font-bold text-rose-700">{formatRupiah(metrics.totalPengeluaran)}</span> ({metrics.countPengeluaran} transaksi keluar)
@@ -1225,7 +1536,7 @@ export const MonthlyDonationLedger = () => {
               <CardHeader className="bg-slate-50/70 p-4 border-b border-slate-100">
                 <CardTitle className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <Layers size={16} />
-                  Rekapitulasi Netto Alokasi Anggaran (Debet vs Kredit)
+                  Rekapitulasi Netto Alokasi Anggaran ({accountTitle})
                 </CardTitle>
               </CardHeader>
               <div className="overflow-x-auto">
@@ -1298,7 +1609,7 @@ export const MonthlyDonationLedger = () => {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xl font-black text-slate-900 tracking-tight">
-                Rekapitulasi Arus Donasi Per Bulan (Tahun Buku 2026)
+                Rekapitulasi Arus Donasi Per Bulan ({accountTitle} 2026)
               </h3>
               <p className="text-xs text-slate-500 font-medium">
                 Pantau saldo awal, pergerakan kas masuk, kas keluar, dan saldo akhir setiap bulan.
@@ -1379,15 +1690,15 @@ export const MonthlyDonationLedger = () => {
       {/* VIEW 3: GRAFIK & ANALISIS VISUAL */}
       {activeTab === 'charts' && (
         <div className="space-y-6">
-          {/* Chart Row 1: Bar Chart Pemasukan vs Pengeluaran per Bulan */}
+          {/* Chart Row 1: Bar Chart of Inflow vs Outflow */}
           <Card className="border-slate-200/80 shadow-xs">
             <CardHeader className="p-4 pb-2 border-b border-slate-100 bg-slate-50/50">
               <CardTitle className="text-sm font-black text-slate-900 flex items-center gap-2 uppercase tracking-wider">
-                <BarChart3 size={16} />
-                Tren Arus Kas Masuk vs Kas Keluar Per Bulan (2026)
+                <BarChart3 size={16} className="text-emerald-600" />
+                Grafik Perbandingan Pemasukan (Debet) vs Pengeluaran (Kredit) Bulanan 2026
               </CardTitle>
               <CardDescription className="text-xs">
-                Perbandingan total debet (pemasukan) dan kredit (pengeluaran) dalam satuan Rupiah.
+                Pergerakan kas {accountTitle} dari bulan Januari hingga Agustus 2026.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4">
@@ -1398,23 +1709,23 @@ export const MonthlyDonationLedger = () => {
                     <XAxis dataKey="short" tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
                     <YAxis 
                       tickLine={false} 
-                      tick={{ fontSize: 11, fill: '#64748b' }}
+                      tick={{ fontSize: 11, fill: '#64748b' }} 
                       tickFormatter={(val) => `${(val / 1000000).toFixed(0)}jt`}
                     />
                     <Tooltip 
-                      formatter={(val: any) => [formatRupiah(Number(val)), '']}
-                      labelFormatter={(label) => `Bulan ${label} 2026`}
+                      formatter={(val: any) => formatRupiah(Number(val))}
+                      contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
-                    <Legend />
-                    <Bar dataKey="pemasukan" name="Pemasukan (Debet)" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="pengeluaran" name="Pengeluaran (Kredit)" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                    <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                    <Bar dataKey="pemasukan" name="Pemasukan (Debet)" fill="#10b981" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="pengeluaran" name="Pengeluaran (Kredit)" fill="#f43f5e" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
 
-          {/* Chart Row 2: Pie Charts of In vs Out Allocations */}
+          {/* Chart Row 2: Pie Charts of Inflow & Outflow Allocation */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Pie Chart Pemasukan */}
             <Card className="border-slate-200/80 shadow-xs">
@@ -1500,10 +1811,10 @@ export const MonthlyDonationLedger = () => {
             <CardHeader className="p-4 pb-2 border-b border-slate-100 bg-slate-50/50">
               <CardTitle className="text-sm font-black text-blue-900 flex items-center gap-2 uppercase tracking-wider">
                 <TrendingUp size={16} />
-                Tren Saldo Akhir Kas Donasi Sepanjang 2026
+                Tren Saldo Akhir Kas Donasi ({accountTitle} 2026)
               </CardTitle>
               <CardDescription className="text-xs">
-                Perkembangan saldo kas donasi dari Saldo Awal Rp 30.759.759 hingga akhir Agustus 2026.
+                Perkembangan saldo kas donasi dari Saldo Awal {formatRupiah(activeSaldoAwal)} hingga akhir Agustus 2026 ({formatRupiah(metrics.saldoAkhir)}).
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4">
@@ -1533,12 +1844,223 @@ export const MonthlyDonationLedger = () => {
         </div>
       )}
 
-      {/* Modal Tambah Transaksi Baru */}
+      {/* VIEW 4: BUKU KAS LENGKAP & EDIT TRANSAKSI (TABLE VIEW) */}
+      {activeTab === 'ledger' && (
+        <Card className="border-slate-200/80 shadow-xs overflow-hidden">
+          <CardHeader className="p-4 bg-slate-50/70 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-base font-black text-slate-900 flex items-center gap-2">
+                <FileSpreadsheet size={18} className="text-emerald-600" />
+                Buku Kas & Log Mutasi Transaksi ({accountTitle})
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500 mt-0.5">
+                Menampilkan {filteredLedgerItems.length} dari total {items.length} transaksi. Klik <strong>Edit</strong> pada baris untuk mengubah keterangan atau nominal secara langsung.
+              </CardDescription>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Search */}
+              <div className="relative min-w-[200px]">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Cari transaksi, PIC, dok..."
+                  className="pl-8 h-8 text-xs rounded-xl bg-white"
+                />
+              </div>
+
+              {/* Month Filter */}
+              <select
+                value={monthFilter}
+                onChange={(e) => {
+                  setMonthFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="h-8 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5"
+              >
+                <option value="ALL">Semua Bulan</option>
+                <option value="2026-01">Januari 2026</option>
+                <option value="2026-02">Februari 2026</option>
+                <option value="2026-03">Maret 2026</option>
+                <option value="2026-04">April 2026</option>
+                <option value="2026-05">Mei 2026</option>
+                <option value="2026-06">Juni 2026</option>
+                <option value="2026-07">Juli 2026</option>
+                <option value="2026-08">Agustus 2026</option>
+              </select>
+
+              {/* Type Filter */}
+              <select
+                value={typeFilter}
+                onChange={(e) => {
+                  setTypeFilter(e.target.value as any);
+                  setCurrentPage(1);
+                }}
+                className="h-8 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5"
+              >
+                <option value="ALL">Semua Jenis</option>
+                <option value="pemasukan">Debet (Masuk)</option>
+                <option value="pengeluaran">Kredit (Keluar)</option>
+              </select>
+
+              {/* Allocation Filter */}
+              <select
+                value={allocationFilter}
+                onChange={(e) => {
+                  setAllocationFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="h-8 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-2.5 max-w-[160px]"
+              >
+                <option value="ALL">Semua Alokasi</option>
+                {Array.from(new Set(items.map(i => i.allocation))).map(alloc => (
+                  <option key={alloc} value={alloc}>{alloc}</option>
+                ))}
+              </select>
+
+              <Button
+                size="sm"
+                onClick={() => setIsAddModalOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 px-3 rounded-xl gap-1.5"
+              >
+                <Plus size={14} />
+                Tambah
+              </Button>
+            </div>
+          </CardHeader>
+
+          {/* Table Container */}
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-slate-50">
+                <TableRow>
+                  <TableHead className="w-12 text-center text-xs font-black text-slate-700">No</TableHead>
+                  <TableHead className="w-24 text-xs font-black text-slate-700">Tanggal</TableHead>
+                  <TableHead className="w-28 text-xs font-black text-slate-700">No. Doc</TableHead>
+                  <TableHead className="w-36 text-xs font-black text-slate-700">Alokasi</TableHead>
+                  <TableHead className="w-28 text-xs font-black text-slate-700">PIC</TableHead>
+                  <TableHead className="text-xs font-black text-slate-700 min-w-[220px]">Keterangan</TableHead>
+                  <TableHead className="w-28 text-right text-xs font-black text-emerald-700">Debet</TableHead>
+                  <TableHead className="w-28 text-right text-xs font-black text-rose-700">Kredit</TableHead>
+                  <TableHead className="w-32 text-right text-xs font-black text-blue-900">Saldo Akhir</TableHead>
+                  <TableHead className="w-20 text-center text-xs font-black text-slate-700">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedItems.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="h-32 text-center text-slate-400 text-xs">
+                      Tidak ada transaksi yang cocok dengan filter.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginatedItems.map((item, idx) => {
+                    const rowNumber = (currentPage - 1) * itemsPerPage + idx + 1;
+                    const conf = ALLOCATION_CONFIG[item.allocation] || {
+                      bg: 'bg-slate-100 text-slate-700',
+                      label: item.allocation
+                    };
+
+                    return (
+                      <TableRow key={item.id} className="hover:bg-slate-50/80 transition-colors text-xs">
+                        <TableCell className="text-center font-mono text-slate-400 text-[11px]">
+                          {rowNumber}
+                        </TableCell>
+                        <TableCell className="font-medium text-slate-800 whitespace-nowrap">
+                          {item.date}
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px] text-slate-500 whitespace-nowrap">
+                          {item.docNo || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`inline-block px-2 py-0.5 rounded-lg text-[10px] font-bold whitespace-nowrap ${conf.bg}`}>
+                            {item.allocation}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-slate-600 font-medium whitespace-nowrap">
+                          {item.pic || '-'}
+                        </TableCell>
+                        <TableCell className="text-slate-800 font-medium">
+                          {item.description}
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-emerald-700 whitespace-nowrap">
+                          {item.debet > 0 ? formatRupiah(item.debet) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-rose-700 whitespace-nowrap">
+                          {item.kredit > 0 ? formatRupiah(item.kredit) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-bold text-blue-900 whitespace-nowrap">
+                          {formatRupiah(item.saldoAkhir)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              onClick={() => handleOpenEdit(item)}
+                              className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition-colors"
+                              title="Edit Transaksi"
+                            >
+                              <Edit3 size={13} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteItem(item.id)}
+                              className="p-1 rounded-lg hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors"
+                              title="Hapus Transaksi"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Pagination Footer */}
+          <div className="p-3 bg-slate-50/50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="text-slate-500 font-medium">
+              Menampilkan {paginatedItems.length} dari {filteredLedgerItems.length} data (Halaman {currentPage} dari {totalPages})
+            </span>
+            <div className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                className="h-7 px-2 text-xs rounded-lg"
+              >
+                Sebelumnya
+              </Button>
+              <div className="text-xs font-bold text-slate-700 px-2">
+                {currentPage} / {totalPages}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                className="h-7 px-2 text-xs rounded-lg"
+              >
+                Berikutnya
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* MODAL 1: Tambah Transaksi Baru */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="max-w-md bg-white rounded-3xl p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-black text-slate-900">
-              Tambah Transaksi Donasi / Beban Baru
+              Tambah Transaksi Donasi / Beban ({accountTitle})
             </DialogTitle>
           </DialogHeader>
 
@@ -1650,7 +2172,7 @@ export const MonthlyDonationLedger = () => {
             </Button>
             <Button
               onClick={handleSaveNewItem}
-              className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold"
             >
               Simpan Transaksi
             </Button>
@@ -1658,16 +2180,123 @@ export const MonthlyDonationLedger = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Update / Tempel CSV Excel */}
+      {/* MODAL 2: Edit Transaksi */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-md bg-white rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+              <Edit3 size={18} className="text-emerald-600" />
+              Edit Transaksi ({editingItem?.id})
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Ubah data transaksi. Saldo akhir akan otomatis dihitung ulang secara menyeluruh.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingItem && (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Tanggal</label>
+                  <Input
+                    value={editingItem.date}
+                    onChange={(e) => setEditingItem({ ...editingItem, date: e.target.value })}
+                    className="text-xs rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">No. Dokumen</label>
+                  <Input
+                    value={editingItem.docNo || ''}
+                    onChange={(e) => setEditingItem({ ...editingItem, docNo: e.target.value })}
+                    className="text-xs rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Alokasi Anggaran</label>
+                <select
+                  value={editingItem.allocation}
+                  onChange={(e) => setEditingItem({ ...editingItem, allocation: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800"
+                >
+                  {Object.keys(ALLOCATION_CONFIG).map(alloc => (
+                    <option key={alloc} value={alloc}>{alloc} - {ALLOCATION_CONFIG[alloc].label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">PIC</label>
+                <Input
+                  value={editingItem.pic || ''}
+                  onChange={(e) => setEditingItem({ ...editingItem, pic: e.target.value })}
+                  className="text-xs rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-emerald-700 block mb-1">Debet (Masuk Rp)</label>
+                  <Input
+                    type="number"
+                    value={editingItem.debet || 0}
+                    onChange={(e) => setEditingItem({ ...editingItem, debet: Number(e.target.value) || 0 })}
+                    className="text-xs font-bold text-emerald-700 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-rose-700 block mb-1">Kredit (Keluar Rp)</label>
+                  <Input
+                    type="number"
+                    value={editingItem.kredit || 0}
+                    onChange={(e) => setEditingItem({ ...editingItem, kredit: Number(e.target.value) || 0 })}
+                    className="text-xs font-bold text-rose-700 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Keterangan</label>
+                <textarea
+                  value={editingItem.description}
+                  onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
+                  rows={3}
+                  className="w-full text-xs rounded-xl border border-slate-200 p-2.5 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditModalOpen(false)}
+              className="rounded-xl text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold"
+            >
+              Simpan Perubahan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 3: Update / Tempel CSV Excel */}
       <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
         <DialogContent className="max-w-2xl bg-white rounded-3xl p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
               <UploadCloud size={20} className="text-emerald-700" />
-              Update / Tempel Database Donasi SMP (Excel / CSV)
+              Update / Tempel Database {accountTitle} (Excel / CSV)
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Jika data di Excel Anda berubah nominal atau keterangannya, salin seluruh tabel lalu tempelkan di bawah ini. Sistem otomatis mendeteksi kolom, saldo awal, dan menghitung saldo akhir.
+              Jika data di Excel berubah nominal atau keterangannya, salin seluruh tabel lalu tempelkan di bawah ini. Sistem otomatis mendeteksi kolom, saldo awal ({formatRupiah(activeSaldoAwal)}), dan menghitung saldo akhir.
             </DialogDescription>
           </DialogHeader>
 
@@ -1678,10 +2307,10 @@ export const MonthlyDonationLedger = () => {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => setPastedCsv(DEFAULT_RAW_CSV_SMP_2026)}
+                  onClick={() => setPastedCsv(defaultRawCsv)}
                   className="h-7 px-2 text-[11px] text-emerald-700 hover:bg-emerald-50 rounded-lg font-bold"
                 >
-                  Muat Data Asli 2026
+                  Muat Data Asli {selectedAccount.toUpperCase()} 2026
                 </Button>
                 <label className="cursor-pointer inline-flex items-center gap-1.5 h-7 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[11px] transition-colors">
                   <FileText size={12} />
@@ -1763,16 +2392,16 @@ export const MonthlyDonationLedger = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Modal Tautkan Google Sheets */}
+      {/* MODAL 4: Tautkan Google Sheets */}
       <Dialog open={isSheetsModalOpen} onOpenChange={setIsSheetsModalOpen}>
         <DialogContent className="max-w-lg bg-white rounded-3xl p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
               <Link2 size={20} className="text-emerald-600" />
-              Tautkan Link Database Google Sheets
+              Tautkan Link Database Google Sheets ({accountTitle})
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Jika data donasi rekening SMP dikelola di Google Sheets, tautkan tautan CSV publiknya agar aplikasi dapat langsung menarik pembaruan kapan pun.
+              Jika data donasi {accountTitle} dikelola di Google Sheets, tautkan tautan CSV publiknya agar aplikasi dapat langsung menarik pembaruan kapan pun.
             </DialogDescription>
           </DialogHeader>
 
@@ -1795,7 +2424,7 @@ export const MonthlyDonationLedger = () => {
             <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-1.5 text-xs text-slate-600">
               <span className="font-bold text-slate-900 block">Cara Mendapatkan Link CSV Google Sheets:</span>
               <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-600">
-                <li>Buka Google Sheets data Rekening Donasi SMP Anda.</li>
+                <li>Buka Google Sheets data {accountTitle} Anda.</li>
                 <li>Pilih menu <strong>File &gt; Bagikan (Share) &gt; Publikasikan ke web</strong>.</li>
                 <li>Pada tab lembar kerja, pilih lembar donasi dan ubah format <em>Halaman Web</em> menjadi <strong>Comma-separated values (.csv)</strong>.</li>
                 <li>Klik <strong>Publikasikan</strong> lalu salin URL yang muncul dan tempelkan di atas.</li>
@@ -1818,6 +2447,70 @@ export const MonthlyDonationLedger = () => {
             >
               <RefreshCw size={14} className={isFetchingSheets ? "animate-spin" : ""} />
               {isFetchingSheets ? "Mengambil Data..." : "Tarik Data Sekarang"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 5. Modal Ubah Saldo Awal */}
+      <Dialog open={isSaldoAwalModalOpen} onOpenChange={setIsSaldoAwalModalOpen}>
+        <DialogContent className="max-w-md bg-white rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+              <Wallet size={20} className="text-emerald-600" />
+              Sesuaikan Saldo Awal {accountTitle} (1 Jan 2026)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Perubahan saldo awal akan langsung tersinkronisasi ke Firestore dan memperbarui seluruh running balance ({accountTitle}).
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                Nominal Saldo Awal (Rp):
+              </label>
+              <div className="relative">
+                <Input
+                  type="text"
+                  value={tempSaldoAwalInput}
+                  onChange={(e) => setTempSaldoAwalInput(e.target.value)}
+                  placeholder="Contoh: 30759759"
+                  className="font-mono text-sm font-bold rounded-xl"
+                />
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5">
+                Pratinjau: <span className="font-bold text-emerald-700">{formatRupiah(Number(tempSaldoAwalInput.replace(/\D/g, '')) || 0)}</span>
+              </p>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 text-xs text-slate-600 space-y-1">
+              <span className="font-bold text-slate-800 block">Nilai Standar Rekomendasi:</span>
+              <div className="flex items-center justify-between text-[11px]">
+                <span>Rekening Donasi SMP:</span>
+                <span className="font-mono font-bold text-slate-900">Rp 30.759.759</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span>Rekening Donasi SMA:</span>
+                <span className="font-mono font-bold text-slate-900">Rp 56.084.526</span>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsSaldoAwalModalOpen(false)}
+              className="rounded-xl text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleSaveSaldoAwal}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold gap-2 shadow-xs"
+            >
+              <CheckCircle2 size={14} />
+              Simpan ke Database
             </Button>
           </DialogFooter>
         </DialogContent>

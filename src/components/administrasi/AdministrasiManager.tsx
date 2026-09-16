@@ -19,7 +19,7 @@ export const AdministrasiManager = ({ isAdmin = false }: AdministrasiManagerProp
         </div>
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Laporan Donasi</h1>
-          <p className="text-sm font-medium text-slate-500">Database buku kas donasi Rekening SMP bulanan, rekapitulasi alokasi anggaran, dan laporan arus kas.</p>
+          <p className="text-sm font-medium text-slate-500">Database buku kas donasi Rekening SMP & SMA bulanan, rekapitulasi alokasi anggaran, dan laporan arus kas.</p>
         </div>
       </div>
 
@@ -30,7 +30,7 @@ export const AdministrasiManager = ({ isAdmin = false }: AdministrasiManagerProp
             className="flex-1 py-3 px-6 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all gap-2"
           >
             <GraduationCap size={15} />
-            Data Donasi Rekening SMP & Alokasi Anggaran
+            Buku Kas Donasi SMP & SMA & Alokasi Anggaran
           </TabsTrigger>
           <TabsTrigger 
             value="reports" 

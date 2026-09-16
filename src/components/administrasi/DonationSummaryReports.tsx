@@ -289,7 +289,7 @@ export const ALL_CASHFLOWS = {
       saldoAwal: 30759759,
       penerimaan: {
         danaTerikat: [
-          { name: "Titipan Uang Saku BAZNAS Daerah", amount: 15600000 },
+          { name: "Titipan Uang Saku BAZNAS Daerah", amount: 16500000 },
           { name: "Donasi Laptop SMA SCB", amount: 88000000 },
           { name: "Wakaf Sumur SCB", amount: 2150000 },
           { name: "BOSP", amount: 110000 }
@@ -311,10 +311,12 @@ export const ALL_CASHFLOWS = {
             { name: "Penyaluran Donasi Laptop SMA SCB", amount: 88005350 }
           ],
           pengembanganSDM: [],
-          standarSarana: [],
+          standarSarana: [
+            { name: "Penyaluran Wakaf Sumur & Sarpras", amount: 4847000 }
+          ],
           standarPengelolaan: [
             { name: "Biaya Transportasi (BBM, Survei, Antar Santri/Tamu)", amount: 13350000 },
-            { name: "Biaya Rumah Tangga & Sarpras (Konsumsi, Perbaikan TOA, Retribusi PBG, Pipa)", amount: 11177150 },
+            { name: "Biaya Rumah Tangga & Sarpras (Konsumsi, Perbaikan TOA, Retribusi PBG, Pipa)", amount: 3859650 },
             { name: "Biaya Cetak dan Fotokopi / ATK", amount: 137500 }
           ],
           standarPembiayaan: [
@@ -324,52 +326,45 @@ export const ALL_CASHFLOWS = {
           ]
         }
       },
-      saldoAkhir: 25058148
+      saldoAkhir: 27477600
     },
     sma: {
       saldoAwal: 56084526,
       penerimaan: {
         danaTerikat: [
-          { name: "BOSP SMA", amount: 62000000 },
-          { name: "Donasi Bencana Sumatra", amount: 11000000 }
+          { name: "BOSP SMA", amount: 55066500 },
+          { name: "Dana Titipan PIP / PIP SMA", amount: 15300000 }
         ],
         danaTidakTerikat: [
-          { name: "BPMU", amount: 42000000 },
-          { name: "Donasi Lainnya (PPG , Infaq dll)", amount: 8500000 }
+          { name: "Donasi Tunjangan Profesi dan Sertifikasi (TPG) Tendik", amount: 935000 },
+          { name: "Donasi & Infaq Siswa/Tendik/Umum", amount: 30904352 },
+          { name: "FINANCE (Talangan Kembali, Penukaran Uang)", amount: 33400000 }
         ]
       },
       pengeluaran: {
-        nonProgram: [],
+        nonProgram: [
+          { name: "Penyaluran Titipan Dana PIP / PIP SMA Siswa", amount: 10907000 },
+          { name: "FINANCE (Pengembalian Talangan & Kas Operasional)", amount: 63400000 }
+        ],
         program: {
-          standarProses: [
-            { name: "Penguatan Komunitas Belajar", amount: 0 },
-            { name: "Penguatan Pendidikan Karakter", amount: 8200000 },
-            { name: "Penyediaan Sarpras Peserta didik", amount: 38000000 },
-            { name: "Pengadaan Sarana Penunjang Kegiatan KBM", amount: 6500000 }
-          ],
+          standarProses: [],
           pengembanganSDM: [
-            { name: "Kegiatan Pelaksanaan Pengembangan SDM", amount: 4500000 }
+            { name: "Pengembangan Tendik, Pelatihan & Honorarium", amount: 58903333 }
           ],
           standarSarana: [
-            { name: "Penyediaan atau Pembuatan Media Pembelajaran", amount: 0 },
-            { name: "Pengembangan Sekolah Sehat, Sekolah Aman", amount: 13000000 },
-            { name: "Pemeliharaan Prasarana Lahan, Bangunan dan Ruang", amount: 9000000 },
-            { name: "Pemeliharaan Perlengkapan Daya & Jasa Sekolah", amount: 14500000 },
-            { name: "Pemeliharaan Kendaraan", amount: 16500000 }
+            { name: "Biaya Rumah Tangga & Pemeliharaan Sarpras", amount: 3840000 },
+            { name: "Biaya Kesehatan Santri / Siswa", amount: 500000 }
           ],
           standarPengelolaan: [
-            { name: "Konsumsi Rapat Kedinasan dan Tamu Sekolah", amount: 15500000 },
-            { name: "Biaya Transportasi", amount: 18200000 }
+            { name: "Biaya Transportasi (BBM, Tol, Antar Jemput)", amount: 20868000 },
+            { name: "Penyaluran Donasi Operasional & Bencana", amount: 10900000 }
           ],
           standarPembiayaan: [
-            { name: "Pembayaran Honor Tenaga Penunjang atau Pelaksana", amount: 2500000 },
-            { name: "Administrasi Bank", amount: 1800000 },
-            { name: "Pembayaran daya dan/atau jasa", amount: 14500000 },
-            { name: "Penyaluran Donasi Bencana Sumatra", amount: 11000000 }
+            { name: "Administrasi Bank", amount: 1039000 }
           ]
         }
       },
-      saldoAkhir: 51184526
+      saldoAkhir: 21333045
     }
   }
 };
