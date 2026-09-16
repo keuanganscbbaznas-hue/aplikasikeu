@@ -188,7 +188,7 @@ export const MonthlyDonationLedger = () => {
   const [isFirestoreConnected, setIsFirestoreConnected] = useState(false);
 
   // Active view tab
-  const [activeTab, setActiveTab] = useState<'categories' | 'monthly' | 'ledger' | 'charts'>('categories');
+  const [activeTab, setActiveTab] = useState<'categories' | 'monthly' | 'charts'>('categories');
 
   // Filters
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
@@ -806,17 +806,6 @@ export const MonthlyDonationLedger = () => {
             2. Rekap Per Bulan (Jan - Agu)
           </button>
           <button
-            onClick={() => setActiveTab('ledger')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
-              activeTab === 'ledger'
-                ? 'bg-slate-900 text-white shadow-md'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            <FileSpreadsheet size={15} />
-            3. Buku Kas & Database Transaksi
-          </button>
-          <button
             onClick={() => setActiveTab('charts')}
             className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
               activeTab === 'charts'
@@ -825,7 +814,7 @@ export const MonthlyDonationLedger = () => {
             }`}
           >
             <BarChart3 size={15} />
-            4. Grafik & Analisis
+            3. Grafik & Analisis
           </button>
         </div>
 
@@ -1192,16 +1181,10 @@ export const MonthlyDonationLedger = () => {
                       </div>
                     </div>
 
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedMonth(m.short);
-                        setActiveTab('ledger');
-                      }}
-                      className="w-full text-xs font-bold rounded-xl h-8 text-slate-700 hover:bg-slate-900 hover:text-white transition-all"
-                    >
-                      Buka Mutasi {m.short} ({m.itemsCount} Tx)
-                    </Button>
+                    <div className="pt-1 flex items-center justify-between text-[11px] font-bold text-slate-500 bg-slate-100/70 px-3 py-1.5 rounded-xl">
+                      <span>Total Mutasi</span>
+                      <span className="font-mono text-slate-800">{m.itemsCount} Transaksi</span>
+                    </div>
                   </CardContent>
                 </Card>
               );
@@ -1210,224 +1193,7 @@ export const MonthlyDonationLedger = () => {
         </div>
       )}
 
-      {/* VIEW 3: BUKU KAS & DATABASE LENGKAP */}
-      {activeTab === 'ledger' && (
-        <div className="space-y-4">
-          {/* Filters & Search Toolbar */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs space-y-3">
-            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-              {/* Search input */}
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                <Input
-                  placeholder="Cari no. doc, keterangan, atau PIC (mis: Ambulance, Uang Saku, BAZNAS, Fuad)..."
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="pl-9 rounded-xl border-slate-200 text-xs h-10"
-                />
-              </div>
-
-              {/* Month filter */}
-              <div className="flex items-center gap-2">
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => {
-                    setSelectedMonth(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900 h-10"
-                >
-                  <option value="all">Semua Bulan (Jan - Agu)</option>
-                  <option value="Jan">Januari 2026</option>
-                  <option value="Feb">Februari 2026</option>
-                  <option value="Mar">Maret 2026</option>
-                  <option value="Apr">April 2026</option>
-                  <option value="Mei">Mei 2026</option>
-                  <option value="Jun">Juni 2026</option>
-                  <option value="Jul">Juli 2026</option>
-                  <option value="Agu">Agustus 2026</option>
-                </select>
-
-                {/* Allocation filter */}
-                <select
-                  value={selectedAllocation}
-                  onChange={(e) => {
-                    setSelectedAllocation(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900 h-10"
-                >
-                  <option value="all">Semua Alokasi Anggaran</option>
-                  {Object.keys(ALLOCATION_CONFIG).map((alloc) => (
-                    <option key={alloc} value={alloc}>{alloc}</option>
-                  ))}
-                </select>
-
-                {/* Type Filter */}
-                <select
-                  value={selectedType}
-                  onChange={(e) => {
-                    setSelectedType(e.target.value as any);
-                    setCurrentPage(1);
-                  }}
-                  className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900 h-10"
-                >
-                  <option value="all">Semua Tipe</option>
-                  <option value="pemasukan">Debet / Pemasukan</option>
-                  <option value="pengeluaran">Kredit / Pengeluaran</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Active filter tags & count indicator */}
-            <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100 flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <span>Ditemukan <strong className="text-slate-900">{filteredItems.length}</strong> transaksi</span>
-                {(selectedMonth !== 'all' || selectedAllocation !== 'all' || selectedType !== 'all' || searchTerm) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSelectedMonth('all');
-                      setSelectedAllocation('all');
-                      setSelectedType('all');
-                      setSearchTerm('');
-                      setCurrentPage(1);
-                    }}
-                    className="h-6 text-[10px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2"
-                  >
-                    Reset Filter
-                  </Button>
-                )}
-              </div>
-
-              <div className="text-[11px] font-semibold text-slate-600">
-                Halaman {currentPage} dari {totalPages}
-              </div>
-            </div>
-          </div>
-
-          {/* Mutasi Ledger Table */}
-          <Card className="border-slate-200/80 shadow-xs overflow-hidden bg-white">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-slate-50">
-                  <TableRow>
-                    <TableHead className="w-12 text-center text-[11px] font-black text-slate-600">No</TableHead>
-                    <TableHead className="w-24 text-[11px] font-black text-slate-600">TGL</TableHead>
-                    <TableHead className="w-32 text-[11px] font-black text-slate-600">NO. DOC</TableHead>
-                    <TableHead className="w-40 text-[11px] font-black text-slate-600">ALOKASI ANGGARAN</TableHead>
-                    <TableHead className="w-28 text-[11px] font-black text-slate-600">PIC</TableHead>
-                    <TableHead className="min-w-[280px] text-[11px] font-black text-slate-600">KETERANGAN</TableHead>
-                    <TableHead className="w-32 text-right text-[11px] font-black text-emerald-700">DEBET (MASUK)</TableHead>
-                    <TableHead className="w-32 text-right text-[11px] font-black text-rose-700">KREDIT (KELUAR)</TableHead>
-                    <TableHead className="w-36 text-right text-[11px] font-black text-blue-900">SALDO AKHIR</TableHead>
-                    <TableHead className="w-16 text-center text-[11px] font-black text-slate-600">AKSI</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedItems.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={10} className="text-center py-10 text-slate-400">
-                        Tidak ada transaksi yang cocok dengan kriteria pencarian / filter.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedItems.map((item, idx) => {
-                      const absoluteIdx = (currentPage - 1) * itemsPerPage + idx + 1;
-                      const conf = ALLOCATION_CONFIG[item.allocation] || {
-                        label: item.allocation,
-                        bg: 'bg-slate-100 text-slate-700 border-slate-200',
-                        icon: Coins
-                      };
-
-                      return (
-                        <TableRow key={item.id} className="hover:bg-slate-50/80 transition-colors text-xs">
-                          <TableCell className="text-center font-semibold text-slate-400">
-                            {absoluteIdx}
-                          </TableCell>
-                          <TableCell className="font-bold text-slate-800 whitespace-nowrap">
-                            {item.date}
-                          </TableCell>
-                          <TableCell className="font-mono text-[11px] text-slate-600 whitespace-nowrap">
-                            {item.docNo || '-'}
-                          </TableCell>
-                          <TableCell>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider ${conf.bg}`}>
-                              {item.allocation}
-                            </span>
-                          </TableCell>
-                          <TableCell className="font-medium text-slate-700 whitespace-nowrap">
-                            {item.pic || '-'}
-                          </TableCell>
-                          <TableCell className="text-slate-600 max-w-xs font-normal">
-                            {item.description}
-                          </TableCell>
-                          <TableCell className="text-right font-black text-emerald-700 whitespace-nowrap">
-                            {item.debet > 0 ? formatRupiah(item.debet) : '-'}
-                          </TableCell>
-                          <TableCell className="text-right font-black text-rose-700 whitespace-nowrap">
-                            {item.kredit > 0 ? formatRupiah(item.kredit) : '-'}
-                          </TableCell>
-                          <TableCell className="text-right font-black text-blue-900 whitespace-nowrap">
-                            {formatRupiah(item.saldoAkhir)}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <button
-                              onClick={() => handleDeleteItem(item.id)}
-                              className="text-slate-400 hover:text-rose-600 p-1 rounded-md transition-colors"
-                              title="Hapus transaksi"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
-                <span className="text-xs text-slate-500 font-medium">
-                  Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredItems.length)} dari {filteredItems.length} transaksi
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(p => p - 1)}
-                    className="h-8 text-xs font-bold rounded-lg"
-                  >
-                    Sebelumnya
-                  </Button>
-                  <span className="text-xs font-bold text-slate-700 px-2">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setCurrentPage(p => p + 1)}
-                    className="h-8 text-xs font-bold rounded-lg"
-                  >
-                    Berikutnya
-                  </Button>
-                </div>
-              </div>
-            )}
-          </Card>
-        </div>
-      )}
-
-      {/* VIEW 4: GRAFIK & ANALISIS VISUAL */}
+      {/* VIEW 3: GRAFIK & ANALISIS VISUAL */}
       {activeTab === 'charts' && (
         <div className="space-y-6">
           {/* Chart Row 1: Bar Chart Pemasukan vs Pengeluaran per Bulan */}
