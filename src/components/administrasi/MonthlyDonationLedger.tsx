@@ -20,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { 
   Search, 
   Calendar, 
@@ -56,7 +56,13 @@ import {
   ChevronDown, 
   Eye, 
   Sparkles,
-  DollarSign
+  DollarSign,
+  UploadCloud,
+  Link2,
+  Globe,
+  RefreshCw,
+  AlertCircle,
+  FileText
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -77,8 +83,10 @@ import { toast } from 'sonner';
 import { 
   DonationLedgerItem, 
   INITIAL_DONATION_LEDGER_SMP, 
-  INITIAL_SALDO_AWAL_2026_SMP 
+  INITIAL_SALDO_AWAL_2026_SMP,
+  DEFAULT_RAW_CSV_SMP_2026
 } from './donationLedgerData';
+import { parseDonationDatabaseCsv } from './donationCsvParser';
 
 const ALLOCATION_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = {
   'Donasi': {
@@ -187,8 +195,8 @@ export const MonthlyDonationLedger = () => {
   const [loading, setLoading] = useState(false);
   const [isFirestoreConnected, setIsFirestoreConnected] = useState(false);
 
-  // Active view tab
-  const [activeTab, setActiveTab] = useState<'categories' | 'monthly' | 'charts'>('categories');
+  // Active view tab (including ledger view with direct edit capability)
+  const [activeTab, setActiveTab] = useState<'categories' | 'monthly' | 'ledger' | 'charts'>('categories');
 
   // Filters
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
@@ -203,10 +211,19 @@ export const MonthlyDonationLedger = () => {
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isSheetsModalOpen, setIsSheetsModalOpen] = useState(false);
   const [selectedItemForEdit, setSelectedItemForEdit] = useState<DonationLedgerItem | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
-  // Form State
+  // CSV & Sheets Import State
+  const [pastedCsv, setPastedCsv] = useState<string>(DEFAULT_RAW_CSV_SMP_2026);
+  const [googleSheetsUrl, setGoogleSheetsUrl] = useState<string>(() => {
+    return localStorage.getItem('scb_smp_donation_sheets_url') || '';
+  });
+  const [isFetchingSheets, setIsFetchingSheets] = useState(false);
+
+  // Form State for Add & Edit
   const [formData, setFormData] = useState({
     date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: '2-digit' }),
     docNo: '',
@@ -381,6 +398,185 @@ export const MonthlyDonationLedger = () => {
     }
   };
 
+  // Open Edit Modal for a specific transaction
+  const handleOpenEdit = (item: DonationLedgerItem) => {
+    setSelectedItemForEdit(item);
+    setFormData({
+      date: item.date,
+      docNo: item.docNo || '',
+      allocation: item.allocation || 'Donasi',
+      pic: item.pic || '',
+      description: item.description || '',
+      type: item.type,
+      amount: String(item.type === 'pemasukan' ? item.debet : item.kredit)
+    });
+    setIsEditModalOpen(true);
+  };
+
+  // Save changes from Edit Modal
+  const handleSaveEdit = async () => {
+    if (!selectedItemForEdit) return;
+    const numAmount = Number(formData.amount) || 0;
+    const isPemasukan = formData.type === 'pemasukan';
+
+    const updatedItem: DonationLedgerItem = {
+      ...selectedItemForEdit,
+      date: formData.date,
+      docNo: formData.docNo || '-',
+      allocation: formData.allocation,
+      pic: formData.pic || '-',
+      description: formData.description,
+      type: formData.type,
+      debet: isPemasukan ? numAmount : 0,
+      kredit: isPemasukan ? 0 : numAmount
+    };
+
+    const updatedList = items.map(it => it.id === selectedItemForEdit.id ? updatedItem : it);
+    const recalculated = recalculateBalances(updatedList);
+    setItems(recalculated);
+    setIsEditModalOpen(false);
+
+    try {
+      await setDoc(doc(db, 'monthly_donation_ledger', updatedItem.id), updatedItem);
+      toast.success(`Transaksi berhasil diperbarui! Saldo akhir dan seluruh grafik dihitung ulang otomatis.`);
+    } catch {
+      toast.success(`Transaksi diperbarui di tampilan lokal`);
+    }
+  };
+
+  // Apply CSV / Excel pasted text to Database
+  const handleApplyPastedCsv = async () => {
+    if (!pastedCsv.trim()) {
+      toast.error("Teks CSV masih kosong!");
+      return;
+    }
+    setLoading(true);
+    const toastId = toast.loading("Mem-parsing dan menyinkronkan data CSV ke database...");
+    try {
+      const result = parseDonationDatabaseCsv(pastedCsv, selectedAccount);
+      if (result.items.length === 0) {
+        toast.error("Tidak ada baris transaksi yang berhasil dibaca dari CSV.", { id: toastId });
+        setLoading(false);
+        return;
+      }
+
+      // Recalculate balances with detected saldo awal
+      let running = result.saldoAwal;
+      const recalculated = result.items.map(it => {
+        running = running + (it.debet || 0) - (it.kredit || 0);
+        return { ...it, saldoAkhir: running };
+      });
+
+      setItems(recalculated);
+
+      // Save to Firestore in batches of 400
+      const chunkSize = 400;
+      for (let i = 0; i < recalculated.length; i += chunkSize) {
+        const chunk = recalculated.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+        chunk.forEach(item => {
+          const docRef = doc(db, 'monthly_donation_ledger', item.id);
+          batch.set(docRef, item);
+        });
+        await batch.commit();
+      }
+
+      // Save starting balance
+      try {
+        await setDoc(doc(db, 'donation_saldo_awal', `${selectedAccount}_2026`), {
+          account: selectedAccount,
+          year: 2026,
+          amount: result.saldoAwal,
+          updatedAt: new Date().toISOString()
+        });
+      } catch {}
+
+      setIsFirestoreConnected(true);
+      setIsImportModalOpen(false);
+      toast.success(`Database berhasil diperbarui! ${recalculated.length} transaksi diselaraskan dengan Saldo Akhir ${formatRupiah(running)}.`, { id: toastId });
+    } catch (err: any) {
+      console.error("Gagal sinkronisasi CSV:", err);
+      toast.error("Gagal memperbarui database: " + err.message, { id: toastId });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch and sync data directly from published Google Sheets CSV
+  const handleFetchGoogleSheets = async () => {
+    if (!googleSheetsUrl.trim()) {
+      toast.error("Masukkan tautan Google Sheets terlebih dahulu.");
+      return;
+    }
+
+    let fetchUrl = googleSheetsUrl.trim();
+    if (fetchUrl.includes('/edit') || fetchUrl.includes('/view')) {
+      fetchUrl = fetchUrl.replace(/\/edit.*$/, '/export?format=csv');
+    }
+
+    setIsFetchingSheets(true);
+    const toastId = toast.loading("Mengambil pembaruan data dari Google Sheets...");
+    try {
+      localStorage.setItem('scb_smp_donation_sheets_url', googleSheetsUrl.trim());
+      const res = await fetch(fetchUrl);
+      if (!res.ok) {
+        throw new Error(`Gagal mengambil data (Status ${res.status}). Pastikan Google Sheets sudah dipublikasikan ke web dalam format CSV.`);
+      }
+      const csvText = await res.text();
+      setPastedCsv(csvText);
+
+      const result = parseDonationDatabaseCsv(csvText, selectedAccount);
+      if (result.items.length === 0) {
+        throw new Error("Tabel kosong atau kolom tidak sesuai format buku kas.");
+      }
+
+      let running = result.saldoAwal;
+      const recalculated = result.items.map(it => {
+        running = running + (it.debet || 0) - (it.kredit || 0);
+        return { ...it, saldoAkhir: running };
+      });
+
+      setItems(recalculated);
+
+      // Save in batches to Firestore
+      const chunkSize = 400;
+      for (let i = 0; i < recalculated.length; i += chunkSize) {
+        const chunk = recalculated.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+        chunk.forEach(item => {
+          const docRef = doc(db, 'monthly_donation_ledger', item.id);
+          batch.set(docRef, item);
+        });
+        await batch.commit();
+      }
+
+      setIsFirestoreConnected(true);
+      setIsSheetsModalOpen(false);
+      toast.success(`Google Sheets Terhubung! Berhasil menyinkronkan ${recalculated.length} transaksi ke database.`, { id: toastId });
+    } catch (err: any) {
+      console.error("Sheets sync error:", err);
+      toast.error("Gagal sinkron dari Google Sheets: " + err.message, { id: toastId });
+    } finally {
+      setIsFetchingSheets(false);
+    }
+  };
+
+  // Handle local file upload (.csv or .txt)
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (content) {
+        setPastedCsv(content);
+        toast.success(`File ${file.name} berhasil dimuat ke editor CSV! Silakan cek pratinjau lalu klik simpan.`);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   // Aggregations and Metrics
   const metrics = useMemo(() => {
     const totalPemasukan = items.reduce((acc, curr) => acc + (curr.debet || 0), 0);
@@ -549,6 +745,28 @@ export const MonthlyDonationLedger = () => {
 
   const totalPages = Math.ceil(filteredItems.length / itemsPerPage) || 1;
 
+  // Live parser preview for pasted CSV modal
+  const parsedPreview = useMemo(() => {
+    if (!pastedCsv.trim()) return null;
+    try {
+      const parsed = parseDonationDatabaseCsv(pastedCsv, selectedAccount);
+      const totalDebet = parsed.items.reduce((sum, it) => sum + (it.debet || 0), 0);
+      const totalKredit = parsed.items.reduce((sum, it) => sum + (it.kredit || 0), 0);
+      const saldoAkhir = parsed.saldoAwal + totalDebet - totalKredit;
+      return {
+        count: parsed.items.length,
+        saldoAwal: parsed.saldoAwal,
+        totalDebet,
+        totalKredit,
+        saldoAkhir,
+        previewItems: parsed.items.slice(0, 5),
+        isValid: parsed.items.length > 0
+      };
+    } catch {
+      return null;
+    }
+  }, [pastedCsv, selectedAccount]);
+
   // Export to CSV
   const handleExportCSV = () => {
     const headers = ["ID", "TGL", "NO. DOC", "ALOKASI ANGGARAN", "PIC", "KETERANGAN", "DEBET", "KREDIT", "SALDO AKHIR"];
@@ -662,6 +880,23 @@ export const MonthlyDonationLedger = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => setIsImportModalOpen(true)}
+              className="bg-emerald-800 hover:bg-emerald-900 text-white rounded-xl shadow-xs gap-2 font-bold text-xs h-10 px-3.5"
+              title="Perbarui database dengan menempel teks CSV / data Excel"
+            >
+              <UploadCloud size={16} />
+              Update / Tempel CSV
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsSheetsModalOpen(true)}
+              className="rounded-xl border-emerald-300 hover:bg-emerald-50 text-emerald-800 font-bold text-xs h-10 px-3.5 gap-2"
+              title="Tautkan link publikasi Google Sheets untuk sinkronisasi otomatis"
+            >
+              <Link2 size={16} className="text-emerald-600" />
+              Tautkan Google Sheets
+            </Button>
             <Button
               onClick={() => setIsAddModalOpen(true)}
               className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md gap-2 font-bold text-xs h-10 px-4"
@@ -778,6 +1013,45 @@ export const MonthlyDonationLedger = () => {
             </p>
           </div>
         </div>
+
+        {/* Dynamic Database Sync Indicator Banner */}
+        <div className="mt-5 p-4 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-emerald-600 text-white rounded-xl shadow-sm">
+              <CheckCircle2 size={18} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-black text-sm text-slate-900">Database Firestore Terhubung & Dinamis</span>
+                <Badge className="bg-emerald-100 text-emerald-800 font-bold text-[10px] border-none">
+                  Collection: monthly_donation_ledger ({metrics.totalTransactions} Transaksi)
+                </Badge>
+              </div>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Jika data base ini berubah, baik nominal maupun keterangannya (lewat <strong>Tombol Edit Baris</strong>, <strong>Tempel CSV Excel</strong>, atau <strong>Google Sheets</strong>), maka di aplikasi pun seketika berubah.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsImportModalOpen(true)}
+              className="bg-white border-emerald-300 text-emerald-800 font-bold text-xs rounded-xl hover:bg-emerald-50"
+            >
+              <UploadCloud size={14} className="mr-1.5" />
+              Update / Tempel CSV
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setActiveTab('ledger')}
+              className="bg-emerald-600 text-white font-bold text-xs rounded-xl hover:bg-emerald-700 border-none shadow-xs"
+            >
+              <Eye size={14} className="mr-1.5" />
+              Buku Kas & Edit Transaksi
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Main View Selector Navigation Tabs */}
@@ -806,6 +1080,17 @@ export const MonthlyDonationLedger = () => {
             2. Rekap Per Bulan (Jan - Agu)
           </button>
           <button
+            onClick={() => setActiveTab('ledger')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+              activeTab === 'ledger'
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <FileSpreadsheet size={15} />
+            3. Buku Kas & Cek Transaksi ({items.length})
+          </button>
+          <button
             onClick={() => setActiveTab('charts')}
             className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
               activeTab === 'charts'
@@ -814,7 +1099,7 @@ export const MonthlyDonationLedger = () => {
             }`}
           >
             <BarChart3 size={15} />
-            3. Grafik & Analisis
+            4. Grafik & Analisis
           </button>
         </div>
 
@@ -912,9 +1197,18 @@ export const MonthlyDonationLedger = () => {
                           <div className="mt-2 space-y-2 max-h-56 overflow-y-auto pr-1 text-xs">
                             {item.itemsIn.map((tx) => (
                               <div key={tx.id} className="p-2 bg-slate-50 rounded-xl border border-slate-100 text-[11px] space-y-1">
-                                <div className="flex justify-between font-bold text-slate-800">
+                                <div className="flex justify-between items-center font-bold text-slate-800">
                                   <span>{tx.date} • {tx.pic || 'Umum'}</span>
-                                  <span className="text-emerald-700">{formatRupiah(tx.debet)}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-emerald-700">{formatRupiah(tx.debet)}</span>
+                                    <button
+                                      onClick={() => handleOpenEdit(tx)}
+                                      className="p-1 rounded text-slate-400 hover:text-emerald-700 hover:bg-white transition-colors"
+                                      title="Edit nominal / keterangan"
+                                    >
+                                      <Edit3 size={12} />
+                                    </button>
+                                  </div>
                                 </div>
                                 <p className="text-slate-500 text-[10px] leading-tight line-clamp-2">
                                   {tx.description}
@@ -1017,9 +1311,18 @@ export const MonthlyDonationLedger = () => {
                           <div className="mt-2 space-y-2 max-h-56 overflow-y-auto pr-1 text-xs">
                             {item.itemsOut.map((tx) => (
                               <div key={tx.id} className="p-2 bg-slate-50 rounded-xl border border-slate-100 text-[11px] space-y-1">
-                                <div className="flex justify-between font-bold text-slate-800">
+                                <div className="flex justify-between items-center font-bold text-slate-800">
                                   <span>{tx.date} • {tx.pic || 'Umum'}</span>
-                                  <span className="text-rose-700">{formatRupiah(tx.kredit)}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-rose-700">{formatRupiah(tx.kredit)}</span>
+                                    <button
+                                      onClick={() => handleOpenEdit(tx)}
+                                      className="p-1 rounded text-slate-400 hover:text-rose-700 hover:bg-white transition-colors"
+                                      title="Edit nominal / keterangan"
+                                    >
+                                      <Edit3 size={12} />
+                                    </button>
+                                  </div>
                                 </div>
                                 <p className="text-slate-500 text-[10px] leading-tight line-clamp-2">
                                   {tx.description}
@@ -1190,6 +1493,268 @@ export const MonthlyDonationLedger = () => {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* VIEW 3: BUKU KAS & CEK TRANSAKSI (DENGAN FASILITAS EDIT LANGSUNG) */}
+      {activeTab === 'ledger' && (
+        <div className="space-y-4">
+          <Card className="border-slate-200/80 shadow-xs">
+            <CardHeader className="p-4 bg-slate-50/50 border-b border-slate-100">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base font-black text-slate-900 flex items-center gap-2">
+                    <FileSpreadsheet size={18} className="text-emerald-600" />
+                    Buku Kas & Cek Transaksi Rekening SMP 2026
+                  </CardTitle>
+                  <CardDescription className="text-xs text-slate-500 mt-0.5">
+                    Data mutasi lengkap per baris. Klik tombol <strong>Edit</strong> pada baris mana saja untuk mengubah nominal maupun keterangan. Saldo akhir dan laporan akan langsung dihitung ulang.
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold rounded-xl"
+                  >
+                    <UploadCloud size={14} className="mr-1.5" />
+                    Update / Tempel CSV
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setIsAddModalOpen(true)}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl"
+                  >
+                    <Plus size={14} className="mr-1.5" />
+                    Tambah Transaksi
+                  </Button>
+                </div>
+              </div>
+
+              {/* Filter Controls Bar */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mt-4 pt-3 border-t border-slate-200/60">
+                {/* Search */}
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    placeholder="Cari keterangan, no. doc, PIC..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="pl-8 text-xs bg-white rounded-xl border-slate-200 h-9"
+                  />
+                </div>
+
+                {/* Filter Month */}
+                <div>
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => {
+                      setSelectedMonth(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 text-xs font-medium text-slate-800 h-9"
+                  >
+                    <option value="all">Semua Bulan (Jan - Agu)</option>
+                    <option value="Jan">Januari 2026</option>
+                    <option value="Feb">Februari 2026</option>
+                    <option value="Mar">Maret 2026</option>
+                    <option value="Apr">April 2026</option>
+                    <option value="Mei">Mei 2026</option>
+                    <option value="Jun">Juni 2026</option>
+                    <option value="Jul">Juli 2026</option>
+                    <option value="Agu">Agustus 2026</option>
+                  </select>
+                </div>
+
+                {/* Filter Allocation */}
+                <div>
+                  <select
+                    value={selectedAllocation}
+                    onChange={(e) => {
+                      setSelectedAllocation(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 text-xs font-medium text-slate-800 h-9"
+                  >
+                    <option value="all">Semua Alokasi Anggaran</option>
+                    {Object.keys(ALLOCATION_CONFIG).map(alloc => (
+                      <option key={alloc} value={alloc}>{alloc} - {ALLOCATION_CONFIG[alloc].label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Filter Type */}
+                <div>
+                  <select
+                    value={selectedType}
+                    onChange={(e) => {
+                      setSelectedType(e.target.value as any);
+                      setCurrentPage(1);
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 text-xs font-medium text-slate-800 h-9"
+                  >
+                    <option value="all">Semua Jenis Transaksi</option>
+                    <option value="pemasukan">Hanya Pemasukan (Debet)</option>
+                    <option value="pengeluaran">Hanya Pengeluaran (Kredit)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Summary Strip */}
+              <div className="mt-3 flex flex-wrap items-center justify-between text-xs text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200/60 font-medium">
+                <div className="flex items-center gap-3">
+                  <span>Ditemukan: <strong>{filteredItems.length}</strong> transaksi</span>
+                  <span className="text-slate-300">|</span>
+                  <span className="text-emerald-700">Debet: <strong>{formatRupiah(filteredItems.reduce((s, it) => s + (it.debet || 0), 0))}</strong></span>
+                  <span className="text-slate-300">|</span>
+                  <span className="text-rose-700">Kredit: <strong>{formatRupiah(filteredItems.reduce((s, it) => s + (it.kredit || 0), 0))}</strong></span>
+                </div>
+                {(searchTerm || selectedMonth !== 'all' || selectedAllocation !== 'all' || selectedType !== 'all') && (
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSelectedMonth('all');
+                      setSelectedAllocation('all');
+                      setSelectedType('all');
+                      setCurrentPage(1);
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1"
+                  >
+                    <RotateCcw size={12} /> Reset Filter
+                  </button>
+                )}
+              </div>
+            </CardHeader>
+
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50">
+                  <TableRow>
+                    <TableHead className="w-12 text-center text-xs font-black text-slate-700">No</TableHead>
+                    <TableHead className="w-24 text-xs font-black text-slate-700">Tanggal</TableHead>
+                    <TableHead className="w-24 text-xs font-black text-slate-700">No. Doc</TableHead>
+                    <TableHead className="w-40 text-xs font-black text-slate-700">Alokasi Anggaran</TableHead>
+                    <TableHead className="w-28 text-xs font-black text-slate-700">PIC</TableHead>
+                    <TableHead className="min-w-[280px] text-xs font-black text-slate-700">Keterangan</TableHead>
+                    <TableHead className="w-32 text-right text-xs font-black text-emerald-700">Debet (Masuk)</TableHead>
+                    <TableHead className="w-32 text-right text-xs font-black text-rose-700">Kredit (Keluar)</TableHead>
+                    <TableHead className="w-36 text-right text-xs font-black text-blue-900">Saldo Akhir</TableHead>
+                    <TableHead className="w-24 text-center text-xs font-black text-slate-700">Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedItems.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="h-32 text-center text-slate-400 text-xs">
+                        Tidak ada transaksi yang cocok dengan filter pencarian.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedItems.map((item, index) => {
+                      const actualIndex = (currentPage - 1) * itemsPerPage + index + 1;
+                      const conf = ALLOCATION_CONFIG[item.allocation] || {
+                        label: item.allocation,
+                        color: 'text-slate-700',
+                        bg: 'bg-slate-100 text-slate-700 border-slate-200',
+                        border: '#64748b',
+                        icon: Coins
+                      };
+                      return (
+                        <TableRow key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                          <TableCell className="text-center font-mono text-xs text-slate-400">
+                            {actualIndex}
+                          </TableCell>
+                          <TableCell className="text-xs font-bold text-slate-800 whitespace-nowrap">
+                            {item.date}
+                          </TableCell>
+                          <TableCell className="text-[11px] font-mono text-slate-500 whitespace-nowrap">
+                            {item.docNo || '-'}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${conf.bg}`}>
+                              {item.allocation}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs text-slate-600 whitespace-nowrap">
+                            {item.pic || '-'}
+                          </TableCell>
+                          <TableCell className="text-xs text-slate-800 font-medium max-w-md">
+                            {item.description}
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-bold text-emerald-700 whitespace-nowrap">
+                            {item.debet > 0 ? formatRupiah(item.debet) : '-'}
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-bold text-rose-700 whitespace-nowrap">
+                            {item.kredit > 0 ? formatRupiah(item.kredit) : '-'}
+                          </TableCell>
+                          <TableCell className="text-right text-xs font-black font-mono text-blue-900 whitespace-nowrap">
+                            {formatRupiah(item.saldoAkhir || 0)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleOpenEdit(item)}
+                                className="h-7 w-7 p-0 rounded-lg hover:bg-emerald-50 text-slate-500 hover:text-emerald-700"
+                                title="Edit nominal atau keterangan transaksi"
+                              >
+                                <Edit3 size={13} />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDeleteItem(item.id)}
+                                className="h-7 w-7 p-0 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600"
+                                title="Hapus transaksi"
+                              >
+                                <Trash2 size={13} />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="p-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2 text-xs text-slate-500">
+                <div>
+                  Menampilkan <strong>{Math.min(filteredItems.length, (currentPage - 1) * itemsPerPage + 1)}</strong> - <strong>{Math.min(filteredItems.length, currentPage * itemsPerPage)}</strong> dari <strong>{filteredItems.length}</strong> transaksi
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className="h-8 px-3 text-xs rounded-lg font-bold"
+                  >
+                    Sebelumnya
+                  </Button>
+                  <span className="px-2 font-bold text-slate-700">
+                    Halaman {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    className="h-8 px-3 text-xs rounded-lg font-bold"
+                  >
+                    Berikutnya
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
         </div>
       )}
 
@@ -1470,6 +2035,295 @@ export const MonthlyDonationLedger = () => {
               className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold"
             >
               Simpan Transaksi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Edit Transaksi */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-md bg-white rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+              <Edit3 size={18} className="text-emerald-600" />
+              Edit Transaksi Rekening SMP
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Ubah nominal, keterangan, atau alokasi. Perubahan akan langsung disimpan ke database Firestore dan seluruh saldo akhir dihitung ulang.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3.5 py-2">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Tipe Transaksi</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setFormData(f => ({ ...f, type: 'pemasukan' }))}
+                  className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                    formData.type === 'pemasukan'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <ArrowDownLeft size={16} />
+                  Pemasukan (Debet)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(f => ({ ...f, type: 'pengeluaran' }))}
+                  className={`py-2 px-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                    formData.type === 'pengeluaran'
+                      ? 'bg-rose-600 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <ArrowUpRight size={16} />
+                  Pengeluaran (Kredit)
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Alokasi Anggaran</label>
+              <select
+                value={formData.allocation}
+                onChange={(e) => setFormData(f => ({ ...f, allocation: e.target.value }))}
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800"
+              >
+                {Object.keys(ALLOCATION_CONFIG).map(alloc => (
+                  <option key={alloc} value={alloc}>{alloc} - {ALLOCATION_CONFIG[alloc].label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Tanggal</label>
+                <Input
+                  value={formData.date}
+                  onChange={(e) => setFormData(f => ({ ...f, date: e.target.value }))}
+                  className="text-xs rounded-xl"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">No. Dokumen</label>
+                <Input
+                  value={formData.docNo}
+                  onChange={(e) => setFormData(f => ({ ...f, docNo: e.target.value }))}
+                  className="text-xs rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">PIC / Donatur / Penerima</label>
+              <Input
+                value={formData.pic}
+                onChange={(e) => setFormData(f => ({ ...f, pic: e.target.value }))}
+                className="text-xs rounded-xl"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Nominal (Rp)</label>
+              <Input
+                type="number"
+                value={formData.amount}
+                onChange={(e) => setFormData(f => ({ ...f, amount: e.target.value }))}
+                className="text-sm font-black text-slate-900 rounded-xl"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Keterangan Transaksi</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(f => ({ ...f, description: e.target.value }))}
+                rows={3}
+                className="w-full text-xs rounded-xl border border-slate-200 p-2.5 focus:outline-none focus:ring-2 focus:ring-slate-900"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditModalOpen(false)}
+              className="rounded-xl text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs"
+            >
+              Simpan Perubahan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Update / Tempel CSV Excel */}
+      <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
+        <DialogContent className="max-w-2xl bg-white rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+              <UploadCloud size={20} className="text-emerald-700" />
+              Update / Tempel Database Donasi SMP (Excel / CSV)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Jika data di Excel Anda berubah nominal atau keterangannya, salin seluruh tabel lalu tempelkan di bawah ini. Sistem otomatis mendeteksi kolom, saldo awal, dan menghitung saldo akhir.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+              <span className="font-bold text-slate-700">Teks Data Tabel CSV / TSV / Excel:</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setPastedCsv(DEFAULT_RAW_CSV_SMP_2026)}
+                  className="h-7 px-2 text-[11px] text-emerald-700 hover:bg-emerald-50 rounded-lg font-bold"
+                >
+                  Muat Data Asli 2026
+                </Button>
+                <label className="cursor-pointer inline-flex items-center gap-1.5 h-7 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[11px] transition-colors">
+                  <FileText size={12} />
+                  Unggah File .CSV
+                  <input
+                    type="file"
+                    accept=".csv,.tsv,.txt"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <textarea
+              value={pastedCsv}
+              onChange={(e) => setPastedCsv(e.target.value)}
+              placeholder="Tempel baris data dari Excel di sini..."
+              rows={8}
+              className="w-full font-mono text-[11px] p-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-600 transition-all"
+            />
+
+            {/* Live Parsing Preview Summary */}
+            {parsedPreview ? (
+              <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3.5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-xs text-emerald-900 flex items-center gap-1.5">
+                    <CheckCircle2 size={15} className="text-emerald-600" />
+                    Format Valid: {parsedPreview.count} Baris Transaksi Terdeteksi
+                  </span>
+                  <span className="text-[11px] font-mono font-bold text-emerald-800">
+                    Saldo Akhir: {formatRupiah(parsedPreview.saldoAkhir)}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                  <div className="bg-white/80 p-2 rounded-xl border border-emerald-100">
+                    <div className="text-slate-400 text-[10px] uppercase font-bold">Saldo Awal</div>
+                    <div className="font-bold text-slate-800">{formatRupiah(parsedPreview.saldoAwal)}</div>
+                  </div>
+                  <div className="bg-white/80 p-2 rounded-xl border border-emerald-100">
+                    <div className="text-emerald-600 text-[10px] uppercase font-bold">Total Debet</div>
+                    <div className="font-bold text-emerald-700">+{formatRupiah(parsedPreview.totalDebet)}</div>
+                  </div>
+                  <div className="bg-white/80 p-2 rounded-xl border border-emerald-100">
+                    <div className="text-rose-600 text-[10px] uppercase font-bold">Total Kredit</div>
+                    <div className="font-bold text-rose-700">-{formatRupiah(parsedPreview.totalKredit)}</div>
+                  </div>
+                  <div className="bg-white/80 p-2 rounded-xl border border-emerald-100">
+                    <div className="text-blue-600 text-[10px] uppercase font-bold">Saldo Akhir</div>
+                    <div className="font-black text-blue-900">{formatRupiah(parsedPreview.saldoAkhir)}</div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-3 text-xs flex items-center gap-2">
+                <AlertCircle size={16} className="shrink-0 text-amber-600" />
+                <span>Format data belum dikenali atau masih kosong. Tempelkan baris tabel dari Excel untuk melihat pratinjau.</span>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsImportModalOpen(false)}
+              className="rounded-xl text-xs"
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleApplyPastedCsv}
+              disabled={loading || !parsedPreview?.isValid}
+              className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold gap-2 shadow-xs"
+            >
+              <CheckCircle2 size={15} />
+              {loading ? "Menyimpan ke Database..." : `Terapkan & Simpan ke Database (${parsedPreview?.count || 0} Data)`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Tautkan Google Sheets */}
+      <Dialog open={isSheetsModalOpen} onOpenChange={setIsSheetsModalOpen}>
+        <DialogContent className="max-w-lg bg-white rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+              <Link2 size={20} className="text-emerald-600" />
+              Tautkan Link Database Google Sheets
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Jika data donasi rekening SMP dikelola di Google Sheets, tautkan tautan CSV publiknya agar aplikasi dapat langsung menarik pembaruan kapan pun.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3.5 py-2">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Tautan Publikasi Web / CSV Google Sheets:
+              </label>
+              <div className="relative">
+                <Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={googleSheetsUrl}
+                  onChange={(e) => setGoogleSheetsUrl(e.target.value)}
+                  placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv"
+                  className="pl-9 text-xs rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-1.5 text-xs text-slate-600">
+              <span className="font-bold text-slate-900 block">Cara Mendapatkan Link CSV Google Sheets:</span>
+              <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-600">
+                <li>Buka Google Sheets data Rekening Donasi SMP Anda.</li>
+                <li>Pilih menu <strong>File &gt; Bagikan (Share) &gt; Publikasikan ke web</strong>.</li>
+                <li>Pada tab lembar kerja, pilih lembar donasi dan ubah format <em>Halaman Web</em> menjadi <strong>Comma-separated values (.csv)</strong>.</li>
+                <li>Klik <strong>Publikasikan</strong> lalu salin URL yang muncul dan tempelkan di atas.</li>
+              </ol>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setIsSheetsModalOpen(false)}
+              className="rounded-xl text-xs"
+            >
+              Tutup
+            </Button>
+            <Button
+              onClick={handleFetchGoogleSheets}
+              disabled={isFetchingSheets || !googleSheetsUrl.trim()}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold gap-2 shadow-xs"
+            >
+              <RefreshCw size={14} className={isFetchingSheets ? "animate-spin" : ""} />
+              {isFetchingSheets ? "Mengambil Data..." : "Tarik Data Sekarang"}
             </Button>
           </DialogFooter>
         </DialogContent>
