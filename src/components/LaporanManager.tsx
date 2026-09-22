@@ -256,7 +256,7 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
 
   // Rekap Export Dialog Modal
   const [showExportModal, setShowExportModal] = useState(false);
-  const [exportCategoryChoice, setExportCategoryChoice] = useState<'ALL' | 'cat1' | 'cat2' | 'cat3'>('ALL');
+  const [exportCategoryChoice, setExportCategoryChoice] = useState<'ALL' | 'cat1' | 'cat2' | 'cat3' | 'cat4'>('ALL');
   const [exportFormatChoice, setExportFormatChoice] = useState<'excel' | 'pdf'>('excel');
 
   const getItemTime = (item: any): number => {
@@ -343,18 +343,24 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
     });
   }, [submissions, globalStartDate, globalEndDate, globalMonth, globalYear]);
 
-  const cat1Statuses = ["Belum Laporan (Masih di PIC)", "Belum Laporan"];
+  const cat1Statuses = [
+    "Belum Laporan"
+  ];
   
   const cat2Statuses = [
     "Berkas Laporan di Admin (#09)",
     "Berkas Laporan di Serahkan ke Keuangan (#10)",
     "Verifikasi Laporan (#11)",
-    "Penyelesaian selisih (#12)",
-    "Pencatatan Transaksi dan Penomeran Dokumen Laporan (#13)"
+    "Penyelesaian selisih (#12)"
   ];
 
   const cat3Statuses = [
-    "Proses Digitalisasi Dokumen (#14)",
+    "Pencatatan Transaksi dan Penomeran Dokumen",
+    "Pencatatan Transaksi dan Penomeran Dokumen Laporan (#13)",
+    "Proses Digitalisasi Dokumen (#14)"
+  ];
+
+  const cat4Statuses = [
     "Verifikasi Dokumen Bulanan (#15)",
     "Penyusunan Settlement (#16)",
     "Finalisasi dan Penomeran Dokumen (#17)",
@@ -369,7 +375,7 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
     const stageName = (stages[sub.currentStageIndex] || sub.status || '').toString().trim();
     const lowerCurrent = stageName.toLowerCase();
 
-    // Kategori 1: Belum Laporan (Masih di PIC)
+    // Kategori I: Belum Laporan
     if (
       lowerCurrent.includes("belum laporan") ||
       (type === 'uang_muka' && sub.currentStageIndex === 6)
@@ -377,29 +383,40 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
       return 'cat1';
     }
 
-    // Kategori 2: Laporan Sedang Diverifikasi
+    // Kategori II: Laporan Sedang diverifikasi
     if (
       lowerCurrent.includes("berkas laporan di admin") ||
       lowerCurrent.includes("berkas laporan di serahkan ke keuangan") ||
       lowerCurrent.includes("berkas laporan diserahkan ke keuangan") ||
       lowerCurrent.includes("verifikasi laporan") ||
       lowerCurrent.includes("penyelesaian selisih") ||
-      lowerCurrent.includes("pencatatan transaksi dan penomeran dokumen laporan") ||
-      (type === 'uang_muka' && sub.currentStageIndex >= 7 && sub.currentStageIndex <= 11)
+      (type === 'uang_muka' && sub.currentStageIndex >= 7 && sub.currentStageIndex <= 10)
     ) {
       return 'cat2';
     }
 
-    // Kategori 3: Laporan Sedang Disusun
+    // Kategori III: Laporan Bulan Berjalan
     if (
+      lowerCurrent.includes("pencatatan transaksi dan penomeran dokumen laporan") ||
       lowerCurrent.includes("proses digitalisasi dokumen") ||
+      (lowerCurrent.includes("pencatatan transaksi dan penomeran dokumen") && !lowerCurrent.includes("laporan")) ||
+      (type === 'uang_muka' && (sub.currentStageIndex === 5 || sub.currentStageIndex === 11 || sub.currentStageIndex === 12)) ||
+      (type !== 'uang_muka' && (sub.currentStageIndex === 5 || sub.currentStageIndex === 6))
+    ) {
+      return 'cat3';
+    }
+
+    // Kategori IV: Laporan Yang Akan Diserahkan ke BAZNAS
+    if (
       lowerCurrent.includes("verifikasi dokumen bulanan") ||
       lowerCurrent.includes("penyusunan settlement") ||
       lowerCurrent.includes("finalisasi dan penomeran dokumen") ||
       lowerCurrent.includes("pengesahan dokumen") ||
-      (type === 'uang_muka' && sub.currentStageIndex >= 12 && sub.currentStageIndex <= 16)
+      lowerCurrent.includes("sudah di laporkan ke baznas") ||
+      (type === 'uang_muka' && sub.currentStageIndex >= 13 && sub.currentStageIndex <= 17) ||
+      (type !== 'uang_muka' && sub.currentStageIndex >= 7 && sub.currentStageIndex <= 11)
     ) {
-      return 'cat3';
+      return 'cat4';
     }
 
     return null;
@@ -408,12 +425,14 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
   const cat1Items: any[] = [];
   const cat2Items: any[] = [];
   const cat3Items: any[] = [];
+  const cat4Items: any[] = [];
 
   (dateFilteredSubmissions || []).forEach(sub => {
     const cat = matchCategory(sub);
     if (cat === 'cat1') cat1Items.push(sub);
     else if (cat === 'cat2') cat2Items.push(sub);
     else if (cat === 'cat3') cat3Items.push(sub);
+    else if (cat === 'cat4') cat4Items.push(sub);
   });
 
   const getSubAmt = (sub: any) => {
@@ -428,16 +447,17 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
   const cat1Amount = cat1Items.reduce((acc, sub) => acc + getSubAmt(sub), 0);
   const cat2Amount = cat2Items.reduce((acc, sub) => acc + getSubAmt(sub), 0);
   const cat3Amount = cat3Items.reduce((acc, sub) => acc + getSubAmt(sub), 0);
+  const cat4Amount = cat4Items.reduce((acc, sub) => acc + getSubAmt(sub), 0);
 
-  const grandTotalAmount = cat1Amount + cat2Amount + cat3Amount;
-  const grandTotalCount = cat1Items.length + cat2Items.length + cat3Items.length;
+  const grandTotalAmount = cat1Amount + cat2Amount + cat3Amount + cat4Amount;
+  const grandTotalCount = cat1Items.length + cat2Items.length + cat3Items.length + cat4Items.length;
 
   const categories: TrackingCategoryData[] = [
     {
       key: 'cat1',
-      name: 'Belum Laporan (Masih di PIC)',
+      name: 'Belum Laporan',
       badgeLabel: 'Kategori I',
-      description: 'Pengajuan yang dana permohonannya telah ditransfer namun berkas laporan pertanggungjawaban (LPJ) masih berada di tangan PIC.',
+      description: 'Pengajuan yang dana permohonannya telah ditransfer namun berkas laporan pertanggungjawaban (LPJ) belum diserahkan/masih belum laporan.',
       statuses: cat1Statuses,
       color: 'amber',
       bgColor: 'bg-amber-50/70',
@@ -450,9 +470,9 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
     },
     {
       key: 'cat2',
-      name: 'Laporan Sedang Diverifikasi',
+      name: 'Laporan Sedang diverifikasi',
       badgeLabel: 'Kategori II',
-      description: 'Pengajuan LPJ yang sedang diperiksa oleh Admin/Keuangan, proses verifikasi, penyelesaian selisih, atau penomeran dokumen laporan.',
+      description: 'Pengajuan LPJ yang sedang dalam pemeriksaan Admin/Keuangan, proses verifikasi, dan penyelesaian selisih.',
       statuses: cat2Statuses,
       color: 'blue',
       bgColor: 'bg-blue-50/70',
@@ -465,18 +485,33 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
     },
     {
       key: 'cat3',
-      name: 'Laporan Sedang Disusun',
+      name: 'Laporan Bulan Berjalan',
       badgeLabel: 'Kategori III',
-      description: 'Pengajuan LPJ yang memasuki digitalisasi dokumen, verifikasi bulanan, penyusunan settlement BAZNAS, finalisasi & pengesahan akhir.',
+      description: 'Pengajuan transaksi pencatatan & penomeran dokumen laporan serta proses digitalisasi dokumen pada siklus bulan berjalan.',
       statuses: cat3Statuses,
+      color: 'indigo',
+      bgColor: 'bg-indigo-50/70',
+      borderColor: 'border-indigo-200',
+      textColor: 'text-indigo-800',
+      barColor: '#6366f1',
+      count: cat3Items.length,
+      totalAmount: cat3Amount,
+      items: cat3Items
+    },
+    {
+      key: 'cat4',
+      name: 'Laporan Yang Akan Diserahkan ke BAZNAS',
+      badgeLabel: 'Kategori IV',
+      description: 'Pengajuan LPJ yang memasuki verifikasi bulanan, penyusunan settlement, finalisasi & penomeran, hingga pengesahan dokumen untuk BAZNAS.',
+      statuses: cat4Statuses,
       color: 'emerald',
       bgColor: 'bg-emerald-50/70',
       borderColor: 'border-emerald-200',
       textColor: 'text-emerald-800',
       barColor: '#059669',
-      count: cat3Items.length,
-      totalAmount: cat3Amount,
-      items: cat3Items
+      count: cat4Items.length,
+      totalAmount: cat4Amount,
+      items: cat4Items
     }
   ];
 
@@ -753,13 +788,16 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
 
     if (exportCategoryChoice === 'cat1') {
       itemsToProcess = cat1Items;
-      titleToProcess = 'Belum Laporan (Masih di PIC)';
+      titleToProcess = 'Kategori I - Belum Laporan';
     } else if (exportCategoryChoice === 'cat2') {
       itemsToProcess = cat2Items;
-      titleToProcess = 'Laporan Sedang Diverifikasi';
+      titleToProcess = 'Kategori II - Laporan Sedang diverifikasi';
     } else if (exportCategoryChoice === 'cat3') {
       itemsToProcess = cat3Items;
-      titleToProcess = 'Laporan Sedang Disusun';
+      titleToProcess = 'Kategori III - Laporan Bulan Berjalan';
+    } else if (exportCategoryChoice === 'cat4') {
+      itemsToProcess = cat4Items;
+      titleToProcess = 'Kategori IV - Laporan Yang Akan Diserahkan ke BAZNAS';
     }
 
     if (exportFormatChoice === 'excel') {
@@ -787,7 +825,7 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
             Rekapitulasi Kategori Status Laporan
           </h3>
           <p className="text-xs text-slate-300 font-medium mt-1">
-            Aglomerasi data dari menu Tracking Transaksi berdasarkan 3 Tahapan Utama Status Laporan
+            Aglomerasi data dari menu Tracking Transaksi berdasarkan 4 Tahapan Utama Status Laporan
           </p>
         </div>
 
@@ -975,8 +1013,8 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
         )}
       </div>
 
-      {/* 3 CATEGORY CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* 4 CATEGORY CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {categories.map((cat) => {
           const isSelected = selectedCategoryKey === cat.key;
           const percentage = grandTotalAmount > 0 ? ((cat.totalAmount / grandTotalAmount) * 100).toFixed(1) : '0';
@@ -1204,7 +1242,7 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
             {/* Grand Total Footer */}
             <div className="bg-slate-900 text-white p-4 flex items-center justify-between text-xs font-bold border-t border-slate-800">
               <span className="uppercase tracking-wider font-extrabold text-[11px] text-slate-300">
-                TOTAL AKUMULASI (3 KATEGORI)
+                TOTAL AKUMULASI (4 KATEGORI)
               </span>
               <div className="flex items-center gap-4">
                 <span className="font-mono text-slate-300">{grandTotalCount} Dokumen</span>
@@ -1643,9 +1681,9 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
                   }`}
                 >
                   <div>
-                    <p className="font-black text-xs">Kategori I: Belum Laporan (Masih di PIC)</p>
+                    <p className="font-black text-xs">Kategori I: Belum Laporan</p>
                     <p className={`text-[10px] ${exportCategoryChoice === 'cat1' ? 'text-amber-100' : 'text-amber-700'}`}>
-                      LPJ masih berada di PIC ({cat1Items.length} Transaksi)
+                      Belum Laporan ({cat1Items.length} Transaksi)
                     </p>
                   </div>
                   <span className="font-mono font-bold text-xs">
@@ -1663,9 +1701,9 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
                   }`}
                 >
                   <div>
-                    <p className="font-black text-xs">Kategori II: Laporan Sedang Diverifikasi</p>
+                    <p className="font-black text-xs">Kategori II: Laporan Sedang diverifikasi</p>
                     <p className={`text-[10px] ${exportCategoryChoice === 'cat2' ? 'text-blue-100' : 'text-blue-700'}`}>
-                      Verifikasi berkas LPJ & selisih ({cat2Items.length} Transaksi)
+                      Verifikasi berkas LPJ, serah ke keuangan & selisih ({cat2Items.length} Transaksi)
                     </p>
                   </div>
                   <span className="font-mono font-bold text-xs">
@@ -1678,18 +1716,38 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
                   onClick={() => setExportCategoryChoice('cat3')}
                   className={`w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between ${
                     exportCategoryChoice === 'cat3'
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                      : 'bg-indigo-50/60 text-indigo-900 border-indigo-200 hover:bg-indigo-100/70'
+                  }`}
+                >
+                  <div>
+                    <p className="font-black text-xs">Kategori III: Laporan Bulan Berjalan</p>
+                    <p className={`text-[10px] ${exportCategoryChoice === 'cat3' ? 'text-indigo-100' : 'text-indigo-700'}`}>
+                      Pencatatan, penomeran & digitalisasi dokumen ({cat3Items.length} Transaksi)
+                    </p>
+                  </div>
+                  <span className="font-mono font-bold text-xs">
+                    Rp {cat3Amount.toLocaleString('id-ID')}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setExportCategoryChoice('cat4')}
+                  className={`w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between ${
+                    exportCategoryChoice === 'cat4'
                       ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm'
                       : 'bg-emerald-50/60 text-emerald-900 border-emerald-200 hover:bg-emerald-100/70'
                   }`}
                 >
                   <div>
-                    <p className="font-black text-xs">Kategori III: Laporan Sedang Disusun</p>
-                    <p className={`text-[10px] ${exportCategoryChoice === 'cat3' ? 'text-emerald-100' : 'text-emerald-700'}`}>
-                      Digitalisasi & penyusunan settlement ({cat3Items.length} Transaksi)
+                    <p className="font-black text-xs">Kategori IV: Laporan Yang Akan Diserahkan ke BAZNAS</p>
+                    <p className={`text-[10px] ${exportCategoryChoice === 'cat4' ? 'text-emerald-100' : 'text-emerald-700'}`}>
+                      Verifikasi bulanan, settlement, finalisasi & pengesahan ({cat4Items.length} Transaksi)
                     </p>
                   </div>
                   <span className="font-mono font-bold text-xs">
-                    Rp {cat3Amount.toLocaleString('id-ID')}
+                    Rp {cat4Amount.toLocaleString('id-ID')}
                   </span>
                 </button>
               </div>
