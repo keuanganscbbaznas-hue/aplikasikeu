@@ -412,11 +412,12 @@ export function SettlementTrackingSummarySection({ submissions }: { submissions:
       lowerCurrent.includes("penyusunan settlement") ||
       lowerCurrent.includes("finalisasi dan penomeran dokumen") ||
       lowerCurrent.includes("pengesahan dokumen") ||
-      lowerCurrent.includes("sudah di laporkan ke baznas") ||
-      (type === 'uang_muka' && sub.currentStageIndex >= 13 && sub.currentStageIndex <= 17) ||
-      (type !== 'uang_muka' && sub.currentStageIndex >= 7 && sub.currentStageIndex <= 11)
+      (type === 'uang_muka' && sub.currentStageIndex >= 13 && sub.currentStageIndex <= 16) ||
+      (type !== 'uang_muka' && sub.currentStageIndex >= 7 && sub.currentStageIndex <= 10)
     ) {
-      return 'cat4';
+      if (!lowerCurrent.includes("sudah di laporkan ke baznas")) {
+        return 'cat4';
+      }
     }
 
     return null;
