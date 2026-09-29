@@ -178,6 +178,9 @@ const TRACKING_ADMIN_EMAILS = [
   'kamal2015go@gmail.com',
   'operasional.scb@gmail.com'
 ];
+const DASHBOARD_ANALYTICS_VIEWER_EMAILS = [
+  'latifatul.aminah@baznas.go.id'
+];
 
 function DebouncedInput({ 
   value, 
@@ -610,6 +613,12 @@ export default function App() {
     if (!profile) return false;
     return profile.email === 'keuangan.scb@gmail.com';
   }, [profile]);
+
+  const isAllowedDashboardSummary = useMemo(() => {
+    if (isAdmin) return true;
+    const currentEmail = (profile?.email || user?.email || '').toLowerCase().trim();
+    return DASHBOARD_ANALYTICS_VIEWER_EMAILS.some(e => e.toLowerCase() === currentEmail);
+  }, [profile, user, isAdmin]);
 
   const isOwner = useMemo(() => {
     if (!user?.email) return false;
@@ -1963,12 +1972,12 @@ export default function App() {
                       </div>
                     )}
                     {/* Rekapitulasi Status Tracking Summary Section */}
-                    {isAdmin && (
+                    {isAllowedDashboardSummary && (
                       <SettlementTrackingSummarySection submissions={submissions} />
                     )}
 
                     {/* Analysis Section - Moved from its own tab */}
-                    {isAdmin && (
+                    {isAllowedDashboardSummary && (
 
                       <div className="space-y-6 pt-4 border-t border-slate-200">
                          <div className="flex items-center gap-4">
