@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { db } from '../../firebase';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { db, auth } from '../../firebase';
 import { 
   collection, 
   onSnapshot, 
   doc, 
   setDoc, 
   deleteDoc, 
-  writeBatch 
+  writeBatch,
+  getDocs
 } from 'firebase/firestore';
+import { getApiUrl } from '../../lib/utils';
 import { 
   Table, 
   TableBody, 
@@ -87,7 +89,7 @@ import {
   DEFAULT_RAW_CSV_SMP_2026,
   DEFAULT_RAW_CSV_SMA_2026
 } from './donationLedgerData';
-import { parseDonationDatabaseCsv } from './donationCsvParser';
+import { parseDonationDatabaseCsv, parseDateComponents } from './donationCsvParser';
 
 const ALLOCATION_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = {
   'Donasi': {
@@ -282,7 +284,15 @@ export const MonthlyDonationLedger = () => {
   const [googleSheetsUrl, setGoogleSheetsUrl] = useState<string>(() => {
     return localStorage.getItem('scb_smp_donation_sheets_url') || '';
   });
+  const [dbSheetsUrl, setDbSheetsUrl] = useState<string>(() => {
+    return localStorage.getItem('scb_smp_donation_sheets_url') || '';
+  });
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState<boolean>(true);
+  const [lastSheetsSyncAt, setLastSheetsSyncAt] = useState<string | null>(null);
   const [isFetchingSheets, setIsFetchingSheets] = useState(false);
+  const autoUpgradedSmpRef = useRef<boolean>(false);
+  const itemsRef = useRef<DonationLedgerItem[]>(INITIAL_DONATION_LEDGER_SMP);
+  const saldoAwalRef = useRef<number>(INITIAL_SALDO_AWAL_2026_SMP);
 
   // Form State for Add
   const [formData, setFormData] = useState({
@@ -300,11 +310,34 @@ export const MonthlyDonationLedger = () => {
     setPastedCsv(defaultRawCsv);
     const storedUrl = localStorage.getItem(`scb_${selectedAccount}_donation_sheets_url`) || '';
     setGoogleSheetsUrl(storedUrl);
+    setDbSheetsUrl(storedUrl);
+    setLastSheetsSyncAt(null);
     setCurrentPage(1);
   }, [selectedAccount, defaultRawCsv]);
 
+  // Keep refs synchronized for background auto-sync comparisons
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
+
+  useEffect(() => {
+    saldoAwalRef.current = activeSaldoAwal;
+  }, [activeSaldoAwal]);
+
+  // Deterministic sort helper: chronological by isoDate, then numeric/lexicographic ID
+  const sortLedgerItems = useCallback((list: DonationLedgerItem[]): DonationLedgerItem[] => {
+    return [...list].sort((a, b) => {
+      const dateCmp = (a.isoDate || '').localeCompare(b.isoDate || '');
+      if (dateCmp !== 0) return dateCmp;
+      const numA = parseInt((a.id.match(/(\d+)$/)?.[1] || '0'), 10);
+      const numB = parseInt((b.id.match(/(\d+)$/)?.[1] || '0'), 10);
+      if (!isNaN(numA) && !isNaN(numB) && numA !== numB) return numA - numB;
+      return a.id.localeCompare(b.id);
+    });
+  }, []);
+
   // Recalculate running balance
-  const recalculateBalances = (list: DonationLedgerItem[], startBalance = activeSaldoAwal): DonationLedgerItem[] => {
+  const recalculateBalances = useCallback((list: DonationLedgerItem[], startBalance = activeSaldoAwal): DonationLedgerItem[] => {
     let running = startBalance;
     return list.map(item => {
       running = running + (item.debet || 0) - (item.kredit || 0);
@@ -313,7 +346,71 @@ export const MonthlyDonationLedger = () => {
         saldoAkhir: running
       };
     });
-  };
+  }, [activeSaldoAwal]);
+
+  // Fingerprint helper to detect whether Google Sheets data differs from current database
+  const buildDatasetSignature = useCallback((list: DonationLedgerItem[], startBalance: number): string => {
+    const rowsSig = list
+      .map(it => `${it.date}|${it.docNo || '-'}|${it.allocation}|${it.pic || '-'}|${it.description}|${it.debet || 0}|${it.kredit || 0}`)
+      .join('\n');
+    return `${startBalance}::${list.length}::${rowsSig}`;
+  }, []);
+
+  // Sync a full dataset to Firestore and remove any stale rows for that account ("samakan data")
+  const syncAccountDatasetToFirestore = useCallback(async (
+    account: 'smp' | 'sma',
+    dataset: DonationLedgerItem[],
+    startBalance: number,
+    meta?: { sheetsUrl?: string; autoSyncEnabled?: boolean; lastSyncedAt?: string; datasetVersion?: string }
+  ) => {
+    const newIdSet = new Set(dataset.map(it => it.id));
+
+    // Identify stale docs in Firestore for this account so deleted rows in Google Sheets are also removed
+    const existingSnap = await getDocs(collection(db, 'monthly_donation_ledger'));
+    const staleIds: string[] = [];
+    existingSnap.forEach((docSnap) => {
+      const data = docSnap.data() as any;
+      const belongsToAccount = data.account === account || (!data.account && account === 'smp');
+      if (belongsToAccount && !newIdSet.has(docSnap.id)) {
+        staleIds.push(docSnap.id);
+      }
+    });
+
+    // Write new/updated documents in chunks
+    const writeChunks = chunkArray(dataset, 400);
+    for (const chunk of writeChunks) {
+      const batch = writeBatch(db);
+      chunk.forEach((item) => {
+        const docRef = doc(db, 'monthly_donation_ledger', item.id);
+        batch.set(docRef, { ...item, account });
+      });
+      await batch.commit();
+    }
+
+    // Delete removed/stale documents in chunks
+    const deleteChunks = chunkArray(staleIds, 400);
+    for (const chunk of deleteChunks) {
+      const batch = writeBatch(db);
+      chunk.forEach((staleId) => {
+        batch.delete(doc(db, 'monthly_donation_ledger', staleId));
+      });
+      await batch.commit();
+    }
+
+    // Update starting balance & sheet sync config doc
+    const saldoDocPayload: Record<string, any> = {
+      account,
+      year: 2026,
+      amount: startBalance,
+      updatedAt: new Date().toISOString()
+    };
+    if (meta?.sheetsUrl !== undefined) saldoDocPayload.sheetsUrl = meta.sheetsUrl;
+    if (meta?.autoSyncEnabled !== undefined) saldoDocPayload.autoSyncEnabled = meta.autoSyncEnabled;
+    if (meta?.lastSyncedAt !== undefined) saldoDocPayload.lastSyncedAt = meta.lastSyncedAt;
+    if (meta?.datasetVersion !== undefined) saldoDocPayload.datasetVersion = meta.datasetVersion;
+
+    await setDoc(doc(db, 'donation_saldo_awal', `${account}_2026`), saldoDocPayload, { merge: true });
+  }, []);
 
   // 1. Connect Firestore Listener for real-time synchronization
   useEffect(() => {
@@ -321,13 +418,28 @@ export const MonthlyDonationLedger = () => {
     let unsubSaldo = () => {};
 
     try {
-      // 1. Listener for starting balance
+      // 1. Listener for starting balance & linked Google Sheets config
       const saldoDocRef = doc(db, 'donation_saldo_awal', `${selectedAccount}_2026`);
       unsubSaldo = onSnapshot(saldoDocRef, (docSnap) => {
         if (docSnap.exists()) {
           const val = docSnap.data();
           if (val && typeof val.amount === 'number') {
             setDbSaldoAwal(val.amount);
+          }
+          if (typeof val?.sheetsUrl === 'string') {
+            setDbSheetsUrl(val.sheetsUrl);
+            setGoogleSheetsUrl(val.sheetsUrl);
+            if (val.sheetsUrl) {
+              localStorage.setItem(`scb_${selectedAccount}_donation_sheets_url`, val.sheetsUrl);
+            } else {
+              localStorage.removeItem(`scb_${selectedAccount}_donation_sheets_url`);
+            }
+          }
+          if (typeof val?.autoSyncEnabled === 'boolean') {
+            setAutoSyncEnabled(val.autoSyncEnabled);
+          }
+          if (typeof val?.lastSyncedAt === 'string') {
+            setLastSheetsSyncAt(val.lastSyncedAt);
           }
         } else {
           setDbSaldoAwal(null);
@@ -339,6 +451,8 @@ export const MonthlyDonationLedger = () => {
       // 2. Listener for ledger items collection
       const colRef = collection(db, 'monthly_donation_ledger');
       unsubCol = onSnapshot(colRef, (snapshot) => {
+        const effectiveStart = dbSaldoAwal !== null ? dbSaldoAwal : (selectedAccount === 'sma' ? INITIAL_SALDO_AWAL_2026_SMA : INITIAL_SALDO_AWAL_2026_SMP);
+
         if (!snapshot.empty) {
           const loaded: DonationLedgerItem[] = [];
           snapshot.forEach((docSnap) => {
@@ -347,17 +461,33 @@ export const MonthlyDonationLedger = () => {
               loaded.push({ id: docSnap.id, ...data });
             }
           });
-          
-          // Sort chronologically
-          loaded.sort((a, b) => {
-            if (a.isoDate && b.isoDate) return a.isoDate.localeCompare(b.isoDate);
-            return a.id.localeCompare(b.id);
-          });
-          
-          const effectiveStart = dbSaldoAwal !== null ? dbSaldoAwal : (selectedAccount === 'sma' ? INITIAL_SALDO_AWAL_2026_SMA : INITIAL_SALDO_AWAL_2026_SMP);
 
-          if (loaded.length > 0) {
-            setItems(recalculateBalances(loaded, effectiveStart));
+          const sorted = sortLedgerItems(loaded);
+
+          // Auto-upgrade legacy SMP 149-row Jan-Aug snapshot to the new 207-row Jan-Oct SMP dataset (unless linked to a custom Google Sheet)
+          const storedUrl = localStorage.getItem(`scb_${selectedAccount}_donation_sheets_url`) || '';
+          const isLegacySmpSnapshot =
+            selectedAccount === 'smp' &&
+            !storedUrl &&
+            !dbSheetsUrl &&
+            sorted.length === 149 &&
+            (sorted[sorted.length - 1]?.isoDate || '') <= '2026-08-31';
+
+          if (isLegacySmpSnapshot) {
+            const upgraded = recalculateBalances(INITIAL_DONATION_LEDGER_SMP, INITIAL_SALDO_AWAL_2026_SMP);
+            setItems(upgraded);
+            setIsFirestoreConnected(true);
+            if (!autoUpgradedSmpRef.current && auth.currentUser) {
+              autoUpgradedSmpRef.current = true;
+              syncAccountDatasetToFirestore('smp', upgraded, INITIAL_SALDO_AWAL_2026_SMP, {
+                datasetVersion: '2026-10-31-v2'
+              }).catch((err) => console.warn("Auto-upgrade SMP Firestore skipped:", err));
+            }
+            return;
+          }
+
+          if (sorted.length > 0) {
+            setItems(recalculateBalances(sorted, effectiveStart));
           } else {
             const fallback = selectedAccount === 'sma' ? INITIAL_DONATION_LEDGER_SMA : INITIAL_DONATION_LEDGER_SMP;
             setItems(recalculateBalances(fallback, effectiveStart));
@@ -365,7 +495,6 @@ export const MonthlyDonationLedger = () => {
           setIsFirestoreConnected(true);
         } else {
           const fallback = selectedAccount === 'sma' ? INITIAL_DONATION_LEDGER_SMA : INITIAL_DONATION_LEDGER_SMP;
-          const effectiveStart = dbSaldoAwal !== null ? dbSaldoAwal : (selectedAccount === 'sma' ? INITIAL_SALDO_AWAL_2026_SMA : INITIAL_SALDO_AWAL_2026_SMP);
           setItems(recalculateBalances(fallback, effectiveStart));
           setIsFirestoreConnected(false);
         }
@@ -381,7 +510,7 @@ export const MonthlyDonationLedger = () => {
       unsubCol();
       unsubSaldo();
     };
-  }, [selectedAccount, dbSaldoAwal]);
+  }, [selectedAccount, dbSaldoAwal, dbSheetsUrl, recalculateBalances, sortLedgerItems, syncAccountDatasetToFirestore]);
 
   // Sync / Seed active account to Firestore
   const handleSyncToFirestore = async () => {
@@ -391,23 +520,8 @@ export const MonthlyDonationLedger = () => {
     const currentSaldoAwal = selectedAccount === 'sma' ? INITIAL_SALDO_AWAL_2026_SMA : INITIAL_SALDO_AWAL_2026_SMP;
     const toastId = toast.loading(`Menyinkronkan data ${accountTitle} ke database Firestore...`);
     try {
-      const chunks = chunkArray(currentDataset, 400);
-      for (const chunk of chunks) {
-        const batch = writeBatch(db);
-        chunk.forEach((item) => {
-          const docRef = doc(db, 'monthly_donation_ledger', item.id);
-          batch.set(docRef, { ...item, account: selectedAccount });
-        });
-        await batch.commit();
-      }
-
-      // Write starting balance to donation_saldo_awal
-      const saldoRef = doc(db, 'donation_saldo_awal', `${selectedAccount}_2026`);
-      await setDoc(saldoRef, {
-        account: selectedAccount,
-        year: 2026,
-        amount: currentSaldoAwal,
-        updatedAt: new Date().toISOString()
+      await syncAccountDatasetToFirestore(selectedAccount, currentDataset, currentSaldoAwal, {
+        datasetVersion: selectedAccount === 'smp' ? '2026-10-31-v2' : '2026-08-31-v1'
       });
 
       setIsFirestoreConnected(true);
@@ -425,42 +539,21 @@ export const MonthlyDonationLedger = () => {
     setLoading(true);
     const toastId = toast.loading("Menyinkronkan seluruh database Rekening SMP & SMA ke Firestore...");
     try {
-      // 1. Write SMP
-      const smpChunks = chunkArray(INITIAL_DONATION_LEDGER_SMP, 400);
-      for (const chunk of smpChunks) {
-        const batch = writeBatch(db);
-        chunk.forEach((item) => {
-          const docRef = doc(db, 'monthly_donation_ledger', item.id);
-          batch.set(docRef, { ...item, account: 'smp' });
-        });
-        await batch.commit();
-      }
-      await setDoc(doc(db, 'donation_saldo_awal', 'smp_2026'), {
-        account: 'smp',
-        year: 2026,
-        amount: INITIAL_SALDO_AWAL_2026_SMP,
-        updatedAt: new Date().toISOString()
+      await syncAccountDatasetToFirestore('smp', INITIAL_DONATION_LEDGER_SMP, INITIAL_SALDO_AWAL_2026_SMP, {
+        datasetVersion: '2026-10-31-v2'
+      });
+      await syncAccountDatasetToFirestore('sma', INITIAL_DONATION_LEDGER_SMA, INITIAL_SALDO_AWAL_2026_SMA, {
+        datasetVersion: '2026-08-31-v1'
       });
 
-      // 2. Write SMA
-      const smaChunks = chunkArray(INITIAL_DONATION_LEDGER_SMA, 400);
-      for (const chunk of smaChunks) {
-        const batch = writeBatch(db);
-        chunk.forEach((item) => {
-          const docRef = doc(db, 'monthly_donation_ledger', item.id);
-          batch.set(docRef, { ...item, account: 'sma' });
-        });
-        await batch.commit();
-      }
-      await setDoc(doc(db, 'donation_saldo_awal', 'sma_2026'), {
-        account: 'sma',
-        year: 2026,
-        amount: INITIAL_SALDO_AWAL_2026_SMA,
-        updatedAt: new Date().toISOString()
-      });
+      const smpLastSaldo = INITIAL_DONATION_LEDGER_SMP[INITIAL_DONATION_LEDGER_SMP.length - 1]?.saldoAkhir || INITIAL_SALDO_AWAL_2026_SMP;
+      const smaLastSaldo = INITIAL_DONATION_LEDGER_SMA[INITIAL_DONATION_LEDGER_SMA.length - 1]?.saldoAkhir || INITIAL_SALDO_AWAL_2026_SMA;
 
       setIsFirestoreConnected(true);
-      toast.success("Berhasil sinkronisasi database: SMP (149 transaksi - Saldo Rp 27.477.600) & SMA (239 transaksi - Saldo Rp 21.333.045) ke Firestore!", { id: toastId });
+      toast.success(
+        `Berhasil sinkronisasi database: SMP (${INITIAL_DONATION_LEDGER_SMP.length} transaksi - Saldo ${formatRupiah(smpLastSaldo)}) & SMA (${INITIAL_DONATION_LEDGER_SMA.length} transaksi - Saldo ${formatRupiah(smaLastSaldo)}) ke Firestore!`,
+        { id: toastId }
+      );
     } catch (error: any) {
       console.error("Firestore sync all error:", error);
       toast.error("Gagal sinkronisasi database: " + error.message, { id: toastId });
@@ -484,7 +577,7 @@ export const MonthlyDonationLedger = () => {
         year: 2026,
         amount: cleanNum,
         updatedAt: new Date().toISOString()
-      });
+      }, { merge: true });
       setDbSaldoAwal(cleanNum);
       setIsSaldoAwalModalOpen(false);
       toast.success(`Saldo awal ${selectedAccount.toUpperCase()} berhasil diperbarui: ${formatRupiah(cleanNum)}`, { id: toastId });
@@ -513,15 +606,16 @@ export const MonthlyDonationLedger = () => {
     const isPemasukan = formData.type === 'pemasukan';
     const prefix = selectedAccount === 'sma' ? 'TX-SMA-2026' : 'TX-SMP-2026';
     const accountTitle = selectedAccount === 'sma' ? 'Rekening Donasi SMA' : 'Rekening Donasi SMP';
+    const parsedDate = parseDateComponents(formData.date);
 
     const newItem: DonationLedgerItem = {
       id: `${prefix}-${String(items.length + 1).padStart(3, '0')}`,
       account: selectedAccount,
       accountName: accountTitle,
       date: formData.date,
-      isoDate: new Date().toISOString().split('T')[0],
-      monthKey: "2026-08",
-      monthName: "Agustus 2026",
+      isoDate: parsedDate.isoDate,
+      monthKey: parsedDate.monthKey,
+      monthName: parsedDate.monthName,
       docNo: formData.docNo || '-',
       allocation: formData.allocation,
       pic: formData.pic || '-',
@@ -620,26 +714,11 @@ export const MonthlyDonationLedger = () => {
       });
 
       setItems(recalculated);
+      setDbSaldoAwal(result.saldoAwal);
 
-      const chunkSize = 400;
-      for (let i = 0; i < recalculated.length; i += chunkSize) {
-        const chunk = recalculated.slice(i, i + chunkSize);
-        const batch = writeBatch(db);
-        chunk.forEach(item => {
-          const docRef = doc(db, 'monthly_donation_ledger', item.id);
-          batch.set(docRef, item);
-        });
-        await batch.commit();
-      }
-
-      try {
-        await setDoc(doc(db, 'donation_saldo_awal', `${selectedAccount}_2026`), {
-          account: selectedAccount,
-          year: 2026,
-          amount: result.saldoAwal,
-          updatedAt: new Date().toISOString()
-        });
-      } catch {}
+      await syncAccountDatasetToFirestore(selectedAccount, recalculated, result.saldoAwal, {
+        lastSyncedAt: new Date().toISOString()
+      });
 
       setIsFirestoreConnected(true);
       setIsImportModalOpen(false);
@@ -652,32 +731,43 @@ export const MonthlyDonationLedger = () => {
     }
   };
 
-  // Fetch and sync data directly from published Google Sheets CSV
-  const handleFetchGoogleSheets = async () => {
-    if (!googleSheetsUrl.trim()) {
-      toast.error("Masukkan tautan Google Sheets terlebih dahulu.");
+  // Fetch and sync data directly from Google Sheets (supports any Sheet URL via backend proxy + exact reconciliation)
+  const syncFromGoogleSheets = useCallback(async (urlToSync: string, options?: { silent?: boolean; closeModal?: boolean }) => {
+    const trimmedUrl = urlToSync.trim();
+    if (!trimmedUrl) {
+      if (!options?.silent) toast.error("Masukkan tautan Google Sheets terlebih dahulu.");
       return;
     }
 
-    let fetchUrl = googleSheetsUrl.trim();
-    if (fetchUrl.includes('/edit') || fetchUrl.includes('/view')) {
-      fetchUrl = fetchUrl.replace(/\/edit.*$/, '/export?format=csv');
-    }
-
-    setIsFetchingSheets(true);
-    const toastId = toast.loading("Mengambil pembaruan data dari Google Sheets...");
+    if (!options?.silent) setIsFetchingSheets(true);
+    const toastId = options?.silent ? undefined : toast.loading("Menarik dan mencocokkan data dengan Google Sheets...");
     try {
-      localStorage.setItem(`scb_${selectedAccount}_donation_sheets_url`, googleSheetsUrl.trim());
-      const res = await fetch(fetchUrl);
-      if (!res.ok) {
-        throw new Error(`Gagal mengambil data (Status ${res.status}). Pastikan Google Sheets sudah dipublikasikan ke web dalam format CSV.`);
+      let csvText = '';
+      try {
+        const proxyRes = await fetch(getApiUrl(`/api/sheets/fetch_csv?url=${encodeURIComponent(trimmedUrl)}`), {
+          cache: 'no-store'
+        });
+        const proxyData = await proxyRes.json();
+        if (!proxyRes.ok || !proxyData?.csv) {
+          throw new Error(proxyData?.error || `Status ${proxyRes.status}`);
+        }
+        csvText = proxyData.csv;
+      } catch (proxyErr: any) {
+        // Fallback direct fetch if URL is a direct CORS-enabled CSV link
+        let fallbackUrl = trimmedUrl;
+        if (fallbackUrl.includes('/edit') || fallbackUrl.includes('/view')) {
+          fallbackUrl = fallbackUrl.replace(/\/(edit|view).*$/, '/export?format=csv');
+        }
+        const directRes = await fetch(fallbackUrl, { cache: 'no-store' });
+        if (!directRes.ok) {
+          throw new Error(proxyErr?.message || `Gagal mengambil data (Status ${directRes.status}).`);
+        }
+        csvText = await directRes.text();
       }
-      const csvText = await res.text();
-      setPastedCsv(csvText);
 
       const result = parseDonationDatabaseCsv(csvText, selectedAccount);
       if (result.items.length === 0) {
-        throw new Error("Tabel kosong atau kolom tidak sesuai format buku kas.");
+        throw new Error("Tabel kosong atau kolom tidak sesuai format buku kas (TGL, NO. DOC, ALOKASI ANGGARAN, PIC, KETERANGAN, DEBET, KREDIT, SALDO AKHIR).");
       }
 
       let running = result.saldoAwal;
@@ -686,29 +776,88 @@ export const MonthlyDonationLedger = () => {
         return { ...it, saldoAkhir: running };
       });
 
-      setItems(recalculated);
+      const incomingSig = buildDatasetSignature(recalculated, result.saldoAwal);
+      const currentAccountItems = itemsRef.current.filter(it => it.account === selectedAccount);
+      const currentSig = buildDatasetSignature(currentAccountItems, saldoAwalRef.current);
+      const hasChanges = incomingSig !== currentSig;
+      const nowIso = new Date().toISOString();
 
-      const chunkSize = 400;
-      for (let i = 0; i < recalculated.length; i += chunkSize) {
-        const chunk = recalculated.slice(i, i + chunkSize);
-        const batch = writeBatch(db);
-        chunk.forEach(item => {
-          const docRef = doc(db, 'monthly_donation_ledger', item.id);
-          batch.set(docRef, item);
-        });
-        await batch.commit();
+      localStorage.setItem(`scb_${selectedAccount}_donation_sheets_url`, trimmedUrl);
+      setDbSheetsUrl(trimmedUrl);
+      setPastedCsv(csvText);
+
+      if (hasChanges || !options?.silent) {
+        setItems(recalculated);
+        setDbSaldoAwal(result.saldoAwal);
+        setLastSheetsSyncAt(nowIso);
+
+        if (auth.currentUser) {
+          await syncAccountDatasetToFirestore(selectedAccount, recalculated, result.saldoAwal, {
+            sheetsUrl: trimmedUrl,
+            autoSyncEnabled,
+            lastSyncedAt: nowIso
+          });
+          setIsFirestoreConnected(true);
+        }
+
+        if (options?.closeModal) setIsSheetsModalOpen(false);
+        const msg = hasChanges
+          ? `Google Sheets tersinkron! ${recalculated.length} transaksi disamakan (Saldo Akhir ${formatRupiah(running)}).`
+          : `Data sudah sama persis dengan Google Sheets (${recalculated.length} transaksi, Saldo Akhir ${formatRupiah(running)}).`;
+        if (toastId) toast.success(msg, { id: toastId });
+        else toast.success(msg);
+      } else {
+        setLastSheetsSyncAt(nowIso);
       }
-
-      setIsFirestoreConnected(true);
-      setIsSheetsModalOpen(false);
-      toast.success(`Google Sheets Terhubung! Berhasil menyinkronkan ${recalculated.length} transaksi ke database.`, { id: toastId });
     } catch (err: any) {
       console.error("Sheets sync error:", err);
-      toast.error("Gagal sinkron dari Google Sheets: " + err.message, { id: toastId });
+      if (!options?.silent) {
+        toast.error("Gagal sinkron dari Google Sheets: " + err.message, { id: toastId });
+      }
     } finally {
-      setIsFetchingSheets(false);
+      if (!options?.silent) setIsFetchingSheets(false);
     }
+  }, [selectedAccount, autoSyncEnabled, buildDatasetSignature, syncAccountDatasetToFirestore]);
+
+  const handleFetchGoogleSheets = async () => {
+    await syncFromGoogleSheets(googleSheetsUrl, { silent: false, closeModal: true });
   };
+
+  const handleUnlinkGoogleSheets = async () => {
+    localStorage.removeItem(`scb_${selectedAccount}_donation_sheets_url`);
+    setDbSheetsUrl('');
+    setGoogleSheetsUrl('');
+    setLastSheetsSyncAt(null);
+    if (auth.currentUser) {
+      try {
+        await setDoc(doc(db, 'donation_saldo_awal', `${selectedAccount}_2026`), {
+          sheetsUrl: '',
+          autoSyncEnabled: false,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch {}
+    }
+    toast.success(`Tautan Google Sheets ${selectedAccount.toUpperCase()} diputuskan.`);
+    setIsSheetsModalOpen(false);
+  };
+
+  // Auto-sync from linked Google Sheet URL on mount / account switch & every 60s if enabled
+  useEffect(() => {
+    if (!dbSheetsUrl || !autoSyncEnabled) return;
+
+    const initialTimer = setTimeout(() => {
+      syncFromGoogleSheets(dbSheetsUrl, { silent: true });
+    }, 1200);
+
+    const intervalId = setInterval(() => {
+      syncFromGoogleSheets(dbSheetsUrl, { silent: true });
+    }, 60000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(intervalId);
+    };
+  }, [dbSheetsUrl, autoSyncEnabled, selectedAccount, syncFromGoogleSheets]);
 
   // Handle local file upload (.csv or .txt)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -797,7 +946,7 @@ export const MonthlyDonationLedger = () => {
     };
   }, [items]);
 
-  // Breakdown by Month
+  // Breakdown by Month (dynamically covers Jan up to latest month in dataset)
   const monthlyBreakdown = useMemo(() => {
     const monthsOrder = [
       { key: '2026-01', label: 'Januari 2026', short: 'Jan' },
@@ -808,11 +957,18 @@ export const MonthlyDonationLedger = () => {
       { key: '2026-06', label: 'Juni 2026', short: 'Jun' },
       { key: '2026-07', label: 'Juli 2026', short: 'Jul' },
       { key: '2026-08', label: 'Agustus 2026', short: 'Agu' },
+      { key: '2026-09', label: 'September 2026', short: 'Sep' },
+      { key: '2026-10', label: 'Oktober 2026', short: 'Okt' },
+      { key: '2026-11', label: 'November 2026', short: 'Nov' },
+      { key: '2026-12', label: 'Desember 2026', short: 'Des' },
     ];
+
+    const maxMonthKey = items.reduce((max, it) => (it.monthKey && it.monthKey > max ? it.monthKey : max), '2026-08');
+    const activeMonths = monthsOrder.filter(m => m.key <= maxMonthKey);
 
     let currentSaldo = activeSaldoAwal;
 
-    return monthsOrder.map(m => {
+    return activeMonths.map(m => {
       const monthItems = items.filter(item => {
         return item.monthKey === m.key || item.date.includes(`-${m.short}-`) || item.date.includes(`/${m.short}/`);
       });
@@ -851,6 +1007,18 @@ export const MonthlyDonationLedger = () => {
       };
     });
   }, [items, activeSaldoAwal]);
+
+  const periodMeta = useMemo(() => {
+    const first = monthlyBreakdown[0];
+    const last = monthlyBreakdown[monthlyBreakdown.length - 1];
+    return {
+      firstShort: first?.short || 'Jan',
+      lastShort: last?.short || 'Agu',
+      lastLabel: last?.label || 'Agustus 2026',
+      rangeLabel: `${first?.label.replace(' 2026', '') || 'Januari'} - ${last?.label.replace(' 2026', '') || 'Agustus'}`,
+      monthCount: monthlyBreakdown.length
+    };
+  }, [monthlyBreakdown]);
 
   // Filtered Items for Ledger View
   const filteredLedgerItems = useMemo(() => {
@@ -1066,6 +1234,16 @@ export const MonthlyDonationLedger = () => {
               <Button
                 size="sm"
                 variant="outline"
+                onClick={() => setIsSheetsModalOpen(true)}
+                className="h-9 px-3.5 text-xs font-bold rounded-xl border-emerald-300 bg-emerald-50/70 text-emerald-800 hover:bg-emerald-100 hover:border-emerald-400 transition-all gap-1.5 shadow-2xs"
+                title="Tautkan dan sinkronkan link Google Sheets sebagai database live"
+              >
+                <Link2 size={14} className="text-emerald-600" />
+                {dbSheetsUrl ? 'Google Sheets Terhubung' : 'Tautkan Google Sheets'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => setIsImportModalOpen(true)}
                 className="h-9 px-3.5 text-xs font-bold rounded-xl border-slate-200 text-slate-700 hover:text-emerald-800 hover:bg-emerald-50 hover:border-emerald-200 transition-all gap-1.5 shadow-2xs"
                 title="Perbarui database dengan menempel teks CSV / data Excel"
@@ -1183,7 +1361,7 @@ export const MonthlyDonationLedger = () => {
               <Badge className="bg-emerald-200 text-emerald-800 text-[10px] font-black border-none px-2 py-0.5">
                 {metrics.countPemasukan} Transaksi
               </Badge>
-              <span className="text-[11px] text-emerald-700 font-medium">Januari - Agustus</span>
+              <span className="text-[11px] text-emerald-700 font-medium">{periodMeta.rangeLabel}</span>
             </div>
           </div>
 
@@ -1209,7 +1387,7 @@ export const MonthlyDonationLedger = () => {
           {/* Card 4: Saldo Akhir */}
           <div className="bg-blue-50/70 rounded-2xl p-4 border border-blue-200/60">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black uppercase tracking-wider text-blue-800">Saldo Akhir (Agustus 2026)</span>
+              <span className="text-[11px] font-black uppercase tracking-wider text-blue-800">Saldo Akhir ({periodMeta.lastLabel})</span>
               <div className="p-2 bg-white rounded-xl shadow-xs text-blue-600 border border-blue-100">
                 <Coins size={18} />
               </div>
@@ -1230,26 +1408,63 @@ export const MonthlyDonationLedger = () => {
               <CheckCircle2 size={18} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="font-black text-sm text-slate-900">Database Firestore Terhubung & Dinamis</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-black text-sm text-slate-900">
+                  {dbSheetsUrl ? 'Google Sheets & Firestore Terhubung' : 'Database Firestore Terhubung & Dinamis'}
+                </span>
                 <Badge className="bg-emerald-100 text-emerald-800 font-bold text-[10px] border-none">
                   Collection: monthly_donation_ledger ({metrics.totalTransactions} Transaksi {selectedAccount.toUpperCase()})
                 </Badge>
+                {dbSheetsUrl && autoSyncEnabled && (
+                  <Badge className="bg-blue-100 text-blue-800 font-bold text-[10px] border-none">
+                    Auto-Sync Google Sheets Aktif
+                  </Badge>
+                )}
               </div>
               <p className="text-xs text-slate-600 mt-0.5">
-                Setiap perubahan pada akun {selectedAccount.toUpperCase()} (lewat <strong>Edit Transaksi</strong>, <strong>Tempel CSV Excel</strong>, atau <strong>Google Sheets</strong>) akan langsung tersimpan dan tersinkronisasi otomatis.
+                {dbSheetsUrl ? (
+                  <>
+                    Sumber Google Sheets aktif{lastSheetsSyncAt ? ` • Terakhir disamakan: ${new Date(lastSheetsSyncAt).toLocaleString('id-ID')}` : ''}. Perubahan di Google Sheets akan otomatis disamakan ke database.
+                  </>
+                ) : (
+                  <>
+                    Setiap perubahan pada akun {selectedAccount.toUpperCase()} (lewat <strong>Edit Transaksi</strong>, <strong>Tempel CSV Excel</strong>, atau <strong>Link Google Sheets</strong>) akan langsung tersimpan dan tersinkronisasi otomatis.
+                  </>
+                )}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {dbSheetsUrl ? (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isFetchingSheets}
+                onClick={() => syncFromGoogleSheets(dbSheetsUrl, { silent: false })}
+                className="bg-white border-emerald-300 text-emerald-800 font-bold text-xs rounded-xl hover:bg-emerald-50"
+              >
+                <RefreshCw size={14} className={`mr-1.5 ${isFetchingSheets ? 'animate-spin' : ''}`} />
+                {isFetchingSheets ? 'Menyamakan...' : 'Samakan dgn Sheet'}
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsSheetsModalOpen(true)}
+                className="bg-white border-emerald-300 text-emerald-800 font-bold text-xs rounded-xl hover:bg-emerald-50"
+              >
+                <Link2 size={14} className="mr-1.5" />
+                Tautkan Google Sheets
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
               onClick={() => setIsImportModalOpen(true)}
-              className="bg-white border-emerald-300 text-emerald-800 font-bold text-xs rounded-xl hover:bg-emerald-50"
+              className="bg-white border-slate-200 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-50"
             >
               <UploadCloud size={14} className="mr-1.5" />
-              Update / Tempel CSV
+              Tempel CSV
             </Button>
             <Button
               size="sm"
@@ -1286,7 +1501,7 @@ export const MonthlyDonationLedger = () => {
             }`}
           >
             <Calendar size={15} />
-            2. Rekap Per Bulan (Jan - Agu)
+            2. Rekap Per Bulan ({periodMeta.firstShort} - {periodMeta.lastShort})
           </button>
           <button
             onClick={() => setActiveTab('charts')}
@@ -1603,7 +1818,7 @@ export const MonthlyDonationLedger = () => {
         </div>
       )}
 
-      {/* VIEW 2: REKAP PER BULAN (JAN - AGU 2026) */}
+      {/* VIEW 2: REKAP PER BULAN */}
       {activeTab === 'monthly' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -1616,7 +1831,7 @@ export const MonthlyDonationLedger = () => {
               </p>
             </div>
             <Badge className="bg-slate-900 text-white font-black text-xs px-3 py-1">
-              8 Periode Bulan
+              {periodMeta.monthCount} Periode Bulan
             </Badge>
           </div>
 
@@ -1698,7 +1913,7 @@ export const MonthlyDonationLedger = () => {
                 Grafik Perbandingan Pemasukan (Debet) vs Pengeluaran (Kredit) Bulanan 2026
               </CardTitle>
               <CardDescription className="text-xs">
-                Pergerakan kas {accountTitle} dari bulan Januari hingga Agustus 2026.
+                Pergerakan kas {accountTitle} dari bulan {periodMeta.rangeLabel} 2026.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4">
@@ -1814,7 +2029,7 @@ export const MonthlyDonationLedger = () => {
                 Tren Saldo Akhir Kas Donasi ({accountTitle} 2026)
               </CardTitle>
               <CardDescription className="text-xs">
-                Perkembangan saldo kas donasi dari Saldo Awal {formatRupiah(activeSaldoAwal)} hingga akhir Agustus 2026 ({formatRupiah(metrics.saldoAkhir)}).
+                Perkembangan saldo kas donasi dari Saldo Awal {formatRupiah(activeSaldoAwal)} hingga akhir {periodMeta.lastLabel} ({formatRupiah(metrics.saldoAkhir)}).
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4">
@@ -1892,6 +2107,10 @@ export const MonthlyDonationLedger = () => {
                 <option value="2026-06">Juni 2026</option>
                 <option value="2026-07">Juli 2026</option>
                 <option value="2026-08">Agustus 2026</option>
+                <option value="2026-09">September 2026</option>
+                <option value="2026-10">Oktober 2026</option>
+                <option value="2026-11">November 2026</option>
+                <option value="2026-12">Desember 2026</option>
               </select>
 
               {/* Type Filter */}
@@ -2398,41 +2617,61 @@ export const MonthlyDonationLedger = () => {
           <DialogHeader>
             <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
               <Link2 size={20} className="text-emerald-600" />
-              Tautkan Link Database Google Sheets ({accountTitle})
+              Database Google Sheets ({accountTitle})
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
-              Jika data donasi {accountTitle} dikelola di Google Sheets, tautkan tautan CSV publiknya agar aplikasi dapat langsung menarik pembaruan kapan pun.
+              Tautkan link Google Sheets {accountTitle} sebagai database utama. Setiap ada perubahan di Google Sheets, sistem akan menyinkronkan dan menyamakan data secara otomatis.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3.5 py-2">
             <div>
               <label className="text-xs font-bold text-slate-700 block mb-1">
-                Tautan Publikasi Web / CSV Google Sheets:
+                Link Google Sheets (Link Share / Export CSV / Publish Web):
               </label>
               <div className="relative">
                 <Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <Input
                   value={googleSheetsUrl}
                   onChange={(e) => setGoogleSheetsUrl(e.target.value)}
-                  placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv"
+                  placeholder="https://docs.google.com/spreadsheets/d/.../edit#gid=0 atau .../pub?output=csv"
                   className="pl-9 text-xs rounded-xl"
                 />
               </div>
             </div>
 
+            <label className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-50/60 border border-emerald-200/80 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoSyncEnabled}
+                onChange={(e) => setAutoSyncEnabled(e.target.checked)}
+                className="rounded border-emerald-400 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span className="text-xs font-bold text-emerald-900">
+                Samakan data otomatis saat halaman dibuka atau saat ada perubahan di Google Sheets
+              </span>
+            </label>
+
             <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 space-y-1.5 text-xs text-slate-600">
-              <span className="font-bold text-slate-900 block">Cara Mendapatkan Link CSV Google Sheets:</span>
+              <span className="font-bold text-slate-900 block">Format Link yang Didukung:</span>
               <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-600">
-                <li>Buka Google Sheets data {accountTitle} Anda.</li>
-                <li>Pilih menu <strong>File &gt; Bagikan (Share) &gt; Publikasikan ke web</strong>.</li>
-                <li>Pada tab lembar kerja, pilih lembar donasi dan ubah format <em>Halaman Web</em> menjadi <strong>Comma-separated values (.csv)</strong>.</li>
-                <li>Klik <strong>Publikasikan</strong> lalu salin URL yang muncul dan tempelkan di atas.</li>
+                <li>Tempel langsung URL Google Sheets (pastikan akses disetel <strong>Siapa saja yang memiliki link dapat melihat</strong> atau tab di-<strong>Publikasikan ke web (.csv)</strong>).</li>
+                <li>Jika link memiliki tab tertentu, pastikan menyertakan <code>#gid=...</code> atau <code>?gid=...</code> di URL agar tab yang ditarik tepat.</li>
+                <li>Format kolom yang dibaca: <strong>TGL, NO. DOC, ALOKASI ANGGARAN, PIC, KETERANGAN, DEBET, KREDIT, SALDO AKHIR</strong>.</li>
               </ol>
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 sm:gap-0 flex-wrap">
+            {dbSheetsUrl && (
+              <Button
+                variant="ghost"
+                onClick={handleUnlinkGoogleSheets}
+                className="rounded-xl text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 mr-auto"
+              >
+                Putuskan Tautan
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => setIsSheetsModalOpen(false)}
@@ -2446,7 +2685,7 @@ export const MonthlyDonationLedger = () => {
               className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold gap-2 shadow-xs"
             >
               <RefreshCw size={14} className={isFetchingSheets ? "animate-spin" : ""} />
-              {isFetchingSheets ? "Mengambil Data..." : "Tarik Data Sekarang"}
+              {isFetchingSheets ? "Menyamakan Data..." : "Sinkronkan & Samakan Data"}
             </Button>
           </DialogFooter>
         </DialogContent>

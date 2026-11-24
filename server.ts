@@ -468,6 +468,137 @@ async function startServer() {
     }
   });
 
+  app.get("/api/sheets/fetch_csv", async (req, res) => {
+    try {
+      const rawUrl = String(req.query.url || "").trim();
+      if (!rawUrl) {
+        return res.status(400).json({ error: "URL Google Sheets wajib diisi." });
+      }
+
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(rawUrl);
+      } catch {
+        return res.status(400).json({ error: "Format URL Google Sheets tidak valid." });
+      }
+
+      if (
+        parsedUrl.protocol !== "https:" ||
+        (parsedUrl.hostname !== "docs.google.com" && !parsedUrl.hostname.endsWith(".googleusercontent.com"))
+      ) {
+        return res.status(400).json({ error: "URL harus berasal dari Google Sheets (https://docs.google.com/spreadsheets/...)." });
+      }
+
+      const timestamp = Date.now();
+      const gidMatch = rawUrl.match(/[?#&]gid=(\d+)/);
+      const gid = gidMatch ? gidMatch[1] : null;
+      const isPublished2Pacx = rawUrl.includes("/spreadsheets/d/e/");
+      const stdIdMatch = !isPublished2Pacx ? rawUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/) : null;
+      const spreadsheetId = stdIdMatch ? stdIdMatch[1] : null;
+
+      const candidateUrls: string[] = [];
+
+      if (isPublished2Pacx) {
+        // Published to web link (2PACX-...)
+        let pubCsv = rawUrl.split("#")[0];
+        if (pubCsv.includes("/pubhtml")) {
+          pubCsv = pubCsv.replace("/pubhtml", "/pub");
+        }
+        const u = new URL(pubCsv);
+        u.searchParams.set("output", "csv");
+        if (gid && !u.searchParams.has("gid")) {
+          u.searchParams.set("gid", gid);
+        }
+        if (gid && !u.searchParams.has("single")) {
+          u.searchParams.set("single", "true");
+        }
+        u.searchParams.set("_t", String(timestamp));
+        candidateUrls.push(u.toString());
+      } else if (spreadsheetId) {
+        if (rawUrl.includes("output=csv") || rawUrl.includes("format=csv") || rawUrl.includes("tqx=out:csv")) {
+          const sep = rawUrl.includes("?") ? "&" : "?";
+          candidateUrls.push(`${rawUrl.split("#")[0]}${sep}_t=${timestamp}`);
+        }
+        const gidQuery = gid ? `&gid=${gid}` : "";
+        candidateUrls.push(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv${gidQuery}&_t=${timestamp}`);
+        candidateUrls.push(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv${gidQuery}&_t=${timestamp}`);
+      } else {
+        const sep = rawUrl.includes("?") ? "&" : "?";
+        candidateUrls.push(`${rawUrl}${sep}_t=${timestamp}`);
+      }
+
+      const isHtmlResponse = (text: string, contentType: string | null) => {
+        const trimmed = text.trim().slice(0, 200).toLowerCase();
+        return (
+          (contentType && contentType.toLowerCase().includes("text/html")) ||
+          trimmed.startsWith("<!doctype html") ||
+          trimmed.startsWith("<html")
+        );
+      };
+
+      for (const target of candidateUrls) {
+        try {
+          const response = await fetch(target, {
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              "Pragma": "no-cache",
+              "User-Agent": "Mozilla/5.0"
+            },
+            redirect: "follow"
+          });
+          if (response.ok) {
+            const text = await response.text();
+            const ct = response.headers.get("content-type");
+            if (text.trim() && !isHtmlResponse(text, ct)) {
+              return res.json({ success: true, csv: text, source: "public_csv" });
+            }
+          }
+        } catch {
+          // Try next candidate
+        }
+      }
+
+      // Fallback: Try authenticated Google Sheets API v4 via Service Account if standard spreadsheetId
+      if (spreadsheetId && process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+        try {
+          const auth = getAuthClient();
+          const sheets = google.sheets({ version: "v4", auth });
+          const meta = await sheets.spreadsheets.get({ spreadsheetId });
+          const sheetsList = meta.data.sheets || [];
+          let targetSheet = sheetsList[0];
+          if (gid) {
+            const found = sheetsList.find(s => String(s.properties?.sheetId) === gid);
+            if (found) targetSheet = found;
+          }
+          const title = targetSheet?.properties?.title || "Sheet1";
+          const valuesRes = await sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: `'${title}'!A:Z`
+          });
+          const rows = valuesRes.data.values || [];
+          const escapeCsvCell = (val: any) => {
+            const s = val === null || val === undefined ? "" : String(val);
+            if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r")) {
+              return `"${s.replace(/"/g, '""')}"`;
+            }
+            return s;
+          };
+          const csvText = rows.map(row => row.map(escapeCsvCell).join(",")).join("\n");
+          return res.json({ success: true, csv: csvText, source: "service_account", sheetTitle: title });
+        } catch (apiErr: any) {
+          console.error("Sheets API Fallback Error:", apiErr.message);
+        }
+      }
+
+      return res.status(403).json({
+        error: "Tidak dapat membaca data dari Google Sheets tersebut. Pastikan akses link disetel ke 'Siapa saja yang memiliki link dapat melihat' atau sudah 'Publikasikan ke web (.csv)'."
+      });
+    } catch (error: any) {
+      console.error("Sheets fetch_csv error:", error.message);
+      res.status(500).json({ error: error.message || "Gagal mengambil data Google Sheets." });
+    }
+  });
+
   // Support local uploads for reliable gallery image storage without CORS/Storage blocks
   app.post("/api/gallery/upload", async (req, res) => {
     try {

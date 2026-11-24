@@ -26,7 +26,7 @@ export const DEFAULT_RAW_CSV_SMP_2026 = `TGL, NO. DOC , ALOKASI ANGGARAN , PIC ,
 20-Jan-26,CAD.01.200126,Biaya Transport,Feri,CA BBM Ambulance Trf Ke - FERRI WIDIANTARA,,500.000,33.520.064
 20-Jan-26,CAD.02.200126,Biaya Transport,Feri,CA BBM Ambulance Trf Ke - FERRI WIDIANTARA,,200.000,33.320.064
 20-Jan-26,CAD.03.200126,Biaya Transport,Sarah,CA Menjemput Wali Santri Trf Ke - SARAH ROUDHOTUL AULIA,,550.000,32.770.064
-21-Jan-26,KK.01.220126,BOSP,Dany,PertCA Sosialisasi BOSP Trf Dari - DANY WAHYUDI,110.000,,32.880.064
+21-Jan-26,KK.01.220126,BOS,Dany,PertCA Sosialisasi BOSP Trf Dari - DANY WAHYUDI,110.000,,32.880.064
 22-Jan-26,CAD.01.220126,Biaya Transport,Yogi,CA BBM Mobil APV Trf Ke - YOGI SYAHPUTRA,,500.000,32.380.064
 22-Jan-26,CAD.02.220126,Biaya Transport,Yogi,Ambil Roti ke BAZNAS Trf Ke - YOGI SYAHPUTRA,,500.000,31.880.064
 23-Jan-26,Donasi,Donasi,Ahmad,donasi ZIS narasumber khatib dan pa nen Trf Dari - AHMAD KAMALUDDIN AFIF,540.000,,32.420.064
@@ -84,7 +84,7 @@ export const DEFAULT_RAW_CSV_SMP_2026 = `TGL, NO. DOC , ALOKASI ANGGARAN , PIC ,
 14-Mar-26,,Donasi,,zis narsum pemateri kegiatan Trf Dari - AHMAD KAMALUDDIN AFIF,850.000,,24.985.565
 15-Mar-26,,Donasi,,zis panen sayur Trf Dari - AHMAD KAMALUDDIN AFIF,350.000,,25.335.565
 31-Mar-26,,FINANCE,,tuker uang satu setengah juta Trf Dari - FUAD HABIBI SIREGAR,1.500.000,,26.835.565
-31-Mar-26,Biaya Admin,Biaya Admin,Biaya Admin,Biaya Administrasi,,15.000,26.820.565
+31-Mar-26,,Biaya Admin,,Biaya Administrasi,,15.000,26.820.565
 9-Apr-26,,Donasi,,BIFAST - TRF Dari - Bank Seabank SUCI SAFARI MUHAZIRIN S PI,26.000,,26.846.565
 13-Apr-26,,Titipan Uang Saku,,uang saku scb kalsel Trf Dari - ABDUL HAKIM,3.000.000,,29.846.565
 13-Apr-26,,Titipan Uang Saku,,UANG SAKU 3 SANTRI BINAAN BAZNAS,450.000,,30.296.565
@@ -97,7 +97,7 @@ export const DEFAULT_RAW_CSV_SMP_2026 = `TGL, NO. DOC , ALOKASI ANGGARAN , PIC ,
 24-Apr-26,,TPG,,infak tpg maret dan april Trf Dari - SUMARNI PUTRI,570.000,,31.186.565
 25-Apr-26,,TPG,,BIFAST - TRF Dari - BANK BNI HERI KISWANTO,637.500,,31.824.065
 25-Apr-26,,Donasi,,BIFAST - TRF Dari - Bank BRI Jkt ASEP OKI HANDOKO,3.000.000,,34.824.065
-30-Apr-26,Biaya Admin,Biaya Admin,Biaya Admin,Biaya Administrasi,,15.000,34.809.065
+30-Apr-26,,Biaya Admin,,Biaya Administrasi,,15.000,34.809.065
 6-Mei-26,,TPG,,Infaq TPG feb mar apr Trf Dari - MAULIDA GITA CAHYANI,846.000,,35.655.065
 8-Mei-26,,TPG,,TPG maret april Trf Dari - EVI SILVIA,564.000,,36.219.065
 8-Mei-26,,TPG,,sdqh tpg mrt apr26 Trf Dari - SISWADI DINIANTO,525.034,,36.744.099
@@ -113,7 +113,7 @@ export const DEFAULT_RAW_CSV_SMP_2026 = `TGL, NO. DOC , ALOKASI ANGGARAN , PIC ,
 26-Mei-26,,TPG,,infak tpg bulan mei 2026 Trf Dari - SUMARNI PUTRI,285.000,,35.176.099
 28-Mei-26,,Biaya Transport,,CA Antar Jemput Pemateri Trf Ke - YOGI SYAHPUTRA,,500.000,34.676.099
 29-Mei-26,,Donasi,,donasi zis TPG Ahmad Kamal Trf Dari - AHMAD KAMALUDDIN AFIF,285.000,,34.961.099
-31-Mei-26,Biaya Admin,Biaya Admin,Biaya Admin,Biaya Administrasi,,15.000,34.946.099
+31-Mei-26,,Biaya Admin,,Biaya Administrasi,,15.000,34.946.099
 3-Jun-26,,TPG,,Infaq Sertifikasi Trf Dari - NANANG KURNIA,250.000,,35.196.099
 3-Jun-26,,TPG,,BIFAST - TRF Dari - Bank Seabank SIHABUDIN,500.000,,35.696.099
 4-Jun-26,,Titipan Uang Saku,,UM Uang Saku Siswa Riau Maret April Trf Ke - HANIFAH,,900.000,34.796.099
@@ -125,10 +125,11 @@ export const DEFAULT_RAW_CSV_SMP_2026 = `TGL, NO. DOC , ALOKASI ANGGARAN , PIC ,
 22-Jun-26,,Biaya Rumah Tangga,,260622100938-6045085224689999-10329 13357-TPD-IB-UBP,,1.017.040,118.541.449
 24-Jun-26,,PIP,,UM Pengurusan PIP SMP SMA Trf Ke - Nur Aliman Syidik,,1.965.000,116.576.449
 25-Jun-26,,Donasi,,Donasi zis narsum Trf Dari - AHMAD KAMALUDDIN AFIF,250.000,,116.826.449
-26-Jun-26,,Donasi,,"Pengembalian Sisa Pembelian Donasi Laptop Trf Ke - DANA BAZNAS ZAKAT",,5.350,116.821.099
+26-Jun-26,,Donasi,,"Pengembalian Sisa Pembelian Donasi Laptop Trf Ke - DANA BAZNAS
+ZAKAT",,5.350,116.821.099
 26-Jun-26,,Donasi,,Dana Talangan Pembelian Donasi Lapt op Trf Ke - SMA CENDEKIA BAZNAS 1,,88.000.000,28.821.099
 26-Jun-26,,Donasi,,donasi zis tpg Trf Dari - AHMAD KAMALUDDIN AFIF,285.000,,29.106.099
-30-Jun-26,Biaya Admin,Biaya Admin,Biaya Admin,Biaya Administrasi,,15.000,29.091.099
+30-Jun-26,,Biaya Admin,,Biaya Administrasi,,15.000,29.091.099
 8-Jul-26,,Biaya Transport,,CA Nganter Santri ke BTM Trf Ke - YOGI SYAHPUTRA,,300.000,28.791.099
 9-Jul-26,,Biaya Transport,,CA Antar Survei Trf Ke - YOGI SYAHPUTRA,,500.000,28.291.099
 9-Jul-26,,TPG,,tpg sertifikasi bulan mei  juni Trf Dari - MUHAMMAD FAT CHURROHMAN,400.000,,28.691.099
@@ -148,7 +149,7 @@ export const DEFAULT_RAW_CSV_SMP_2026 = `TGL, NO. DOC , ALOKASI ANGGARAN , PIC ,
 26-Jul-26,,Wakaf Sumur,,wakaf sumur Trf Dari - HANIFAH,200.000,,33.984.100
 28-Jul-26,,Biaya Rumah Tangga,,CA Konsumsi Rapat Manajemen Trf Ke - SUCI SAFARI MUHAZIRIN,,500.000,33.484.100
 31-Jul-26,,Titipan Uang Saku,,Saku 7Santri SCB Trf Dari - BAZNAS PROVINSI PAPUA,1.050.000,,34.534.100
-31-Jul-26,Biaya Admin,Biaya Admin,Biaya Admin,Biaya Administrasi,,15.000,34.519.100
+31-Jul-26,,Biaya Admin,,Biaya Administrasi,,15.000,34.519.100
 1-Agu-26,,Wakaf Sumur,,wakaf sumur Trf Dari - HANIFAH,750.000,,35.269.100
 3-Agu-26,,Donasi,,Donasi M Rasyid Maulana Trf Dari - SUCI SAFARI MUHAZIRIN,45.000,,35.314.100
 4-Agu-26,,Wakaf Sumur,,UM Tutup Sumur Masjid Trf Ke - WINDI,,1.580.000,33.734.100
@@ -169,7 +170,65 @@ export const DEFAULT_RAW_CSV_SMP_2026 = `TGL, NO. DOC , ALOKASI ANGGARAN , PIC ,
 31-Agu-26,,Biaya Transport,,CA Antar Santri Sakit - TRF Ke - YOGI SYAHPUTRA,,300.000,28.292.600
 31-Agu-26,,Biaya Transport,,CA Antar Berkas Keuangan - TRF Ke - YOGI SYAHPUTRA,,500.000,27.792.600
 31-Agu-26,,Biaya Transport,,CA BBM Ke Medika Dramaga - TRF Ke - FERRI WIDIANTARA,,300.000,27.492.600
-31-Agu-26,Biaya Admin,Biaya Admin,Biaya Admin,Biaya Administrasi,,15.000,27.477.600`;
+31-Agu-26,,Biaya Admin,,Biaya Administrasi,,15.000,27.477.600
+2-Sep-26,,Biaya Transport,,CA Pengisian Jenset Solar Trf Ke - YOGI SYAHPUTRA,,500.000,26.977.600
+2-Sep-26,,Biaya Transport,,CA Antar ke Medika Dramaga Trf Ke - YOGI SYAHPUTRA,,350.000,26.627.600
+3-Sep-26,,Biaya Transport,,CA Antar Ke Bekas Petanque Trf Ke - FERRI WIDIANTARA,,700.000,25.927.600
+3-Sep-26,,Biaya Rumah Tangga,,CA Bimtek SIKASI BOSP Trf Ke - DANY WAHYUDI,,200.000,25.727.600
+3-Sep-26,,Biaya Rumah Tangga,,Partisipasi Perpisahan Pengawa Trf Ke - AHMAD KAMALUDDIN AFIF,,150.500,25.577.100
+4-Sep-26,,Donasi,,Pemindahbukuan Trf Dari - SUCI SAFARI MUHAZIRIN,99.000,,25.676.100
+4-Sep-26,,Biaya Rumah Tangga,,CA Konsumsi Rapat Manajemen Trf Ke - SUCI SAFARI MUHAZIRIN,,500.000,25.176.100
+4-Sep-26,,Biaya Transport,,CA Jemput Pemateri ke Stasiun Trf Ke - YOGI SYAHPUTRA,,500.000,24.676.100
+6-Sep-26,,Biaya Cetak dan FC,,CA Akomodasi BSI dan Perlengka Trf Ke - NUR ASIAH,,200.000,24.476.100
+8-Sep-26,,TPG,,donasi zis tpg ahmad Trf Dari - AHMAD KAMALUDDIN AFIF,560.000,,25.036.100
+8-Sep-26,,TPG,,BIFAST - TRF Dari - Shopeepay Maulida Gita Cahyani,1.128.000,,26.164.100
+11-Sep-26,,Donasi,,Pemindahbukuan Trf Dari - MOHAMAD RONI,850.000,,27.014.100
+11-Sep-26,,Biaya Transport,,CA Akomodasi Pimpinan BAZNAS Trf Ke - YOGI SYAHPUTRA,,500.000,26.514.100
+11-Sep-26,,TPG,,donasi tpg julags26 Trf Dari - SISWADI DINIANTO,550.078,,27.064.178
+11-Sep-26,,TPG,,TPG JULI AGST Trf Dari - EVI SILVIA,564.000,,27.628.178
+11-Sep-26,,TPG,,infak serdik meijulagus 2026 Trf Dari - SUMARNI PUTRI,855.000,,28.483.178
+11-Sep-26,,TPG,,BIFAST - TRF Dari - Bank Seabank NANANG KURNIA,300.000,,28.783.178
+14-Sep-26,,Donasi,,Pemindahbukuan Trf Dari - HELMI NURSIRWAN,60.000,,28.843.178
+14-Sep-26,,Wakaf Sumur,,wakaf sumur dr habib husein Trf Dari - HANIFAH,100.000,,28.943.178
+14-Sep-26,,TPG,,BIFAST - TRF Dari - Bank Seabank SIHABUDIN,500.000,,29.443.178
+15-Sep-26,,Titipan Uang Saku,,Uang Saku 7 Santri september Trf Dari - BAZNAS PROVINSI PAPUA,1.050.000,,30.493.178
+15-Sep-26,,Donasi,,Dana MBG Trf Dari - HILMI MUHAMMAD YUSRIN,820.000,,31.313.178
+15-Sep-26,,Donasi,,BIFAST - TRF Dari - BANK CIMB Niaga DOMPET ANAK BANGSA,200.000,,31.513.178
+16-Sep-26,,Titipan Uang Saku,,SANTRI BINAAN 3 SISWA,450.000,,31.963.178
+18-Sep-26,,Donasi,,BIFAST - TRF Dari - Bank BRI Jkt RD AHMAD GOZALI,100.000,,32.063.178
+19-Sep-26,,Biaya Rumah Tangga,,Biaya Pembukaan Rekening BJB 5 Tend ik Trf Ke - DANY WAHYUDI,,1.000.000,31.063.178
+22-Sep-26,,TPG,,infaq tpg Trf Dari - MUHAMMAD GILANG PERMANA,500.000,,31.563.178
+25-Sep-26,,TPG,,sertifikasi bulan juli agustus Trf Dari - MUHAMMAD FAT CHURROHMAN,200.000,,31.763.178
+28-Sep-26,,Biaya Rumah Tangga,,Konsumsi Mural Perpus Trf Ke - HANA USWATUN HASANAH,,355.100,31.408.078
+28-Sep-26,,Biaya Rumah Tangga,,Peralatan Perpus Trf Ke - HANA USWATUN HASANAH,,144.500,31.263.578
+29-Sep-26,,Biaya Rumah Tangga,,Take Konten Hari Santri Trf Ke - FIRMAN MAULANA AKHSAN,,167.500,31.096.078
+29-Sep-26,,Biaya Rumah Tangga,,Konsumsi Pertemuan Mahasiswa Trf Ke - FIRMAN MAULANA AKHSAN,,46.000,31.050.078
+30-Sep-26,,Biaya Admin,,Biaya Administrasi,,15.000,31.035.078
+2-Okt-26,,Biaya Rumah Tangga,,Filter Sumur dan Pipa Trf Ke - WINDI,,335.000,30.700.078
+2-Okt-26,,Biaya Rumah Tangga,,Anti Nyamuk Pengharum Trf Ke - WINDI,,444.000,30.256.078
+2-Okt-26,,Biaya Rumah Tangga,,Dinamo Seal Mesin Air Trf Ke - WINDI,,450.000,29.806.078
+2-Okt-26,,Biaya Transport,,CA Antar Jemput Santri Trf Ke - YOGI SYAHPUTRA,,500.000,29.306.078
+2-Okt-26,,Biaya Rumah Tangga,,Konsumsi Rapat Panitia Trf Ke - HANA USWATUN HASANAH,,91.000,29.215.078
+2-Okt-26,,Biaya Rumah Tangga,,Konsumsi Mural 2 Trf Ke - HANA USWATUN HASANAH,,257.000,28.958.078
+6-Okt-26,,Biaya Transport,,CA Pengisian AVP Trf Ke - YOGI SYAHPUTRA,,500.000,28.458.078
+8-Okt-26,,Biaya Rumah Tangga,,CA Pengobatan Santri Trf Ke - KUSMAYANTI,,500.000,27.958.078
+8-Okt-26,,Biaya Transport,,CA ke RS Medika Dramaga Trf Ke - FERRI WIDIANTARA,,200.000,27.758.078
+8-Okt-26,,Biaya Transport,,Akomodasi ke Disdik Trf Ke - BAGUS ARTA WIJAYA,,145.800,27.612.278
+9-Okt-26,,Titipan Uang Saku,,Uang Saku 9 Santri BAZNAS Papu Trf Dari - BAZNAS PROVINSI PAPUA,1.950.000,,29.562.278
+13-Okt-26,,Biaya Rumah Tangga,,Biaya Rekonsiliasi BOSP TW 3 Trf Ke - DANY WAHYUDI,,318.500,29.243.778
+15-Okt-26,,Biaya Rumah Tangga,,CA Rapat Manajemen Trf Ke - SUCI SAFARI MUHAZIRIN,,500.000,28.743.778
+20-Okt-26,,Biaya Rumah Tangga,,Pembukaan Rekening BJB an Wahyudin Urip Trf Ke - DANY WAHYUDI,,200.000,28.543.778
+20-Okt-26,,Titipan Uang Saku,,UM Uang Saku BAZNAS Riau Trf Ke - HANIFAH,,1.350.000,27.193.778
+20-Okt-26,,Titipan Uang Saku,,UM Uang Saku BAZNAS PAPUA JuliSepte mber Trf Ke - HANIFAH,,3.150.000,24.043.778
+20-Okt-26,,Titipan Uang Saku,,Uang Saku dari BAZNAS Solok Trf Dari - SARAH ROUDHOTUL AULIA,7.800.000,,31.843.778
+22-Okt-26,,Titipan Uang Saku,,SETOR,450.000,,32.293.778
+29-Okt-26,,Biaya Transport,,CA Antar ke Sukabumi Trf Ke - YOGI SYAHPUTRA,,500.000,31.793.778
+29-Okt-26,,Biaya Transport,,CA Antar Paskibra Trf Ke - YOGI SYAHPUTRA,,500.000,31.293.778
+30-Okt-26,,TPG,,infaq tpg september oktober Trf Dari - MAULIDA GITA CAHYANI,564.000,,31.857.778
+30-Okt-26,,TPG,,TPG septoct Trf Dari - EVI SILVIA,564.000,,32.421.778
+30-Okt-26,,TPG,,Trf Dari - 110 - AHMAD KAMALUDDIN AFIF,570.000,,32.991.778
+30-Okt-26,,TPG,,TPG Sept Okt26 Trf Dari - SISWADI DINIANTO,580.910,,33.572.688
+31-Okt-26,,Biaya Admin,,Biaya Administrasi,,15.000,33.557.688`;
 
 export const INITIAL_DONATION_LEDGER_SMP: DonationLedgerItem[] = [
   {
@@ -266,7 +325,7 @@ export const INITIAL_DONATION_LEDGER_SMP: DonationLedgerItem[] = [
     "monthKey": "2026-01",
     "monthName": "Januari 2026",
     "docNo": "KK.01.220126",
-    "allocation": "BOSP",
+    "allocation": "BOS",
     "pic": "Dany",
     "description": "PertCA Sosialisasi BOSP Trf Dari - DANY WAHYUDI",
     "debet": 110000,
@@ -1251,9 +1310,9 @@ export const INITIAL_DONATION_LEDGER_SMP: DonationLedgerItem[] = [
     "isoDate": "2026-03-31",
     "monthKey": "2026-03",
     "monthName": "Maret 2026",
-    "docNo": "Biaya Admin",
+    "docNo": "-",
     "allocation": "Biaya Admin",
-    "pic": "Biaya Admin",
+    "pic": "-",
     "description": "Biaya Administrasi",
     "debet": 0,
     "kredit": 15000,
@@ -1472,9 +1531,9 @@ export const INITIAL_DONATION_LEDGER_SMP: DonationLedgerItem[] = [
     "isoDate": "2026-04-30",
     "monthKey": "2026-04",
     "monthName": "April 2026",
-    "docNo": "Biaya Admin",
+    "docNo": "-",
     "allocation": "Biaya Admin",
-    "pic": "Biaya Admin",
+    "pic": "-",
     "description": "Biaya Administrasi",
     "debet": 0,
     "kredit": 15000,
@@ -1744,9 +1803,9 @@ export const INITIAL_DONATION_LEDGER_SMP: DonationLedgerItem[] = [
     "isoDate": "2026-05-31",
     "monthKey": "2026-05",
     "monthName": "Mei 2026",
-    "docNo": "Biaya Admin",
+    "docNo": "-",
     "allocation": "Biaya Admin",
-    "pic": "Biaya Admin",
+    "pic": "-",
     "description": "Biaya Administrasi",
     "debet": 0,
     "kredit": 15000,
@@ -1999,9 +2058,9 @@ export const INITIAL_DONATION_LEDGER_SMP: DonationLedgerItem[] = [
     "isoDate": "2026-06-30",
     "monthKey": "2026-06",
     "monthName": "Juni 2026",
-    "docNo": "Biaya Admin",
+    "docNo": "-",
     "allocation": "Biaya Admin",
-    "pic": "Biaya Admin",
+    "pic": "-",
     "description": "Biaya Administrasi",
     "debet": 0,
     "kredit": 15000,
@@ -2339,9 +2398,9 @@ export const INITIAL_DONATION_LEDGER_SMP: DonationLedgerItem[] = [
     "isoDate": "2026-07-31",
     "monthKey": "2026-07",
     "monthName": "Juli 2026",
-    "docNo": "Biaya Admin",
+    "docNo": "-",
     "allocation": "Biaya Admin",
-    "pic": "Biaya Admin",
+    "pic": "-",
     "description": "Biaya Administrasi",
     "debet": 0,
     "kredit": 15000,
@@ -2696,14 +2755,1000 @@ export const INITIAL_DONATION_LEDGER_SMP: DonationLedgerItem[] = [
     "isoDate": "2026-08-31",
     "monthKey": "2026-08",
     "monthName": "Agustus 2026",
-    "docNo": "Biaya Admin",
+    "docNo": "-",
     "allocation": "Biaya Admin",
-    "pic": "Biaya Admin",
+    "pic": "-",
     "description": "Biaya Administrasi",
     "debet": 0,
     "kredit": 15000,
     "type": "pengeluaran",
     "saldoAkhir": 27477600
+  },
+  {
+    "id": "TX-SMP-2026-150",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "2-Sep-26",
+    "isoDate": "2026-09-02",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Transport",
+    "pic": "-",
+    "description": "CA Pengisian Jenset Solar Trf Ke - YOGI SYAHPUTRA",
+    "debet": 0,
+    "kredit": 500000,
+    "type": "pengeluaran",
+    "saldoAkhir": 26977600
+  },
+  {
+    "id": "TX-SMP-2026-151",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "2-Sep-26",
+    "isoDate": "2026-09-02",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Transport",
+    "pic": "-",
+    "description": "CA Antar ke Medika Dramaga Trf Ke - YOGI SYAHPUTRA",
+    "debet": 0,
+    "kredit": 350000,
+    "type": "pengeluaran",
+    "saldoAkhir": 26627600
+  },
+  {
+    "id": "TX-SMP-2026-152",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "3-Sep-26",
+    "isoDate": "2026-09-03",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Transport",
+    "pic": "-",
+    "description": "CA Antar Ke Bekas Petanque Trf Ke - FERRI WIDIANTARA",
+    "debet": 0,
+    "kredit": 700000,
+    "type": "pengeluaran",
+    "saldoAkhir": 25927600
+  },
+  {
+    "id": "TX-SMP-2026-153",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "3-Sep-26",
+    "isoDate": "2026-09-03",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "CA Bimtek SIKASI BOSP Trf Ke - DANY WAHYUDI",
+    "debet": 0,
+    "kredit": 200000,
+    "type": "pengeluaran",
+    "saldoAkhir": 25727600
+  },
+  {
+    "id": "TX-SMP-2026-154",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "3-Sep-26",
+    "isoDate": "2026-09-03",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "Partisipasi Perpisahan Pengawa Trf Ke - AHMAD KAMALUDDIN AFIF",
+    "debet": 0,
+    "kredit": 150500,
+    "type": "pengeluaran",
+    "saldoAkhir": 25577100
+  },
+  {
+    "id": "TX-SMP-2026-155",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "4-Sep-26",
+    "isoDate": "2026-09-04",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Donasi",
+    "pic": "-",
+    "description": "Pemindahbukuan Trf Dari - SUCI SAFARI MUHAZIRIN",
+    "debet": 99000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 25676100
+  },
+  {
+    "id": "TX-SMP-2026-156",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "4-Sep-26",
+    "isoDate": "2026-09-04",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "CA Konsumsi Rapat Manajemen Trf Ke - SUCI SAFARI MUHAZIRIN",
+    "debet": 0,
+    "kredit": 500000,
+    "type": "pengeluaran",
+    "saldoAkhir": 25176100
+  },
+  {
+    "id": "TX-SMP-2026-157",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "4-Sep-26",
+    "isoDate": "2026-09-04",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Transport",
+    "pic": "-",
+    "description": "CA Jemput Pemateri ke Stasiun Trf Ke - YOGI SYAHPUTRA",
+    "debet": 0,
+    "kredit": 500000,
+    "type": "pengeluaran",
+    "saldoAkhir": 24676100
+  },
+  {
+    "id": "TX-SMP-2026-158",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "6-Sep-26",
+    "isoDate": "2026-09-06",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Cetak dan FC",
+    "pic": "-",
+    "description": "CA Akomodasi BSI dan Perlengka Trf Ke - NUR ASIAH",
+    "debet": 0,
+    "kredit": 200000,
+    "type": "pengeluaran",
+    "saldoAkhir": 24476100
+  },
+  {
+    "id": "TX-SMP-2026-159",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "8-Sep-26",
+    "isoDate": "2026-09-08",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "TPG",
+    "pic": "-",
+    "description": "donasi zis tpg ahmad Trf Dari - AHMAD KAMALUDDIN AFIF",
+    "debet": 560000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 25036100
+  },
+  {
+    "id": "TX-SMP-2026-160",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "8-Sep-26",
+    "isoDate": "2026-09-08",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "TPG",
+    "pic": "-",
+    "description": "BIFAST - TRF Dari - Shopeepay Maulida Gita Cahyani",
+    "debet": 1128000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 26164100
+  },
+  {
+    "id": "TX-SMP-2026-161",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "11-Sep-26",
+    "isoDate": "2026-09-11",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Donasi",
+    "pic": "-",
+    "description": "Pemindahbukuan Trf Dari - MOHAMAD RONI",
+    "debet": 850000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 27014100
+  },
+  {
+    "id": "TX-SMP-2026-162",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "11-Sep-26",
+    "isoDate": "2026-09-11",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Transport",
+    "pic": "-",
+    "description": "CA Akomodasi Pimpinan BAZNAS Trf Ke - YOGI SYAHPUTRA",
+    "debet": 0,
+    "kredit": 500000,
+    "type": "pengeluaran",
+    "saldoAkhir": 26514100
+  },
+  {
+    "id": "TX-SMP-2026-163",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "11-Sep-26",
+    "isoDate": "2026-09-11",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "TPG",
+    "pic": "-",
+    "description": "donasi tpg julags26 Trf Dari - SISWADI DINIANTO",
+    "debet": 550078,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 27064178
+  },
+  {
+    "id": "TX-SMP-2026-164",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "11-Sep-26",
+    "isoDate": "2026-09-11",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "TPG",
+    "pic": "-",
+    "description": "TPG JULI AGST Trf Dari - EVI SILVIA",
+    "debet": 564000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 27628178
+  },
+  {
+    "id": "TX-SMP-2026-165",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "11-Sep-26",
+    "isoDate": "2026-09-11",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "TPG",
+    "pic": "-",
+    "description": "infak serdik meijulagus 2026 Trf Dari - SUMARNI PUTRI",
+    "debet": 855000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 28483178
+  },
+  {
+    "id": "TX-SMP-2026-166",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "11-Sep-26",
+    "isoDate": "2026-09-11",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "TPG",
+    "pic": "-",
+    "description": "BIFAST - TRF Dari - Bank Seabank NANANG KURNIA",
+    "debet": 300000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 28783178
+  },
+  {
+    "id": "TX-SMP-2026-167",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "14-Sep-26",
+    "isoDate": "2026-09-14",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Donasi",
+    "pic": "-",
+    "description": "Pemindahbukuan Trf Dari - HELMI NURSIRWAN",
+    "debet": 60000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 28843178
+  },
+  {
+    "id": "TX-SMP-2026-168",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "14-Sep-26",
+    "isoDate": "2026-09-14",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Wakaf Sumur",
+    "pic": "-",
+    "description": "wakaf sumur dr habib husein Trf Dari - HANIFAH",
+    "debet": 100000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 28943178
+  },
+  {
+    "id": "TX-SMP-2026-169",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "14-Sep-26",
+    "isoDate": "2026-09-14",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "TPG",
+    "pic": "-",
+    "description": "BIFAST - TRF Dari - Bank Seabank SIHABUDIN",
+    "debet": 500000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 29443178
+  },
+  {
+    "id": "TX-SMP-2026-170",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "15-Sep-26",
+    "isoDate": "2026-09-15",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Titipan Uang Saku",
+    "pic": "-",
+    "description": "Uang Saku 7 Santri september Trf Dari - BAZNAS PROVINSI PAPUA",
+    "debet": 1050000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 30493178
+  },
+  {
+    "id": "TX-SMP-2026-171",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "15-Sep-26",
+    "isoDate": "2026-09-15",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Donasi",
+    "pic": "-",
+    "description": "Dana MBG Trf Dari - HILMI MUHAMMAD YUSRIN",
+    "debet": 820000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 31313178
+  },
+  {
+    "id": "TX-SMP-2026-172",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "15-Sep-26",
+    "isoDate": "2026-09-15",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Donasi",
+    "pic": "-",
+    "description": "BIFAST - TRF Dari - BANK CIMB Niaga DOMPET ANAK BANGSA",
+    "debet": 200000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 31513178
+  },
+  {
+    "id": "TX-SMP-2026-173",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "16-Sep-26",
+    "isoDate": "2026-09-16",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Titipan Uang Saku",
+    "pic": "-",
+    "description": "SANTRI BINAAN 3 SISWA",
+    "debet": 450000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 31963178
+  },
+  {
+    "id": "TX-SMP-2026-174",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "18-Sep-26",
+    "isoDate": "2026-09-18",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Donasi",
+    "pic": "-",
+    "description": "BIFAST - TRF Dari - Bank BRI Jkt RD AHMAD GOZALI",
+    "debet": 100000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 32063178
+  },
+  {
+    "id": "TX-SMP-2026-175",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "19-Sep-26",
+    "isoDate": "2026-09-19",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "Biaya Pembukaan Rekening BJB 5 Tend ik Trf Ke - DANY WAHYUDI",
+    "debet": 0,
+    "kredit": 1000000,
+    "type": "pengeluaran",
+    "saldoAkhir": 31063178
+  },
+  {
+    "id": "TX-SMP-2026-176",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "22-Sep-26",
+    "isoDate": "2026-09-22",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "TPG",
+    "pic": "-",
+    "description": "infaq tpg Trf Dari - MUHAMMAD GILANG PERMANA",
+    "debet": 500000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 31563178
+  },
+  {
+    "id": "TX-SMP-2026-177",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "25-Sep-26",
+    "isoDate": "2026-09-25",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "TPG",
+    "pic": "-",
+    "description": "sertifikasi bulan juli agustus Trf Dari - MUHAMMAD FAT CHURROHMAN",
+    "debet": 200000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 31763178
+  },
+  {
+    "id": "TX-SMP-2026-178",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "28-Sep-26",
+    "isoDate": "2026-09-28",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "Konsumsi Mural Perpus Trf Ke - HANA USWATUN HASANAH",
+    "debet": 0,
+    "kredit": 355100,
+    "type": "pengeluaran",
+    "saldoAkhir": 31408078
+  },
+  {
+    "id": "TX-SMP-2026-179",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "28-Sep-26",
+    "isoDate": "2026-09-28",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "Peralatan Perpus Trf Ke - HANA USWATUN HASANAH",
+    "debet": 0,
+    "kredit": 144500,
+    "type": "pengeluaran",
+    "saldoAkhir": 31263578
+  },
+  {
+    "id": "TX-SMP-2026-180",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "29-Sep-26",
+    "isoDate": "2026-09-29",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "Take Konten Hari Santri Trf Ke - FIRMAN MAULANA AKHSAN",
+    "debet": 0,
+    "kredit": 167500,
+    "type": "pengeluaran",
+    "saldoAkhir": 31096078
+  },
+  {
+    "id": "TX-SMP-2026-181",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "29-Sep-26",
+    "isoDate": "2026-09-29",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "Konsumsi Pertemuan Mahasiswa Trf Ke - FIRMAN MAULANA AKHSAN",
+    "debet": 0,
+    "kredit": 46000,
+    "type": "pengeluaran",
+    "saldoAkhir": 31050078
+  },
+  {
+    "id": "TX-SMP-2026-182",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "30-Sep-26",
+    "isoDate": "2026-09-30",
+    "monthKey": "2026-09",
+    "monthName": "September 2026",
+    "docNo": "-",
+    "allocation": "Biaya Admin",
+    "pic": "-",
+    "description": "Biaya Administrasi",
+    "debet": 0,
+    "kredit": 15000,
+    "type": "pengeluaran",
+    "saldoAkhir": 31035078
+  },
+  {
+    "id": "TX-SMP-2026-183",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "2-Okt-26",
+    "isoDate": "2026-10-02",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "Filter Sumur dan Pipa Trf Ke - WINDI",
+    "debet": 0,
+    "kredit": 335000,
+    "type": "pengeluaran",
+    "saldoAkhir": 30700078
+  },
+  {
+    "id": "TX-SMP-2026-184",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "2-Okt-26",
+    "isoDate": "2026-10-02",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "Anti Nyamuk Pengharum Trf Ke - WINDI",
+    "debet": 0,
+    "kredit": 444000,
+    "type": "pengeluaran",
+    "saldoAkhir": 30256078
+  },
+  {
+    "id": "TX-SMP-2026-185",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "2-Okt-26",
+    "isoDate": "2026-10-02",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "Dinamo Seal Mesin Air Trf Ke - WINDI",
+    "debet": 0,
+    "kredit": 450000,
+    "type": "pengeluaran",
+    "saldoAkhir": 29806078
+  },
+  {
+    "id": "TX-SMP-2026-186",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "2-Okt-26",
+    "isoDate": "2026-10-02",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Transport",
+    "pic": "-",
+    "description": "CA Antar Jemput Santri Trf Ke - YOGI SYAHPUTRA",
+    "debet": 0,
+    "kredit": 500000,
+    "type": "pengeluaran",
+    "saldoAkhir": 29306078
+  },
+  {
+    "id": "TX-SMP-2026-187",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "2-Okt-26",
+    "isoDate": "2026-10-02",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "Konsumsi Rapat Panitia Trf Ke - HANA USWATUN HASANAH",
+    "debet": 0,
+    "kredit": 91000,
+    "type": "pengeluaran",
+    "saldoAkhir": 29215078
+  },
+  {
+    "id": "TX-SMP-2026-188",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "2-Okt-26",
+    "isoDate": "2026-10-02",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "Konsumsi Mural 2 Trf Ke - HANA USWATUN HASANAH",
+    "debet": 0,
+    "kredit": 257000,
+    "type": "pengeluaran",
+    "saldoAkhir": 28958078
+  },
+  {
+    "id": "TX-SMP-2026-189",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "6-Okt-26",
+    "isoDate": "2026-10-06",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Transport",
+    "pic": "-",
+    "description": "CA Pengisian AVP Trf Ke - YOGI SYAHPUTRA",
+    "debet": 0,
+    "kredit": 500000,
+    "type": "pengeluaran",
+    "saldoAkhir": 28458078
+  },
+  {
+    "id": "TX-SMP-2026-190",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "8-Okt-26",
+    "isoDate": "2026-10-08",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "CA Pengobatan Santri Trf Ke - KUSMAYANTI",
+    "debet": 0,
+    "kredit": 500000,
+    "type": "pengeluaran",
+    "saldoAkhir": 27958078
+  },
+  {
+    "id": "TX-SMP-2026-191",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "8-Okt-26",
+    "isoDate": "2026-10-08",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Transport",
+    "pic": "-",
+    "description": "CA ke RS Medika Dramaga Trf Ke - FERRI WIDIANTARA",
+    "debet": 0,
+    "kredit": 200000,
+    "type": "pengeluaran",
+    "saldoAkhir": 27758078
+  },
+  {
+    "id": "TX-SMP-2026-192",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "8-Okt-26",
+    "isoDate": "2026-10-08",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Transport",
+    "pic": "-",
+    "description": "Akomodasi ke Disdik Trf Ke - BAGUS ARTA WIJAYA",
+    "debet": 0,
+    "kredit": 145800,
+    "type": "pengeluaran",
+    "saldoAkhir": 27612278
+  },
+  {
+    "id": "TX-SMP-2026-193",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "9-Okt-26",
+    "isoDate": "2026-10-09",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Titipan Uang Saku",
+    "pic": "-",
+    "description": "Uang Saku 9 Santri BAZNAS Papu Trf Dari - BAZNAS PROVINSI PAPUA",
+    "debet": 1950000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 29562278
+  },
+  {
+    "id": "TX-SMP-2026-194",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "13-Okt-26",
+    "isoDate": "2026-10-13",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "Biaya Rekonsiliasi BOSP TW 3 Trf Ke - DANY WAHYUDI",
+    "debet": 0,
+    "kredit": 318500,
+    "type": "pengeluaran",
+    "saldoAkhir": 29243778
+  },
+  {
+    "id": "TX-SMP-2026-195",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "15-Okt-26",
+    "isoDate": "2026-10-15",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "CA Rapat Manajemen Trf Ke - SUCI SAFARI MUHAZIRIN",
+    "debet": 0,
+    "kredit": 500000,
+    "type": "pengeluaran",
+    "saldoAkhir": 28743778
+  },
+  {
+    "id": "TX-SMP-2026-196",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "20-Okt-26",
+    "isoDate": "2026-10-20",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Rumah Tangga",
+    "pic": "-",
+    "description": "Pembukaan Rekening BJB an Wahyudin Urip Trf Ke - DANY WAHYUDI",
+    "debet": 0,
+    "kredit": 200000,
+    "type": "pengeluaran",
+    "saldoAkhir": 28543778
+  },
+  {
+    "id": "TX-SMP-2026-197",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "20-Okt-26",
+    "isoDate": "2026-10-20",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Titipan Uang Saku",
+    "pic": "-",
+    "description": "UM Uang Saku BAZNAS Riau Trf Ke - HANIFAH",
+    "debet": 0,
+    "kredit": 1350000,
+    "type": "pengeluaran",
+    "saldoAkhir": 27193778
+  },
+  {
+    "id": "TX-SMP-2026-198",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "20-Okt-26",
+    "isoDate": "2026-10-20",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Titipan Uang Saku",
+    "pic": "-",
+    "description": "UM Uang Saku BAZNAS PAPUA JuliSepte mber Trf Ke - HANIFAH",
+    "debet": 0,
+    "kredit": 3150000,
+    "type": "pengeluaran",
+    "saldoAkhir": 24043778
+  },
+  {
+    "id": "TX-SMP-2026-199",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "20-Okt-26",
+    "isoDate": "2026-10-20",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Titipan Uang Saku",
+    "pic": "-",
+    "description": "Uang Saku dari BAZNAS Solok Trf Dari - SARAH ROUDHOTUL AULIA",
+    "debet": 7800000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 31843778
+  },
+  {
+    "id": "TX-SMP-2026-200",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "22-Okt-26",
+    "isoDate": "2026-10-22",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Titipan Uang Saku",
+    "pic": "-",
+    "description": "SETOR",
+    "debet": 450000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 32293778
+  },
+  {
+    "id": "TX-SMP-2026-201",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "29-Okt-26",
+    "isoDate": "2026-10-29",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Transport",
+    "pic": "-",
+    "description": "CA Antar ke Sukabumi Trf Ke - YOGI SYAHPUTRA",
+    "debet": 0,
+    "kredit": 500000,
+    "type": "pengeluaran",
+    "saldoAkhir": 31793778
+  },
+  {
+    "id": "TX-SMP-2026-202",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "29-Okt-26",
+    "isoDate": "2026-10-29",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Transport",
+    "pic": "-",
+    "description": "CA Antar Paskibra Trf Ke - YOGI SYAHPUTRA",
+    "debet": 0,
+    "kredit": 500000,
+    "type": "pengeluaran",
+    "saldoAkhir": 31293778
+  },
+  {
+    "id": "TX-SMP-2026-203",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "30-Okt-26",
+    "isoDate": "2026-10-30",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "TPG",
+    "pic": "-",
+    "description": "infaq tpg september oktober Trf Dari - MAULIDA GITA CAHYANI",
+    "debet": 564000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 31857778
+  },
+  {
+    "id": "TX-SMP-2026-204",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "30-Okt-26",
+    "isoDate": "2026-10-30",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "TPG",
+    "pic": "-",
+    "description": "TPG septoct Trf Dari - EVI SILVIA",
+    "debet": 564000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 32421778
+  },
+  {
+    "id": "TX-SMP-2026-205",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "30-Okt-26",
+    "isoDate": "2026-10-30",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "TPG",
+    "pic": "-",
+    "description": "Trf Dari - 110 - AHMAD KAMALUDDIN AFIF",
+    "debet": 570000,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 32991778
+  },
+  {
+    "id": "TX-SMP-2026-206",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "30-Okt-26",
+    "isoDate": "2026-10-30",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "TPG",
+    "pic": "-",
+    "description": "TPG Sept Okt26 Trf Dari - SISWADI DINIANTO",
+    "debet": 580910,
+    "kredit": 0,
+    "type": "pemasukan",
+    "saldoAkhir": 33572688
+  },
+  {
+    "id": "TX-SMP-2026-207",
+    "account": "smp",
+    "accountName": "Rekening Donasi SMP",
+    "date": "31-Okt-26",
+    "isoDate": "2026-10-31",
+    "monthKey": "2026-10",
+    "monthName": "Oktober 2026",
+    "docNo": "-",
+    "allocation": "Biaya Admin",
+    "pic": "-",
+    "description": "Biaya Administrasi",
+    "debet": 0,
+    "kredit": 15000,
+    "type": "pengeluaran",
+    "saldoAkhir": 33557688
   }
 ];
 
