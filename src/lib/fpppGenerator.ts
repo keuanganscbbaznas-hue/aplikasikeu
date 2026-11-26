@@ -4,6 +4,7 @@ import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { getApiUrl } from './utils';
 import { SCB_LOGO_BASE64, BAZNAS_LOGO_BASE64 } from './logos';
+import { getStagesByType, TRANSACTION_STAGES } from '../types';
 
 // Helper to convert date
 const parseFirestoreDate = (dateField: any): Date => {
@@ -585,20 +586,47 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     doc.rect(54, 242.5, 47, 5);
     doc.rect(54, 250.5, 47, 5);
 
-    // Find the date of the "Sudah di transfer" stage for Kasir stamp check
-    const docTferStage = (!isEmpty && submission?.history) ? submission.history.find((h: any) => h.stage && h.stage.toLowerCase().includes("sudah di transfer")) : null;
-    
-    // Biarkan No. Dokumen dan Tanggal Bayar kosong (tidak diisi otomatis pada hasil unduhan FPPP)
+    const stages = submission?.type ? getStagesByType(submission.type) : TRANSACTION_STAGES;
+    const transferredIndex = stages.findIndex(s => s.toLowerCase().includes("sudah di transfer"));
+    const isRejected = submission?.status === 'REJECTED' || submission?.status === 'rejected';
+    const currentStageIdx = typeof submission?.currentStageIndex === 'number'
+      ? submission.currentStageIndex
+      : stages.findIndex(s => s.toLowerCase() === (submission?.status || '').toLowerCase());
+    const hasPassedTransfer = !isEmpty && !!submission && !isRejected && transferredIndex !== -1 && currentStageIdx >= transferredIndex;
+
+    // Ambil tanggal saat tahap transfer disetujui ("Sudah di Transfer")
+    const docTferStage = (!isEmpty && Array.isArray(submission?.history))
+      ? [...submission.history].reverse().find((h: any) => h?.stage && h.stage.toLowerCase().includes("sudah di transfer") && h.status !== 'rejected')
+      : null;
+
+    const documentNo = (hasPassedTransfer && submission?.noDokumen) ? submission.noDokumen : "";
+
+    let payDateStr = "";
+    if (hasPassedTransfer) {
+      if (docTferStage && docTferStage.timestamp) {
+        payDateStr = safeFormatDate(docTferStage.timestamp, 'dd MMMM yyyy', { locale: id });
+      } else if (submission?.bookedAt) {
+        payDateStr = safeFormatDate(submission.bookedAt, 'dd MMMM yyyy', { locale: id });
+      } else if (submission?.updatedAt) {
+        payDateStr = safeFormatDate(submission.updatedAt, 'dd MMMM yyyy', { locale: id });
+      }
+    }
+
+    if (hasPassedTransfer) {
+      doc.setFont("helvetica", "bold");
+      if (documentNo) doc.text(documentNo, 56, 246);
+      if (payDateStr) doc.text(payDateStr, 56, 254);
+      doc.setFont("helvetica", "normal");
+    }
+
     // Right: Kasir Box
     doc.line(105, 245, 195, 245); // Line separating Kasir header from sign block
     doc.text("Kasir", 150, 243, { align: 'center' });
     
-    // Custom logic to always stamp Kasir section if it's already transferred or booked
     const kasirSignData = config?.kasirDefaultSign;
-    const hasBeenTransferred = docTferStage || submission?.isBooked || (!isEmpty && config?.useDefaultKasirSign);
     
-    if (hasBeenTransferred) {
-        if (kasirSignData && config?.useDefaultKasirSign && !isEmpty) {
+    if (hasPassedTransfer) {
+        if (kasirSignData && config?.useDefaultKasirSign) {
             try {
               doc.addImage(kasirSignData, 'PNG', 132, 245, 34, 10);
             } catch (err) {

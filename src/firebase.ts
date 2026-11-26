@@ -10,8 +10,10 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
 
+const FALLBACK_FIRESTORE_DATABASE_ID = 'ai-studio-1bb75171-ca3b-4771-a0ae-d25875d983cb';
 const app = initializeApp(firebaseConfig);
-const firestoreDatabaseId = (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId;
+const firestoreDatabaseId =
+  (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId || FALLBACK_FIRESTORE_DATABASE_ID;
 export const db = firestoreDatabaseId ? getFirestore(app, firestoreDatabaseId) : getFirestore(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
