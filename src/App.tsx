@@ -182,6 +182,17 @@ const DASHBOARD_ANALYTICS_VIEWER_EMAILS = [
   'latifatul.aminah@baznas.go.id'
 ];
 
+type NormalizedDivisi = 'Asrama' | 'Akademik/Kesiswaan' | 'Operasional' | 'Tanpa Divisi';
+
+const normalizeDivisi = (divisi?: string | null): NormalizedDivisi => {
+  const raw = (divisi || '').trim().toLowerCase();
+  if (!raw) return 'Tanpa Divisi';
+  if (raw.includes('asrama')) return 'Asrama';
+  if (raw.includes('akademik') || raw.includes('kesiswaan')) return 'Akademik/Kesiswaan';
+  if (raw.includes('operasional')) return 'Operasional';
+  return 'Tanpa Divisi';
+};
+
 function DebouncedInput({ 
   value, 
   onChange, 
@@ -265,10 +276,11 @@ function SubmissionGrid({
                     )}
                   </th>
                   <th className="px-2 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest w-16">Tipe</th>
-                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Judul & Keterangan</th>
-                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-36">Nominal</th>
-                  <th className="px-6 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-80">Tahapan & Progress</th>
-                  <th className="px-6 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest w-36">Aksi</th>
+                  <th className="px-4 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest">Judul & Keterangan</th>
+                  <th className="px-4 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-36">Divisi & Pencairan</th>
+                  <th className="px-4 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-36">Nominal</th>
+                  <th className="px-4 py-4 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-72">Tahapan & Progress</th>
+                  <th className="px-4 py-4 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest w-36">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -373,7 +385,7 @@ function SubmissionCard({
           {typeInitial[submission.type as keyof typeof typeInitial] || "PB"}
         </div>
       </td>
-      <td className="px-6 py-4">
+      <td className="px-4 py-4">
         <div className="space-y-0.5 w-full">
           <h4 className="font-['Times_New_Roman'] font-black text-slate-800 text-[16px] tracking-tight leading-snug">
             {submission.title}
@@ -397,7 +409,33 @@ function SubmissionCard({
           </div>
         </div>
       </td>
-      <td className="px-6 py-4 font-['Times_New_Roman'] text-[13px] w-36">
+      <td className="px-4 py-4 w-36">
+        <div className="flex flex-col gap-1">
+          {(() => {
+            const divisiLabel = submission.divisi ? normalizeDivisi(submission.divisi) : null;
+            const divisiBadgeClass =
+              divisiLabel === 'Asrama'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : divisiLabel === 'Akademik/Kesiswaan'
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                  : divisiLabel === 'Operasional'
+                    ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    : 'bg-slate-50 text-slate-500 border-slate-200';
+            const isRejectedRow = submission.status === 'REJECTED' || submission.status === 'rejected';
+            return (
+              <>
+                <span className={`inline-flex items-center w-max max-w-full truncate px-2 py-0.5 rounded-md border text-[10px] font-bold ${divisiBadgeClass}`} title={submission.divisi || 'Belum diisi'}>
+                  {submission.divisi || 'Tanpa Divisi'}
+                </span>
+                <span className={`text-[9px] font-bold uppercase tracking-tight ${isRejectedRow ? 'text-red-500' : isTransferred ? 'text-emerald-600' : 'text-slate-400'}`}>
+                  {isRejectedRow ? 'Ditolak' : isTransferred ? 'Sudah Dicairkan' : 'Belum Cair'}
+                </span>
+              </>
+            );
+          })()}
+        </div>
+      </td>
+      <td className="px-4 py-4 font-['Times_New_Roman'] text-[13px] w-36">
         <div className="flex items-baseline gap-1">
           <span className="text-[14px] bg-[#ffffff] font-bold text-slate-400">Rp</span>
           <span className="font-['Times_New_Roman'] font-black text-[16px] text-slate-800 tracking-tight tabular-nums">
@@ -405,7 +443,7 @@ function SubmissionCard({
           </span>
         </div>
       </td>
-      <td className="px-6 py-4 w-80">
+      <td className="px-4 py-4 w-72">
         <div className="space-y-2 w-full">
           <div className="flex items-center justify-between gap-2">
             <span className={`font-['Times_New_Roman'] px-2 py-0.5 rounded-md text-[10px] flex items-center font-black uppercase tracking-tighter line-clamp-1 ${
@@ -432,7 +470,7 @@ function SubmissionCard({
           )}
         </div>
       </td>
-      <td className="px-6 py-4 w-36">
+      <td className="px-4 py-4 w-36">
          <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-2">
               <Dialog>
@@ -554,6 +592,7 @@ export default function App() {
   const [filterMonth, setFilterMonth] = useState<string>('all');
   const [filterYear, setFilterYear] = useState<string>('all');
   const [filterSumberRekening, setFilterSumberRekening] = useState<string>('all');
+  const [filterDivisi, setFilterDivisi] = useState<string>('all');
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -1507,7 +1546,7 @@ export default function App() {
       return;
     }
 
-    const headers = ["ID", "Jenis", "Judul", "Kode Budget", "Rekening", "No Dokumen", "Nominal", "Status", "Tahap", "Pengaju", "Email Pengaju", "Tanggal Buat", "Link Bukti"];
+    const headers = ["ID", "Jenis", "Judul", "Divisi", "Kode Budget", "Rekening", "No Dokumen", "Nominal", "Status", "Tahap", "Pengaju", "Email Pengaju", "Tanggal Buat", "Link Bukti"];
     const rows = submissions.map(s => {
       const stages = getStagesByType(s.type);
       const currentStatus = stages[s.currentStageIndex] || s.status;
@@ -1515,6 +1554,7 @@ export default function App() {
         s.id,
         s.type === 'uang_muka' ? 'Uang Muka' : s.type === 'reimburse' ? 'Reimburse' : 'Pembiayaan',
         s.title,
+        s.divisi || '-',
         s.kodeBudget || '-',
         s.sumberRekening || '-',
         s.noDokumen || '-',
@@ -1575,7 +1615,7 @@ export default function App() {
     { id: 'settings', label: 'Settingan', icon: Settings, access: 'owner_only' },
   ];
 
-  const filteredSubmissions = useMemo(() => {
+  const submissionsBeforeDivisiFilter = useMemo(() => {
     return submissions.filter(sub => {
       const matchesTitle = (sub.title || '').toLowerCase().includes(deferredSearchQuery.toLowerCase());
       const matchesPIC = deferredFilterPIC ? (sub.picName && sub.picName.toLowerCase().includes(deferredFilterPIC.toLowerCase())) : true;
@@ -1605,6 +1645,94 @@ export default function App() {
       return globalSearch && matchesPIC && matchesType && matchesMin && matchesMax && matchesStatus && matchesMonth && matchesYear && matchesSumberRekening;
     });
   }, [submissions, deferredSearchQuery, deferredFilterPIC, filterType, minAmount, maxAmount, filterStatuses, filterMonth, filterYear, filterSumberRekening]);
+
+  const filteredSubmissions = useMemo(() => {
+    if (filterDivisi === 'all') return submissionsBeforeDivisiFilter;
+    return submissionsBeforeDivisiFilter.filter(sub => normalizeDivisi(sub.divisi) === filterDivisi);
+  }, [submissionsBeforeDivisiFilter, filterDivisi]);
+
+  const divisionDisbursementSummary = useMemo(() => {
+    const divisions: Array<{
+      key: NormalizedDivisi;
+      label: string;
+      accent: string;
+      activeRing: string;
+      dotColor: string;
+      disbursedAmount: number;
+      disbursedCount: number;
+      totalAmount: number;
+      totalCount: number;
+    }> = [
+      {
+        key: 'Asrama',
+        label: 'Asrama',
+        accent: 'bg-emerald-50/70 border-emerald-100 hover:border-emerald-300',
+        activeRing: 'ring-2 ring-emerald-500 border-emerald-400 bg-emerald-50',
+        dotColor: 'bg-emerald-500',
+        disbursedAmount: 0,
+        disbursedCount: 0,
+        totalAmount: 0,
+        totalCount: 0
+      },
+      {
+        key: 'Akademik/Kesiswaan',
+        label: 'Akademik/Kesiswaan',
+        accent: 'bg-indigo-50/70 border-indigo-100 hover:border-indigo-300',
+        activeRing: 'ring-2 ring-indigo-500 border-indigo-400 bg-indigo-50',
+        dotColor: 'bg-indigo-500',
+        disbursedAmount: 0,
+        disbursedCount: 0,
+        totalAmount: 0,
+        totalCount: 0
+      },
+      {
+        key: 'Operasional',
+        label: 'Operasional',
+        accent: 'bg-amber-50/70 border-amber-100 hover:border-amber-300',
+        activeRing: 'ring-2 ring-amber-500 border-amber-400 bg-amber-50',
+        dotColor: 'bg-amber-500',
+        disbursedAmount: 0,
+        disbursedCount: 0,
+        totalAmount: 0,
+        totalCount: 0
+      },
+      {
+        key: 'Tanpa Divisi',
+        label: 'Tanpa Divisi / Lainnya',
+        accent: 'bg-slate-50/80 border-slate-200 hover:border-slate-300',
+        activeRing: 'ring-2 ring-slate-500 border-slate-400 bg-slate-100',
+        dotColor: 'bg-slate-400',
+        disbursedAmount: 0,
+        disbursedCount: 0,
+        totalAmount: 0,
+        totalCount: 0
+      }
+    ];
+
+    const map = new Map(divisions.map(d => [d.key, d]));
+
+    submissionsBeforeDivisiFilter.forEach(sub => {
+      if (sub.status === 'REJECTED' || sub.status === 'rejected') return;
+      const key = normalizeDivisi(sub.divisi);
+      const bucket = map.get(key)!;
+      const amount = getDisplayAmount(sub);
+      bucket.totalAmount += amount;
+      bucket.totalCount += 1;
+
+      const stages = getStagesByType(sub.type);
+      const transferredIdx = stages.findIndex(s => s.toLowerCase().includes('sudah di transfer'));
+      const isDisbursed = transferredIdx !== -1 && (sub.currentStageIndex ?? -1) >= transferredIdx;
+      if (isDisbursed) {
+        bucket.disbursedAmount += amount;
+        bucket.disbursedCount += 1;
+      }
+    });
+
+    const grandDisbursedAmount = divisions.reduce((acc, d) => acc + d.disbursedAmount, 0);
+    const grandDisbursedCount = divisions.reduce((acc, d) => acc + d.disbursedCount, 0);
+
+    return { divisions, grandDisbursedAmount, grandDisbursedCount };
+  }, [submissionsBeforeDivisiFilter]);
 
   const activeTabSubmissions = useMemo(() => {
     if (trackingTab === 'pending') {
@@ -2164,6 +2292,96 @@ export default function App() {
                                />
                              </div>
                            </div>
+
+                           <div className="space-y-1.5">
+                             <Label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Divisi</Label>
+                             <Select value={filterDivisi} onValueChange={setFilterDivisi}>
+                               <SelectTrigger className="h-8 bg-slate-50 border-none rounded-lg text-[11px] font-bold focus:ring-2 focus:ring-emerald-500/20 transition-all">
+                                 <div className="flex items-center gap-2 truncate">
+                                   <Briefcase size={14} className="text-slate-400 shrink-0" />
+                                   <SelectValue placeholder="Semua Divisi" />
+                                 </div>
+                               </SelectTrigger>
+                               <SelectContent className="rounded-xl border-slate-100">
+                                 <SelectItem value="all" className="text-xs font-bold">SEMUA DIVISI</SelectItem>
+                                 <SelectItem value="Asrama" className="text-xs font-bold">ASRAMA</SelectItem>
+                                 <SelectItem value="Akademik/Kesiswaan" className="text-xs font-bold">AKADEMIK/KESISWAAN</SelectItem>
+                                 <SelectItem value="Operasional" className="text-xs font-bold">OPERASIONAL</SelectItem>
+                                 <SelectItem value="Tanpa Divisi" className="text-xs font-bold">TANPA DIVISI</SelectItem>
+                               </SelectContent>
+                             </Select>
+                           </div>
+                         </div>
+
+                         {/* Pencairan Berdasarkan Divisi */}
+                         <div className="mt-3 pt-3 border-t border-slate-100">
+                           <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                             <div className="flex items-center gap-2">
+                               <div className="h-6 w-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                                 <Banknote size={13} />
+                               </div>
+                               <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                                 Pencairan Berdasarkan Divisi
+                               </span>
+                             </div>
+                             <div className="flex items-center gap-2">
+                               <span className="text-[10px] font-bold text-slate-500">
+                                 Total Cair: <strong className="text-slate-900 tabular-nums">Rp {divisionDisbursementSummary.grandDisbursedAmount.toLocaleString('id-ID')}</strong> ({divisionDisbursementSummary.grandDisbursedCount} transaksi)
+                               </span>
+                               {filterDivisi !== 'all' && (
+                                 <button
+                                   type="button"
+                                   onClick={() => setFilterDivisi('all')}
+                                   className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                                 >
+                                   Reset Divisi
+                                 </button>
+                               )}
+                             </div>
+                           </div>
+
+                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                             {divisionDisbursementSummary.divisions.map((divItem) => {
+                               const isActiveDiv = filterDivisi === divItem.key;
+                               const pct = divisionDisbursementSummary.grandDisbursedAmount > 0
+                                 ? Math.round((divItem.disbursedAmount / divisionDisbursementSummary.grandDisbursedAmount) * 100)
+                                 : 0;
+                               return (
+                                 <button
+                                   key={divItem.key}
+                                   type="button"
+                                   onClick={() => setFilterDivisi(isActiveDiv ? 'all' : divItem.key)}
+                                   className={`text-left rounded-xl border p-2.5 transition-all cursor-pointer ${
+                                     isActiveDiv ? divItem.activeRing : divItem.accent
+                                   }`}
+                                   title={`Klik untuk filter divisi ${divItem.label}`}
+                                 >
+                                   <div className="flex items-center justify-between gap-1.5 mb-1">
+                                     <div className="flex items-center gap-1.5 min-w-0">
+                                       <span className={`h-2 w-2 rounded-full shrink-0 ${divItem.dotColor}`} />
+                                       <span className="text-[10px] font-black uppercase tracking-wider text-slate-700 truncate">
+                                         {divItem.label}
+                                       </span>
+                                     </div>
+                                     <span className="text-[9px] font-bold text-slate-500 tabular-nums shrink-0">
+                                       {pct}%
+                                     </span>
+                                   </div>
+                                   <div className="text-sm font-black text-slate-900 tracking-tight tabular-nums leading-tight">
+                                     Rp {divItem.disbursedAmount.toLocaleString('id-ID')}
+                                   </div>
+                                   <div className="flex items-center justify-between gap-1 mt-1 text-[10px] text-slate-500 font-semibold">
+                                     <span>{divItem.disbursedCount} transaksi cair</span>
+                                     {divItem.totalCount > divItem.disbursedCount && (
+                                       <span className="text-[9px] text-slate-400">
+                                         dari {divItem.totalCount} ajuan
+                                       </span>
+                                     )}
+                                   </div>
+                                 </button>
+                               );
+                             })}
+                           </div>
                          </div>
                        </CardContent>
                      </Card>
@@ -2180,7 +2398,8 @@ export default function App() {
                         maxAmount !== '' ||
                         filterMonth !== 'all' ||
                         filterYear !== 'all' ||
-                        filterSumberRekening !== 'all'
+                        filterSumberRekening !== 'all' ||
+                        filterDivisi !== 'all'
                       }
                       filters={{
                         search: searchQuery,
@@ -2191,7 +2410,8 @@ export default function App() {
                         year: filterYear,
                         min: minAmount,
                         max: maxAmount,
-                        sumberRekening: filterSumberRekening
+                        sumberRekening: filterSumberRekening,
+                        divisi: filterDivisi
                       }}
                     />
 
@@ -2989,6 +3209,7 @@ function FilteredResultsSummary({
     min: string;
     max: string;
     sumberRekening?: string;
+    divisi?: string;
   }
 }) {
   if (!isFiltered) return null;
@@ -3010,6 +3231,7 @@ function FilteredResultsSummary({
     }
     if (filters.year !== 'all') parts.push(`"Tahun" "${filters.year}"`);
     if (filters.sumberRekening && filters.sumberRekening !== 'all') parts.push(`"Sumber Rekening" "${filters.sumberRekening.toUpperCase()}"`);
+    if (filters.divisi && filters.divisi !== 'all') parts.push(`"Divisi" "${filters.divisi}"`);
     if (filters.min || filters.max) parts.push(`"Nominal" ${filters.min ? 'min Rp'+Number(filters.min).toLocaleString('id-ID') : ''}${filters.min && filters.max ? ' s/d ' : ''}${filters.max ? 'max Rp'+Number(filters.max).toLocaleString('id-ID') : ''}`);
     
     return parts.length > 0 ? parts.join(", ") : "Terfilter";
