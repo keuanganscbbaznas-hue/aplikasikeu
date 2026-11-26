@@ -2974,7 +2974,7 @@ export default function App() {
       <FloatingLiveChat
         user={user}
         profile={profile}
-        isAdmin={isAdmin}
+        isAdmin={((user?.email || profile?.email) || '').toLowerCase() === OWNER_EMAIL.toLowerCase()}
         allUsers={allUsers}
         shiftUp={selectedSubmissions.size > 0}
       />

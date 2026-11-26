@@ -186,7 +186,10 @@ export function FloatingLiveChat({
     }
   }, [soundEnabled]);
 
+  const CHAT_ADMIN_EMAIL = 'keuanganscbbaznas@gmail.com';
   const currentUid = user?.uid || '';
+  const currentEmail = (auth.currentUser?.email || user?.email || profile?.email || '').toLowerCase();
+  const isChatAdmin = Boolean(isAdmin && currentEmail === CHAT_ADMIN_EMAIL);
   const hasFirebaseAuth = Boolean(auth.currentUser && auth.currentUser.uid === currentUid);
 
   // Listen to chat thread(s) for unread badge & incoming message notifications
@@ -202,7 +205,7 @@ export function FloatingLiveChat({
     hasSeededUserThreadRef.current = false;
     seenUserSignatureRef.current = '';
 
-    if (isAdmin) {
+    if (isChatAdmin) {
       const q = query(
         collection(db, 'support_chats'),
         orderBy('lastMessageAt', 'desc'),
@@ -329,10 +332,10 @@ export function FloatingLiveChat({
 
       return () => unsub();
     }
-  }, [currentUid, isAdmin, hasFirebaseAuth]);
+  }, [currentUid, isChatAdmin, hasFirebaseAuth]);
 
   // Determine the currently viewed thread ID
-  const viewedChatId = isAdmin ? activeChatId : currentUid;
+  const viewedChatId = isChatAdmin ? activeChatId : currentUid;
 
   // Listen to messages in the active conversation when chat panel is open
   useEffect(() => {
@@ -377,7 +380,7 @@ export function FloatingLiveChat({
   useEffect(() => {
     if (!isOpen || !viewedChatId || !hasFirebaseAuth) return;
 
-    if (isAdmin) {
+    if (isChatAdmin) {
       const target = threads.find((t) => t.id === viewedChatId);
       if (target && (target.unreadByAdmin || 0) > 0) {
         updateDoc(doc(db, 'support_chats', viewedChatId), {
@@ -395,7 +398,7 @@ export function FloatingLiveChat({
         console.warn('Mark chat read (user) notice:', err);
       });
     }
-  }, [isOpen, viewedChatId, isAdmin, threads, userThread, currentUid, hasFirebaseAuth]);
+  }, [isOpen, viewedChatId, isChatAdmin, threads, userThread, currentUid, hasFirebaseAuth]);
 
   // Auto-scroll to bottom when messages change or chat opens
   useEffect(() => {
@@ -407,16 +410,16 @@ export function FloatingLiveChat({
   }, [messages, isOpen, viewedChatId]);
 
   const totalUnread = useMemo(() => {
-    if (isAdmin) {
+    if (isChatAdmin) {
       return threads.reduce((acc, t) => acc + (t.unreadByAdmin || 0), 0);
     }
     return userThread?.unreadByUser || 0;
-  }, [isAdmin, threads, userThread]);
+  }, [isChatAdmin, threads, userThread]);
 
   const activeThreadMeta = useMemo(() => {
-    if (!isAdmin) return userThread;
+    if (!isChatAdmin) return userThread;
     return threads.find((t) => t.id === activeChatId) || null;
-  }, [isAdmin, userThread, threads, activeChatId]);
+  }, [isChatAdmin, userThread, threads, activeChatId]);
 
   const filteredThreads = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -434,6 +437,7 @@ export function FloatingLiveChat({
     const q = searchQuery.trim().toLowerCase();
     return allUsers.filter((u) => {
       if (!u.uid || u.uid === currentUid) return false;
+      if ((u.email || '').toLowerCase() === CHAT_ADMIN_EMAIL) return false;
       if (existingIds.has(u.uid)) return false;
       if (!q) return true;
       return (
@@ -453,7 +457,7 @@ export function FloatingLiveChat({
       return;
     }
 
-    const targetChatId = isAdmin ? activeChatId : currentUid;
+    const targetChatId = isChatAdmin ? activeChatId : currentUid;
     if (!targetChatId) return;
 
     const textPayload = cleanText.slice(0, 2000);
@@ -464,24 +468,24 @@ export function FloatingLiveChat({
       'Pengguna'
     );
     const senderEmail = sanitizeString(profile?.email || user?.email, 160, '');
-    const senderRole: 'user' | 'admin' = isAdmin ? 'admin' : 'user';
+    const senderRole: 'user' | 'admin' = isChatAdmin ? 'admin' : 'user';
 
     // Target user metadata for thread doc
-    const targetUserName = isAdmin
+    const targetUserName = isChatAdmin
       ? sanitizeString(
           activeThreadMeta?.userName || pendingUserTarget?.displayName || pendingUserTarget?.email,
           120,
           'Pengguna'
         )
       : senderName;
-    const targetUserEmail = isAdmin
+    const targetUserEmail = isChatAdmin
       ? sanitizeString(
           activeThreadMeta?.userEmail || pendingUserTarget?.email,
           160,
           ''
         )
       : senderEmail;
-    const targetUserPhoto = isAdmin
+    const targetUserPhoto = isChatAdmin
       ? sanitizeString(
           activeThreadMeta?.userPhotoURL || pendingUserTarget?.photoURL || '',
           512,
@@ -551,7 +555,7 @@ export function FloatingLiveChat({
         });
       });
 
-      if (isAdmin) {
+      if (isChatAdmin) {
         const targetUser = allUsers.find((u) => u.uid === targetChatId);
         const recipientPhone = targetUser?.whatsapp;
         if (recipientPhone) {
@@ -601,7 +605,7 @@ export function FloatingLiveChat({
             {/* Header */}
             <div className="bg-emerald-800 text-white px-4 py-3.5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
-                {isAdmin && activeChatId ? (
+                {isChatAdmin && activeChatId ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -620,7 +624,7 @@ export function FloatingLiveChat({
                 )}
                 <div className="min-w-0">
                   <h3 className="text-sm font-bold leading-tight truncate">
-                    {isAdmin
+                    {isChatAdmin
                       ? activeChatId
                         ? activeThreadMeta?.userName ||
                           pendingUserTarget?.displayName ||
@@ -629,11 +633,11 @@ export function FloatingLiveChat({
                       : 'Live Chat Admin SCB'}
                   </h3>
                   <p className="text-[11px] text-emerald-200 truncate">
-                    {isAdmin
+                    {isChatAdmin
                       ? activeChatId
                         ? activeThreadMeta?.userEmail || pendingUserTarget?.email || ''
-                        : `${threads.length} percakapan aktif`
-                      : 'Terhubung langsung ke Admin Keuangan'}
+                        : `${threads.length} percakapan user`
+                      : `Admin: ${CHAT_ADMIN_EMAIL}`}
                   </p>
                 </div>
               </div>
@@ -668,7 +672,7 @@ export function FloatingLiveChat({
                   Silakan masuk menggunakan tombol Google agar pesan live chat tersinkronisasi secara real-time.
                 </p>
               </div>
-            ) : isAdmin && !activeChatId ? (
+            ) : isChatAdmin && !activeChatId ? (
               /* Admin Thread List View */
               <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
                 <div className="p-3 bg-white border-b border-slate-100 flex items-center gap-2">
@@ -809,17 +813,19 @@ export function FloatingLiveChat({
                         <MessageSquare size={22} />
                       </div>
                       <p className="text-xs font-bold text-slate-700">
-                        {isAdmin
+                        {isChatAdmin
                           ? 'Mulai percakapan dengan user ini'
                           : 'Halo! Ada yang bisa Admin bantu?'}
                       </p>
                       <p className="text-[11px] text-slate-400 mt-1 max-w-[240px]">
-                        Kirim pesan di bawah ini. Admin akan langsung mendapat notifikasi dan membalas di sini.
+                        {isChatAdmin
+                          ? 'Kirim pesan di bawah ini untuk membalas atau menghubungi user ini.'
+                          : `Chat privat Anda hanya dapat dilihat oleh akun Anda (${profile?.email || user?.email || ''}) dan Admin (${CHAT_ADMIN_EMAIL}).`}
                       </p>
                     </div>
                   ) : (
                     messages.map((msg) => {
-                      const isMine = isAdmin
+                      const isMine = isChatAdmin
                         ? msg.senderRole === 'admin'
                         : msg.senderRole === 'user';
 
@@ -834,7 +840,7 @@ export function FloatingLiveChat({
                             {isMine
                               ? 'Anda'
                               : msg.senderRole === 'admin'
-                              ? `Admin (${msg.senderName})`
+                              ? `Admin (${CHAT_ADMIN_EMAIL})`
                               : msg.senderName}
                           </span>
                           <div
@@ -866,7 +872,7 @@ export function FloatingLiveChat({
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     placeholder={
-                      isAdmin ? 'Tulis balasan ke user...' : 'Tulis pesan ke Admin...'
+                      isChatAdmin ? 'Tulis balasan ke user...' : 'Tulis pesan ke Admin...'
                     }
                     maxLength={2000}
                     disabled={isSending}
@@ -908,7 +914,7 @@ export function FloatingLiveChat({
           )}
         </div>
         <span className="text-xs font-bold tracking-wide hidden sm:inline">
-          {isAdmin ? 'Live Chat' : 'Chat Admin'}
+          {isChatAdmin ? 'Live Chat' : 'Chat Admin'}
         </span>
         {totalUnread > 0 && (
           <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-extrabold flex items-center justify-center shadow-sm">

@@ -144,6 +144,12 @@ service cloud.firestore {
              request.auth.token.email.lower() == "keuanganscbbaznas@gmail.com";
     }
 
+    function isChatAdmin() {
+      return isSignedIn() &&
+             request.auth.token.email_verified == true &&
+             request.auth.token.email.lower() == "keuanganscbbaznas@gmail.com";
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -265,42 +271,42 @@ service cloud.firestore {
     }
 
     match /support_chats/{chatId} {
-      allow get: if isValidId(chatId) && (isOwner(chatId) || isAdmin());
-      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow get: if isValidId(chatId) && (isOwner(chatId) || isChatAdmin());
+      allow list: if isChatAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow create: if isSignedIn() && isValidId(chatId) && isValidSupportChat(incoming()) &&
                       incoming().userId == chatId &&
                       incoming().lastMessageAt == request.time &&
                       incoming().updatedAt == request.time &&
                       (!('createdAt' in incoming()) || incoming().createdAt == request.time) &&
                       (
-                        (isOwner(chatId) && incoming().lastSenderRole == 'user' && incoming().unreadByUser == 0 && incoming().unreadByAdmin == 1) ||
-                        (isAdmin() && incoming().lastSenderRole == 'admin' && incoming().unreadByAdmin == 0 && incoming().unreadByUser == 1)
+                        (isOwner(chatId) && !isChatAdmin() && incoming().lastSenderRole == 'user' && incoming().unreadByUser == 0 && incoming().unreadByAdmin == 1) ||
+                        (isChatAdmin() && !isOwner(chatId) && incoming().lastSenderRole == 'admin' && incoming().unreadByAdmin == 0 && incoming().unreadByUser == 1)
                       );
       allow update: if isSignedIn() && isValidId(chatId) && isValidSupportChat(incoming()) &&
                       incoming().userId == existing().userId &&
                       incoming().updatedAt == request.time &&
                       (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt) &&
                       (
-                        (isOwner(chatId) && incoming().diff(existing()).affectedKeys().hasOnly(['unreadByUser', 'updatedAt']) && incoming().unreadByUser == 0) ||
-                        (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['unreadByAdmin', 'updatedAt']) && incoming().unreadByAdmin == 0) ||
-                        (isOwner(chatId) && incoming().lastSenderRole == 'user' && incoming().unreadByUser == 0 && incoming().unreadByAdmin == existing().unreadByAdmin + 1 && incoming().lastMessageAt == request.time) ||
-                        (isAdmin() && incoming().lastSenderRole == 'admin' && incoming().unreadByAdmin == 0 && incoming().unreadByUser == existing().unreadByUser + 1 && incoming().lastMessageAt == request.time)
+                        (isOwner(chatId) && !isChatAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['unreadByUser', 'updatedAt']) && incoming().unreadByUser == 0) ||
+                        (isChatAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['unreadByAdmin', 'updatedAt']) && incoming().unreadByAdmin == 0) ||
+                        (isOwner(chatId) && !isChatAdmin() && incoming().lastSenderRole == 'user' && incoming().unreadByUser == 0 && incoming().unreadByAdmin == existing().unreadByAdmin + 1 && incoming().lastMessageAt == request.time) ||
+                        (isChatAdmin() && !isOwner(chatId) && incoming().lastSenderRole == 'admin' && incoming().unreadByAdmin == 0 && incoming().unreadByUser == existing().unreadByUser + 1 && incoming().lastMessageAt == request.time)
                       );
-      allow delete: if isValidId(chatId) && isAdmin();
+      allow delete: if isValidId(chatId) && isChatAdmin();
 
       match /messages/{messageId} {
-        allow get: if isValidId(chatId) && isValidId(messageId) && (isOwner(chatId) || isAdmin());
-        allow list: if isValidId(chatId) && (isOwner(chatId) || isAdmin());
+        allow get: if isValidId(chatId) && isValidId(messageId) && (isOwner(chatId) || isChatAdmin());
+        allow list: if isValidId(chatId) && (isOwner(chatId) || isChatAdmin());
         allow create: if isSignedIn() && isValidId(chatId) && isValidId(messageId) &&
                         isValidSupportChatMessage(incoming()) &&
                         incoming().senderId == request.auth.uid &&
                         incoming().createdAt == request.time &&
                         (
-                          (isOwner(chatId) && incoming().senderRole == 'user') ||
-                          (isAdmin() && incoming().senderRole == 'admin')
+                          (isOwner(chatId) && !isChatAdmin() && incoming().senderRole == 'user') ||
+                          (isChatAdmin() && !isOwner(chatId) && incoming().senderRole == 'admin')
                         );
         allow update: if false;
-        allow delete: if isValidId(chatId) && isValidId(messageId) && isAdmin();
+        allow delete: if isValidId(chatId) && isValidId(messageId) && isChatAdmin();
       }
     }
   }
