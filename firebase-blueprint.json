@@ -292,6 +292,49 @@
         "categories": { "type": "array" }
       },
       "required": ["title", "settlementNo", "picName", "nominalUangMuka", "totalRealisasi", "statusBalance"]
+    },
+    "SupportChat": {
+      "title": "SupportChat",
+      "description": "Live chat thread between a user and system admins.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userPhotoURL": { "type": "string" },
+        "lastMessage": { "type": "string" },
+        "lastSenderRole": { "type": "string", "enum": ["user", "admin"] },
+        "lastMessageAt": { "type": "string", "format": "date-time" },
+        "unreadByAdmin": { "type": "number" },
+        "unreadByUser": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "userName",
+        "userEmail",
+        "lastMessage",
+        "lastSenderRole",
+        "lastMessageAt",
+        "unreadByAdmin",
+        "unreadByUser",
+        "updatedAt"
+      ]
+    },
+    "SupportChatMessage": {
+      "title": "SupportChatMessage",
+      "description": "Individual message inside a user-to-admin live chat thread.",
+      "type": "object",
+      "properties": {
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderEmail": { "type": "string" },
+        "senderRole": { "type": "string", "enum": ["user", "admin"] },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["senderId", "senderName", "senderEmail", "senderRole", "text", "createdAt"]
     }
   },
   "firestore": {
@@ -354,6 +397,14 @@
     "/donation_saldo_awal/{saldoId}": {
       "schema": "DonationSaldoAwal",
       "description": "Yearly starting balance configurations for SMP/SMA donations."
+    },
+    "/support_chats/{chatId}": {
+      "schema": "SupportChat",
+      "description": "Live chat threads between users and administrators."
+    },
+    "/support_chats/{chatId}/messages/{messageId}": {
+      "schema": "SupportChatMessage",
+      "description": "Real-time messages inside a live chat thread."
     }
   }
 }

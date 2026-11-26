@@ -26,6 +26,7 @@ service cloud.firestore {
       let isHardcodedAdmin = isSignedIn() && (
         (request.auth.token.email == "keuanganscbbaznas@gmail.com" || 
          request.auth.token.email == "keuangan.scb@gmail.com" ||
+         request.auth.token.email == "tatausahascba@gmail.com" ||
          request.auth.token.email == "kamal2015go@gmail.com" ||
          request.auth.token.email == "operasional.scb@gmail.com") && 
         request.auth.token.email_verified == true
@@ -95,6 +96,41 @@ service cloud.firestore {
              data.createdAt is string &&
              (!('description' in data) || (data.description is string && data.description.size() <= 1024)) &&
              (!('fileType' in data) || (data.fileType is string && data.fileType.size() <= 128));
+    }
+
+    function isValidSupportChat(data) {
+      return data.keys().hasAll([
+               'userId', 'userName', 'userEmail', 'lastMessage',
+               'lastSenderRole', 'lastMessageAt', 'unreadByAdmin',
+               'unreadByUser', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'userName', 'userEmail', 'userPhotoURL',
+               'lastMessage', 'lastSenderRole', 'lastMessageAt',
+               'unreadByAdmin', 'unreadByUser', 'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.userName is string && data.userName.size() <= 120 &&
+             data.userEmail is string && data.userEmail.size() <= 160 &&
+             data.lastMessage is string && data.lastMessage.size() <= 1000 &&
+             data.lastSenderRole in ['user', 'admin'] &&
+             data.lastMessageAt is timestamp &&
+             data.unreadByAdmin is number && data.unreadByAdmin >= 0 && data.unreadByAdmin <= 100000 &&
+             data.unreadByUser is number && data.unreadByUser >= 0 && data.unreadByUser <= 100000 &&
+             data.updatedAt is timestamp &&
+             (!('userPhotoURL' in data) || (data.userPhotoURL is string && data.userPhotoURL.size() <= 512)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp);
+    }
+
+    function isValidSupportChatMessage(data) {
+      return data.keys().hasAll(['senderId', 'senderName', 'senderEmail', 'senderRole', 'text', 'createdAt']) &&
+             data.keys().hasOnly(['senderId', 'senderName', 'senderEmail', 'senderRole', 'text', 'createdAt']) &&
+             data.senderId is string && data.senderId.size() > 0 && data.senderId.size() <= 128 &&
+             data.senderName is string && data.senderName.size() <= 120 &&
+             data.senderEmail is string && data.senderEmail.size() <= 160 &&
+             data.senderRole in ['user', 'admin'] &&
+             data.text is string && data.text.size() > 0 && data.text.size() <= 2000 &&
+             data.createdAt is timestamp;
     }
 
     function isOnlyOwner() {
@@ -226,6 +262,46 @@ service cloud.firestore {
       allow create: if isTrueOwner() && isValidTemplate(incoming());
       allow update: if isTrueOwner() && isValidTemplate(incoming());
       allow delete: if isTrueOwner();
+    }
+
+    match /support_chats/{chatId} {
+      allow get: if isValidId(chatId) && (isOwner(chatId) || isAdmin());
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && isValidId(chatId) && isValidSupportChat(incoming()) &&
+                      incoming().userId == chatId &&
+                      incoming().lastMessageAt == request.time &&
+                      incoming().updatedAt == request.time &&
+                      (!('createdAt' in incoming()) || incoming().createdAt == request.time) &&
+                      (
+                        (isOwner(chatId) && incoming().lastSenderRole == 'user' && incoming().unreadByUser == 0 && incoming().unreadByAdmin == 1) ||
+                        (isAdmin() && incoming().lastSenderRole == 'admin' && incoming().unreadByAdmin == 0 && incoming().unreadByUser == 1)
+                      );
+      allow update: if isSignedIn() && isValidId(chatId) && isValidSupportChat(incoming()) &&
+                      incoming().userId == existing().userId &&
+                      incoming().updatedAt == request.time &&
+                      (!('createdAt' in existing()) || incoming().createdAt == existing().createdAt) &&
+                      (
+                        (isOwner(chatId) && incoming().diff(existing()).affectedKeys().hasOnly(['unreadByUser', 'updatedAt']) && incoming().unreadByUser == 0) ||
+                        (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['unreadByAdmin', 'updatedAt']) && incoming().unreadByAdmin == 0) ||
+                        (isOwner(chatId) && incoming().lastSenderRole == 'user' && incoming().unreadByUser == 0 && incoming().unreadByAdmin == existing().unreadByAdmin + 1 && incoming().lastMessageAt == request.time) ||
+                        (isAdmin() && incoming().lastSenderRole == 'admin' && incoming().unreadByAdmin == 0 && incoming().unreadByUser == existing().unreadByUser + 1 && incoming().lastMessageAt == request.time)
+                      );
+      allow delete: if isValidId(chatId) && isAdmin();
+
+      match /messages/{messageId} {
+        allow get: if isValidId(chatId) && isValidId(messageId) && (isOwner(chatId) || isAdmin());
+        allow list: if isValidId(chatId) && (isOwner(chatId) || isAdmin());
+        allow create: if isSignedIn() && isValidId(chatId) && isValidId(messageId) &&
+                        isValidSupportChatMessage(incoming()) &&
+                        incoming().senderId == request.auth.uid &&
+                        incoming().createdAt == request.time &&
+                        (
+                          (isOwner(chatId) && incoming().senderRole == 'user') ||
+                          (isAdmin() && incoming().senderRole == 'admin')
+                        );
+        allow update: if false;
+        allow delete: if isValidId(chatId) && isValidId(messageId) && isAdmin();
+      }
     }
   }
 }

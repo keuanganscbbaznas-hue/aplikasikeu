@@ -71,6 +71,7 @@ import { FPPPGeneratorSettings } from './components/FPPPGeneratorSettings';
 import { DonationConfirmation } from './components/administrasi/DonationConfirmation';
 import { DocumentTemplates } from './components/administrasi/DocumentTemplates';
 import { SettlementOtomatis } from './components/SettlementOtomatis';
+import { FloatingLiveChat } from './components/FloatingLiveChat';
 import { 
   Calculator,
   LayoutDashboard, 
@@ -1775,6 +1776,7 @@ export default function App() {
             </CardContent>
             <CardFooter className="flex flex-col gap-1 text-center text-xs text-slate-400 pt-2 pb-4">
               <p className="font-medium">Sekolah Cendekia BAZNAS (SCB)</p>
+              <p className="text-[11px] font-semibold text-slate-500">Copy Right by Nur Asiah - Keuangan SCB.</p>
             </CardFooter>
           </Card>
         </motion.div>
@@ -2525,6 +2527,10 @@ export default function App() {
                 )}
              </motion.div>
            </AnimatePresence>
+           <footer className="max-w-7xl w-full mt-10 pt-4 pb-2 border-t border-slate-200/70 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+             <span className="font-semibold text-slate-600">Copy Right by Nur Asiah - Keuangan SCB.</span>
+             <span className="text-[11px] text-slate-400">MONETA SCB • Monitoring &amp; Electronic Treasury</span>
+           </footer>
         </main>
       </div>
     </div>
@@ -2943,6 +2949,14 @@ export default function App() {
         allSubmissions={submissions}
         filteredSubmissions={filteredSubmissions}
         selectedSubmissionIds={selectedSubmissions}
+      />
+
+      <FloatingLiveChat
+        user={user}
+        profile={profile}
+        isAdmin={isAdmin}
+        allUsers={allUsers}
+        shiftUp={selectedSubmissions.size > 0}
       />
 
       <Toaster position="top-right" />
