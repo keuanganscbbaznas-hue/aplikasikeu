@@ -16,6 +16,7 @@ import { User } from 'firebase/auth';
 import { db, auth } from '../firebase';
 import { UserProfile } from '../types';
 import { handleFirestoreError, OperationType, isQuotaExceededError } from '../lib/firebaseUtils';
+import { pushWhatsAppMessage, buildLiveChatReplyWaMessage } from '../lib/whatsappPush';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -549,6 +550,22 @@ export function FloatingLiveChat({
           createdAt: nowTs,
         });
       });
+
+      if (isAdmin) {
+        const targetUser = allUsers.find((u) => u.uid === targetChatId);
+        const recipientPhone = targetUser?.whatsapp;
+        if (recipientPhone) {
+          void pushWhatsAppMessage({
+            target: recipientPhone,
+            message: buildLiveChatReplyWaMessage({
+              recipientName: targetUserName,
+              senderName,
+              messageText: textPayload,
+            }),
+            silent: true,
+          });
+        }
+      }
     } catch (error) {
       setDraft(cleanText);
       toast.error('Gagal mengirim pesan. Coba lagi.');

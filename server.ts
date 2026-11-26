@@ -1,6 +1,9 @@
+import "dotenv/config";
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import fs from "fs";
+import crypto from "crypto";
 import cookieParser from "cookie-parser";
 import { google } from "googleapis";
 import { Readable } from "stream";
@@ -8,14 +11,127 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 const PORT = 3000;
 
+function resolveFirebaseProjectId(): string {
+  try {
+    const cfgPath = path.join(process.cwd(), "firebase-applet-config.json");
+    if (fs.existsSync(cfgPath)) {
+      const parsed = JSON.parse(fs.readFileSync(cfgPath, "utf8"));
+      if (parsed?.projectId) return String(parsed.projectId);
+    }
+  } catch {
+    // fallback below
+  }
+  return process.env.FIREBASE_PROJECT_ID || "gen-lang-client-0768292926";
+}
+
+const FIREBASE_PROJECT_ID = resolveFirebaseProjectId();
+let cachedGoogleCerts: { certs: Record<string, string>; expiresAt: number } | null = null;
+
+async function getFirebasePublicCerts(): Promise<Record<string, string>> {
+  const now = Date.now();
+  if (cachedGoogleCerts && cachedGoogleCerts.expiresAt > now) {
+    return cachedGoogleCerts.certs;
+  }
+  const resp = await fetch(
+    "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
+    { signal: AbortSignal.timeout(8000) }
+  );
+  if (!resp.ok) {
+    throw new Error(`Failed to fetch Firebase public certificates (${resp.status})`);
+  }
+  const certs = (await resp.json()) as Record<string, string>;
+  const cc = resp.headers.get("cache-control") || "";
+  const maxAgeMatch = cc.match(/max-age=(\d+)/i);
+  const maxAgeSec = maxAgeMatch ? Math.max(60, Number(maxAgeMatch[1])) : 3600;
+  cachedGoogleCerts = { certs, expiresAt: now + maxAgeSec * 1000 };
+  return certs;
+}
+
+async function verifyFirebaseIdToken(idToken: string): Promise<{ uid: string; email?: string }> {
+  const parts = idToken.split(".");
+  if (parts.length !== 3) {
+    throw new Error("Format token tidak valid");
+  }
+  const [headerB64, payloadB64, signatureB64] = parts;
+  const header = JSON.parse(Buffer.from(headerB64, "base64url").toString("utf8"));
+  const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+
+  if (header.alg !== "RS256" || !header.kid) {
+    throw new Error("Algoritma atau key ID token tidak valid");
+  }
+
+  const certs = await getFirebasePublicCerts();
+  const cert = certs[header.kid];
+  if (!cert) {
+    throw new Error("Sertifikat kunci token tidak ditemukan");
+  }
+
+  const verifier = crypto.createVerify("RSA-SHA256");
+  verifier.update(`${headerB64}.${payloadB64}`);
+  verifier.end();
+  const signatureBuf = Buffer.from(signatureB64, "base64url");
+  if (!verifier.verify(cert, signatureBuf)) {
+    throw new Error("Signature token tidak valid");
+  }
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (payload.aud !== FIREBASE_PROJECT_ID) {
+    throw new Error("Audience token tidak sesuai");
+  }
+  if (payload.iss !== `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`) {
+    throw new Error("Issuer token tidak sesuai");
+  }
+  if (!payload.sub || typeof payload.sub !== "string") {
+    throw new Error("Subject token tidak valid");
+  }
+  if (typeof payload.exp !== "number" || payload.exp <= nowSec) {
+    throw new Error("Token sesi telah kedaluwarsa");
+  }
+  if (typeof payload.iat !== "number" || payload.iat > nowSec + 300) {
+    throw new Error("Waktu penerbitan token tidak valid");
+  }
+
+  return { uid: payload.sub, email: typeof payload.email === "string" ? payload.email : undefined };
+}
+
+function normalizePhoneTarget(rawTarget: string): string {
+  const tokens = rawTarget
+    .split(",")
+    .map((part) => part.replace(/\D/g, ""))
+    .filter(Boolean)
+    .map((digits) => (digits.startsWith("0") ? `62${digits.slice(1)}` : digits));
+
+  const valid = tokens.filter((digits) => digits.length >= 8 && digits.length <= 16);
+  return valid.join(",");
+}
+
 async function startServer() {
   const app = express();
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
   app.use(cookieParser());
 
-  // Support Cross-Origin Requests (CORS) for external environments (e.g., Vercel deployment)
+  // CORS handling: never emit wildcard Access-Control-Allow-Origin on authenticated /api/whatsapp/* routes
   app.use((req, res, next) => {
+    const requestOrigin = req.headers.origin;
+    if (req.path.startsWith("/api/whatsapp")) {
+      const host = req.headers["x-forwarded-host"] || req.headers.host;
+      const allowedExactOrigins = new Set([
+        "https://aplikasikeu.vercel.app",
+        ...(host ? [`https://${host}`, `http://${host}`] : []),
+      ]);
+      if (requestOrigin && allowedExactOrigins.has(requestOrigin)) {
+        res.setHeader("Access-Control-Allow-Origin", requestOrigin);
+        res.setHeader("Vary", "Origin");
+      }
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+      if (req.method === "OPTIONS") {
+        return res.sendStatus(204);
+      }
+      return next();
+    }
+
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
@@ -24,6 +140,21 @@ async function startServer() {
     }
     next();
   });
+
+  const requireFirebaseAuth: express.RequestHandler = async (req, res, next) => {
+    const authHeader = req.headers.authorization || "";
+    const match = authHeader.match(/^Bearer\s+(.+)$/i);
+    if (!match) {
+      return res.status(401).json({ success: false, error: "Autentikasi diperlukan" });
+    }
+    try {
+      const decoded = await verifyFirebaseIdToken(match[1].trim());
+      (req as express.Request & { authUser?: { uid: string; email?: string } }).authUser = decoded;
+      return next();
+    } catch (err: any) {
+      return res.status(401).json({ success: false, error: err?.message || "Token tidak valid" });
+    }
+  };
 
   // Background System Auth (Service Account)
   const getAuthClient = () => {
@@ -45,6 +176,85 @@ async function startServer() {
   app.get("/api/system/sync/status", (req, res) => {
     const hasCreds = !!(process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL && process.env.GOOGLE_PRIVATE_KEY);
     res.json({ ready: hasCreds, serviceAccount: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || null });
+  });
+
+  app.get("/api/whatsapp/status", requireFirebaseAuth, (req, res) => {
+    const token = process.env.FONNTE_TOKEN?.trim() || process.env.WHATSAPP_GATEWAY_TOKEN?.trim();
+    res.json({ configured: Boolean(token) });
+  });
+
+  app.post("/api/whatsapp/send", requireFirebaseAuth, async (req, res) => {
+    try {
+      const token = (process.env.FONNTE_TOKEN || process.env.WHATSAPP_GATEWAY_TOKEN || "").trim();
+      if (!token) {
+        return res.status(503).json({
+          success: false,
+          configured: false,
+          error: "FONNTE_TOKEN belum dikonfigurasi di environment server (Settings -> Secrets).",
+        });
+      }
+
+      const rawTarget = typeof req.body?.target === "string" ? req.body.target : "";
+      const rawMessage = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+
+      const normalizedTarget = normalizePhoneTarget(rawTarget);
+      if (!normalizedTarget) {
+        return res.status(400).json({
+          success: false,
+          error: "Nomor WhatsApp tujuan tidak valid.",
+        });
+      }
+      if (!rawMessage || rawMessage.length > 4000) {
+        return res.status(400).json({
+          success: false,
+          error: "Pesan WhatsApp harus diisi dan maksimal 4000 karakter.",
+        });
+      }
+
+      const formBody = new URLSearchParams({
+        target: normalizedTarget,
+        message: rawMessage,
+        countryCode: "62",
+      });
+
+      const upstreamRes = await fetch("https://api.fonnte.com/send", {
+        method: "POST",
+        headers: {
+          Authorization: token,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formBody.toString(),
+        signal: AbortSignal.timeout(10000),
+      });
+
+      const responseText = await upstreamRes.text();
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(responseText);
+      } catch {
+        parsed = { raw: responseText };
+      }
+
+      if (!upstreamRes.ok || parsed?.status === false) {
+        return res.status(502).json({
+          success: false,
+          configured: true,
+          error: parsed?.reason || parsed?.detail || `Gateway WhatsApp mengembalikan status ${upstreamRes.status}`,
+        });
+      }
+
+      return res.json({
+        success: true,
+        configured: true,
+        detail: parsed?.detail || "Pesan WhatsApp terkirim",
+      });
+    } catch (error: any) {
+      console.error("WhatsApp Push Error:", error?.message || error);
+      return res.status(500).json({
+        success: false,
+        error: "Gagal menghubungi server gateway WhatsApp.",
+      });
+    }
   });
 
   app.post("/api/gemini/parse-donation", async (req, res) => {

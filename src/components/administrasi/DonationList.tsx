@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../../firebase';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import {
+  pushWhatsAppMessage,
+  buildDonationVerifiedWaMessage,
+  normalizeWhatsAppNumber,
+} from '../../lib/whatsappPush';
 import { 
   Table, 
   TableBody, 
@@ -59,14 +64,7 @@ const getEvidenceImageUrl = (url: string) => {
 };
 
 const sendWhatsApp = (phoneNumber: string, message: string) => {
-  if (!phoneNumber) {
-    toast.error("Nomor WhatsApp tidak ditemukan");
-    return;
-  }
-  const cleanedPhone = phoneNumber.replace(/\D/g, '');
-  const finalPhone = cleanedPhone.startsWith('0') ? '62' + cleanedPhone.slice(1) : cleanedPhone;
-  const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
-  window.open(url, '_blank');
+  void pushWhatsAppMessage({ target: phoneNumber, message, silent: false });
 };
 
 export const DonationList = () => {
@@ -197,6 +195,20 @@ export const DonationList = () => {
       
       const updatedDonations = donations.map(d => d.id === id ? { ...d, status } : d);
       await syncToSheetsWithData(updatedDonations, true);
+
+      if (status === 'verified') {
+        const targetDonation = donations.find(d => d.id === id);
+        if (targetDonation && normalizeWhatsAppNumber(targetDonation.contact)) {
+          void pushWhatsAppMessage({
+            target: targetDonation.contact,
+            message: buildDonationVerifiedWaMessage({
+              donaturName: targetDonation.donaturName,
+              amount: Number(targetDonation.amount) || 0,
+            }),
+            silent: true,
+          });
+        }
+      }
     } catch (error: any) {
       toast.error("Gagal update status: " + error.message);
     }

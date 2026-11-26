@@ -140,6 +140,12 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { resizeImage, getApiUrl } from './lib/utils';
 import { Phone, Send } from 'lucide-react';
+import {
+  pushWhatsAppMessage,
+  checkWhatsAppGatewayStatus,
+  buildSubmissionCreatedWaMessage,
+  buildSubmissionStageUpdateWaMessage,
+} from './lib/whatsappPush';
 
 const formatWhatsAppMessage = (submission: Submission) => {
   const stages = getStagesByType(submission.type);
@@ -150,17 +156,7 @@ const formatWhatsAppMessage = (submission: Submission) => {
 };
 
 const sendWhatsApp = (phoneNumber: string, message: string) => {
-  if (!phoneNumber) {
-    toast.error("Nomor WhatsApp tidak ditemukan");
-    return;
-  }
-  // Remove non-numeric characters
-  const cleanedPhone = phoneNumber.replace(/\D/g, '');
-  // Prefix with 62 if starts with 0
-  const finalPhone = cleanedPhone.startsWith('0') ? '62' + cleanedPhone.slice(1) : cleanedPhone;
-  
-  const url = `https://wa.me/${finalPhone}?text=${encodeURIComponent(message)}`;
-  window.open(url, '_blank');
+  void pushWhatsAppMessage({ target: phoneNumber, message, silent: false });
 };
 
 const OWNER_EMAIL = 'keuanganscbbaznas@gmail.com';
@@ -1267,6 +1263,14 @@ export default function App() {
         history: [...submission.history, historyEntry]
       });
       toast.success(`Berhasil disetujui ke tahap: ${stages[nextIndex]}`);
+
+      if (submission.picWhatsapp) {
+        void pushWhatsAppMessage({
+          target: submission.picWhatsapp,
+          message: buildSubmissionStageUpdateWaMessage(submission, stages[nextIndex], false, comment),
+          silent: true,
+        });
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `submissions/${submission.id}`);
       toast.error("Gagal menyetujui");
@@ -1296,6 +1300,14 @@ export default function App() {
         history: [...submission.history, historyEntry]
       });
       toast.error("Pengajuan ditolak/dikembalikan");
+
+      if (submission.picWhatsapp) {
+        void pushWhatsAppMessage({
+          target: submission.picWhatsapp,
+          message: buildSubmissionStageUpdateWaMessage(submission, 'REJECTED', true, comment),
+          silent: true,
+        });
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `submissions/${submission.id}`);
     }
@@ -1365,6 +1377,14 @@ export default function App() {
           history: [...submission.history, historyEntry]
         });
         successCount++;
+
+        if (submission.picWhatsapp) {
+          void pushWhatsAppMessage({
+            target: submission.picWhatsapp,
+            message: buildSubmissionStageUpdateWaMessage(submission, stages[nextIndex], false, 'Setuju via aksi masal'),
+            silent: true,
+          });
+        }
       } catch (error) {
         failCount++;
       }
@@ -3502,6 +3522,19 @@ function NewSubmissionModal({ profile, user }: { profile: UserProfile | null, us
         };
 
         await addDoc(collection(db, 'submissions'), newSubmission);
+
+        if (newPicWhatsapp) {
+          void pushWhatsAppMessage({
+            target: newPicWhatsapp,
+            message: buildSubmissionCreatedWaMessage({
+              picName: newPicName || profile.displayName,
+              title: newTitle,
+              amount: Number(newAmount),
+              initialStage: stages[0],
+            }),
+            silent: true,
+          });
+        }
       };
 
       // Close and clear immediately
@@ -6177,6 +6210,20 @@ const AdminSection = ({
 };
 
 function AppConfigSection({ user, profile, fpppConfig }: { user: User | null, profile: UserProfile | null, fpppConfig: any }) {
+  const [waGatewayConfigured, setWaGatewayConfigured] = useState<boolean | null>(null);
+  const [checkingWaGateway, setCheckingWaGateway] = useState(false);
+
+  const refreshWaGatewayStatus = async () => {
+    setCheckingWaGateway(true);
+    const res = await checkWhatsAppGatewayStatus();
+    setWaGatewayConfigured(res.configured);
+    setCheckingWaGateway(false);
+  };
+
+  useEffect(() => {
+    void refreshWaGatewayStatus();
+  }, []);
+
   return (
     <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm mt-8">
       <div className="flex items-center gap-4 mb-6">
@@ -6283,6 +6330,35 @@ function AppConfigSection({ user, profile, fpppConfig }: { user: User | null, pr
 
         <TabsContent value="lainnya">
            <div className="space-y-4 flex flex-col items-start gap-2">
+               <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Push Notifikasi WhatsApp Otomatis</Label>
+               <div className="w-full max-w-xl p-4 rounded-2xl border border-slate-200 bg-slate-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                 <div className="space-y-1">
+                   <div className="flex items-center gap-2">
+                     <span className={`inline-block w-2.5 h-2.5 rounded-full ${waGatewayConfigured ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                     <span className="text-xs font-bold text-slate-800">
+                       {waGatewayConfigured === null
+                         ? 'Memeriksa status gateway...'
+                         : waGatewayConfigured
+                         ? 'Push Notifikasi WA Otomatis Aktif'
+                         : 'Menunggu Secret Server (FONNTE_TOKEN)'}
+                     </span>
+                   </div>
+                   <p className="text-[11px] text-slate-500">
+                     Notifikasi otomatis dikirim ke WhatsApp PIC saat pengajuan dibuat, disetujui, ditolak, balasan live chat admin, dan verifikasi donasi.
+                   </p>
+                 </div>
+                 <Button
+                   type="button"
+                   variant="outline"
+                   size="sm"
+                   onClick={refreshWaGatewayStatus}
+                   disabled={checkingWaGateway}
+                   className="rounded-xl text-xs font-bold shrink-0"
+                 >
+                   {checkingWaGateway ? 'Memeriksa...' : 'Cek Status'}
+                 </Button>
+               </div>
+               <Separator className="my-2" />
                <Label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pengaturan Lainnya</Label>
                <Button onClick={() => toast.success("Log integrasi berhasil dibersihkan")} variant="outline" className="w-full max-w-md justify-start font-bold text-slate-600 text-xs">Bersihkan Log Integrasi Sytem</Button>
                <Button onClick={() => toast.success("Mode pemeliharaan diaktifkan")} variant="outline" className="w-full max-w-md justify-start font-bold text-slate-600 text-xs">Nyalakan Mode Pemeliharaan (Maintenance)</Button>
