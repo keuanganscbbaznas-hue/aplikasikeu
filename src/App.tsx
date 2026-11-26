@@ -21,7 +21,7 @@ import {
   Timestamp,
   limit
 } from 'firebase/firestore';
-import { auth, db, googleProvider } from './firebase';
+import { auth, db, googleProvider, setDriveAccessTokenFromResult, clearDriveAccessToken } from './firebase';
 import { 
   UserProfile, 
   Submission, 
@@ -992,7 +992,8 @@ export default function App() {
 
   const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      setDriveAccessTokenFromResult(result);
       toast.success("Login Berhasil");
     } catch (error: any) {
       console.warn("Google sign-in error:", error);
@@ -1045,11 +1046,13 @@ export default function App() {
       } catch (e) {
         // ignore
       }
+      clearDriveAccessToken();
       setUser(null);
       setProfile(null);
       await signOut(auth);
       toast.success("Logout Berhasil");
     } catch (error) {
+      clearDriveAccessToken();
       setUser(null);
       setProfile(null);
       toast.success("Logout Berhasil");
@@ -2499,7 +2502,7 @@ export default function App() {
                 )}
 
                 {activeTab === 'berkas' && checkMenuAccess('berkas', 'admin') && (
-                  <BerkasDigitalManager />
+                  <BerkasDigitalManager submissions={submissions} />
                 )}
 
                 {activeTab === 'administrasi' && checkMenuAccess('administrasi', 'admin') && (

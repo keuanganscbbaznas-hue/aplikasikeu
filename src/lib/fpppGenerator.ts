@@ -585,25 +585,10 @@ export async function generateFPPP(submission: any | null, isEmpty: boolean = fa
     doc.rect(54, 242.5, 47, 5);
     doc.rect(54, 250.5, 47, 5);
 
-    const documentNo = (!isEmpty && submission?.noDokumen) ? submission.noDokumen : "";
-    
-    // Find the date of the "Sudah di transfer" stage for Tanggal Transaksi
+    // Find the date of the "Sudah di transfer" stage for Kasir stamp check
     const docTferStage = (!isEmpty && submission?.history) ? submission.history.find((h: any) => h.stage && h.stage.toLowerCase().includes("sudah di transfer")) : null;
     
-    let payDateStr = "";
-    if (docTferStage && docTferStage.timestamp) {
-        payDateStr = safeFormatDate(docTferStage.timestamp, 'dd MMMM yyyy', { locale: id });
-    } else if (!isEmpty && submission?.bookedAt) {
-        payDateStr = safeFormatDate(submission.bookedAt, 'dd MMMM yyyy', { locale: id });
-    } else if (!isEmpty && submission?.updatedAt) {
-        payDateStr = safeFormatDate(submission.updatedAt, 'dd MMMM yyyy', { locale: id });
-    }
-
-    doc.setFont("helvetica", "bold");
-    doc.text(documentNo, 56, 246);
-    doc.text(payDateStr, 56, 254);
-    doc.setFont("helvetica", "normal");
-
+    // Biarkan No. Dokumen dan Tanggal Bayar kosong (tidak diisi otomatis pada hasil unduhan FPPP)
     // Right: Kasir Box
     doc.line(105, 245, 195, 245); // Line separating Kasir header from sign block
     doc.text("Kasir", 150, 243, { align: 'center' });
